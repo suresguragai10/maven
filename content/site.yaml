@@ -1,0 +1,660 @@
+usefulLinks:
+  - name: Inland Revenue Department (IRD)
+    url: https://ird.gov.np/
+    description: PAN and VAT registration, tax filing, and the online Taxpayer Portal.
+  - name: Office of the Company Registrar (OCR)
+    url: https://ocr.gov.np/
+    description: Company registration, annual filings, and official company records.
+  - name: Social Security Fund (SSF)
+    url: https://ssf.gov.np/
+    description: Mandatory employer and employee registration for payroll and social security benefits.
+  - name: Nepal Rastra Bank (NRB)
+    url: https://www.nrb.org.np/
+    description: Nepal central bank, banking regulation and foreign exchange rules.
+  - name: Nepal Government National Portal
+    url: https://nepal.gov.np/
+    description: Directory of Nepal government ministries, departments, and public services.
+brand:
+  legalName: Maven Consultancy Services Pvt. Ltd.
+  shortName: Maven Consultancy
+  tagline: Compliance made simple. Business made stronger.
+  altTagline: Your practical partner for accounting, tax, registration, and compliance.
+  addressLine: New Baneshwor, Kathmandu, Nepal
+  addressNote: Eyeplex Mall
+  landline: +977-1-4000000
+  mobile: +977-98-4827-3820
+  whatsappDigits: '9779848273802'
+  email: account@mavenconsultancy.com.np
+  hours: Sunday – Friday · 10:00 AM – 5:00 PM (Saturday closed)
+  mapQuery: New Baneshwor, Kathmandu, Nepal
+  # Formspree form ID only — just the code after /f/ (e.g. xgojnjby), NOT the full web address.
+  formspreeId: xgojnjby
+  # Public website URL, set this once your final domain is live (e.g. https://mavenconsultancy.com.np).
+  # When set, the build generates sitemap.xml + canonical/Open Graph URLs. Leave blank until then.
+  siteUrl: ''
+trustPoints:
+  - Registered private limited consultancy
+  - Based in Kathmandu, serving clients across Nepal
+  - Practical support for startups and SMEs
+  - Clear document checklist and transparent quotation
+  - Outsourced accounting and compliance partner
+aboutText: >-
+  Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy company providing business
+  setup, accounting, tax, compliance, financial reporting support, payroll, project report, and
+  advisory services. We support entrepreneurs and business owners with practical guidance, organized
+  records, timely compliance reminders, and clear communication.
+aboutFacts:
+  - Based in New Baneshwor, Kathmandu
+  - Service coverage across Nepal
+  - Team connected with different cities of Nepal
+  - Focus on startups, small businesses, and growing companies
+aboutClosing: >-
+  We are a focused, growing consultancy — not a large firm, and we don't try to be. We keep things
+  practical, organized, and easy to understand for business owners who need dependable support
+  without unnecessary complexity.
+values:
+  - title: Accuracy
+    text: Careful, detail-checked work across every return, report, and record.
+  - title: Confidentiality
+    text: Your financial and business information is handled with discretion and controlled access.
+  - title: Timely service
+    text: Deadlines and checklists are tracked so nothing is submitted late.
+  - title: Professional communication
+    text: Clear, plain-language updates at every stage of the work.
+  - title: Ethical practice
+    text: Honest scoping and fair quotations, with no exaggerated promises.
+serviceCategories:
+  - key: registration
+    letter: A
+    title: Business Registration & Setup Support
+    tagline: Getting your business legally set up, right from the start.
+    icon: building
+    items:
+      - Company registration support
+      - PAN registration support
+      - VAT registration support
+      - Ward/local business registration support
+      - Business setup consultation
+      - Bank account document guidance
+      - Startup compliance guidance
+  - key: bookkeeping
+    letter: B
+    title: Outsourced Accounting & Bookkeeping
+    tagline: Keeping your day-to-day financial records organized and current.
+    icon: ledger
+    items:
+      - Monthly bookkeeping
+      - Sales and purchase register preparation
+      - Expense tracking
+      - Bank/cash summary
+      - Receivable and payable tracking
+      - Monthly financial summary
+      - Accounting cleanup support
+      - Accounting system setup using Excel/cloud tools
+  - key: tax
+    letter: C
+    title: Tax & Compliance Support
+    tagline: Staying on top of VAT, TDS, income tax, and compliance deadlines.
+    icon: percent
+    items:
+      - VAT return preparation support
+      - TDS/e-TDS support
+      - Income tax return support
+      - Advance tax calculation support
+      - Tax clearance support
+      - Compliance calendar and deadline reminders
+      - Document organization for tax and compliance matters
+  - key: payroll
+    letter: D
+    title: Payroll & Salary Support
+    tagline: Accurate salary processing and payroll compliance support.
+    icon: users
+    items:
+      - Salary sheet preparation
+      - Payroll calculation support
+      - TDS on salary support
+      - Employee payment records
+      - Payroll reports for small and growing businesses
+  - key: reporting
+    letter: E
+    title: Financial Reporting & Business Reports
+    tagline: Clear reports and statements for decisions, loans, and stakeholders.
+    icon: barChart
+    items:
+      - Financial statement preparation support
+      - Project report preparation
+      - Bank loan report preparation
+      - Projected financial statement preparation
+      - Business plan preparation
+      - MIS and Excel reporting support
+  - key: advisory
+    letter: F
+    title: Business Advisory
+    tagline: Practical guidance to help you plan, budget, and grow.
+    icon: compass
+    items:
+      - Business startup consultation
+      - Tax planning discussion
+      - Internal process improvement
+      - Basic internal control review
+      - Budgeting and forecasting support
+      - Business expansion planning
+partnerNote: >-
+  For services requiring licensed legal, audit, or specialized professional approval, Maven can help
+  clients organize documents and coordinate with independent licensed professionals where required.
+outsourced:
+  title: Outsourced Accounting for Growing Businesses
+  paragraph: >-
+    Hiring a full-time accountant may not be practical for every small business. Maven provides
+    outsourced bookkeeping, tax, payroll, and compliance support so business owners can focus on
+    operations while their records, returns, and reports are handled in an organized way.
+  benefits:
+    - Lower cost than full-time accounting staff
+    - Regular bookkeeping and monthly reporting
+    - VAT/TDS and tax deadline tracking
+    - Document follow-up and record management
+    - Professional review process
+    - Scalable support as business grows
+  cta: Talk to us about monthly accounting support
+packages:
+  - name: Startup Setup Package
+    audience: For new entrepreneurs and newly registered businesses.
+    items:
+      - Registration guidance
+      - PAN/VAT guidance
+      - Basic tax and compliance consultation
+      - Bank account document checklist
+      - First-month compliance guidance
+  - name: Monthly Compliance Package
+    audience: For running businesses needing regular support.
+    items:
+      - Bookkeeping
+      - VAT/TDS support
+      - Monthly compliance reminder
+      - Basic financial summary
+      - Tax query support
+  - name: Business Growth Package
+    audience: For growing companies needing deeper support.
+    items:
+      - Complete accounting support
+      - Payroll support
+      - Monthly reports
+      - Financial statement preparation support
+      - Advisory discussion
+      - Compliance tracking
+packagesFeeNote: >-
+  Fees depend on business size, transaction volume, document condition, urgency, and scope of work.
+  Government fees, penalties, official charges, and third-party professional charges are billed
+  separately.
+documentsTopNote: >-
+  Document requirements may vary depending on business type, ownership structure, location,
+  government office requirements, and service scope. Please contact Maven before submitting
+  documents so we can confirm the exact checklist for your case.
+documentGroups:
+  - title: For Company Registration Support
+    items:
+      - Proposed company name options
+      - Business objective/activity details
+      - Founder/shareholder citizenship copies or passport copies
+      - Shareholder/director details
+      - Proposed capital and shareholding structure
+      - Contact number, email, and address details
+      - Any special approval/license if the business activity requires it
+  - title: For PAN/VAT Registration Support
+    items:
+      - Company/firm registration certificate, if already registered
+      - Memorandum and Articles of Association, if company
+      - Citizenship/passport copies of owner/directors
+      - Office address details
+      - Rent agreement or ownership document, if applicable
+      - Business contact details
+      - Business nature and estimated turnover/activity details
+  - title: For Monthly Accounting Support
+    items:
+      - Sales invoices
+      - Purchase bills
+      - Expense bills
+      - Bank statements
+      - Cash book or cash transaction details
+      - Salary/payroll details
+      - Rent and TDS details
+      - VAT/TDS records, if applicable
+      - Loan statements, if applicable
+      - Receivable/payable details
+      - Stock details, if applicable
+  - title: For Tax Clearance / Return Support
+    items:
+      - PAN/VAT details
+      - Previous tax returns, if available
+      - Financial statements or accounting records
+      - VAT/TDS filing details
+      - Bank statements
+      - Sales and purchase records
+      - Payment vouchers and expense bills
+      - Any notices or correspondence from tax office
+  - title: For Project Report / Loan Report
+    items:
+      - Business registration documents
+      - PAN/VAT certificate
+      - Business profile
+      - Investment details
+      - Revenue and expense assumptions
+      - Loan requirement details
+      - Owner/promoter details
+      - Existing financial statements, if any
+      - Bank-specific requirements, if available
+documentsBottomNote: >-
+  Not sure which documents apply to you? Send us your business type and service requirement. We will
+  share a customized checklist.
+industries:
+  - name: Startups
+    icon: rocket
+  - name: SMEs
+    icon: briefcase
+  - name: Traders and shops
+    icon: store
+  - name: Restaurants and cafes
+    icon: coffee
+  - name: Service companies
+    icon: briefcase
+  - name: Construction businesses
+    icon: hardHat
+  - name: Online businesses
+    icon: globe
+  - name: Freelancers
+    icon: laptop
+  - name: Schools and training institutes
+    icon: graduationCap
+  - name: NGOs and social organizations
+    icon: heart
+  - name: Travel and tourism businesses
+    icon: plane
+  - name: Local businesses across Nepal
+    icon: store
+whyChoose:
+  - title: Practical guidance for Nepali businesses
+    text: >-
+      Advice and support shaped around how business is actually done in Nepal — not generic
+      templates.
+  - title: Clear communication and follow-up
+    text: You always know what stage your work is at and what's needed next.
+  - title: Confidential handling of client documents
+    text: Your financial and business documents are handled with care and controlled access.
+  - title: Organized document management
+    text: Records and files are kept systematic, so nothing is missed or lost.
+  - title: Compliance deadline reminders
+    text: We help you stay ahead of VAT, TDS, and tax filing deadlines.
+  - title: Affordable monthly support options
+    text: Outsourced support designed to cost less than a full-time hire.
+  - title: Professional review process
+    text: Work is checked internally before it reaches you or any office.
+  - title: Support for clients across Nepal
+    text: Wherever your business is based, our team can support you remotely.
+process:
+  - step: 1
+    title: Inquiry
+    text: You reach out by call, WhatsApp, or the contact form to share what you need.
+  - step: 2
+    title: Basic discussion
+    text: We understand your business type and requirement through a short conversation.
+  - step: 3
+    title: Document checklist
+    text: We share a customized checklist based on your specific case.
+  - step: 4
+    title: Work review and quotation
+    text: We review what you send and provide a clear quotation.
+  - step: 5
+    title: Confirmation and advance payment
+    text: You confirm the scope and make the agreed advance payment.
+  - step: 6
+    title: Work preparation
+    text: Our team prepares your filing, report, or accounting work.
+  - step: 7
+    title: Internal review
+    text: Work is checked internally for accuracy and completeness.
+  - step: 8
+    title: Submission/delivery support
+    text: We support submission to the relevant office or deliver your report.
+  - step: 9
+    title: Final payment and file closing
+    text: Once work is complete, final payment is collected and the file is closed.
+faqs:
+  - q: Does Maven provide statutory audit services?
+    a: >-
+      No. Maven does not present itself as a statutory audit firm. We provide accounting, tax,
+      compliance, financial reporting support, and document coordination. Where licensed audit or
+      certification is required, clients must work with an independent licensed professional.
+  - q: Can Maven handle monthly accounting for my business?
+    a: >-
+      Yes. Maven provides outsourced bookkeeping, accounting, VAT/TDS support, payroll support, and
+      monthly compliance tracking based on your business size and transaction volume.
+  - q: Do you serve clients outside Kathmandu?
+    a: >-
+      Yes. Maven is based in Kathmandu and provides services to clients across Nepal, depending on
+      the service type and document availability.
+  - q: Can you register my company and PAN/VAT?
+    a: >-
+      Maven provides registration guidance, document preparation, and submission support. Exact
+      requirements depend on the business type and government office process.
+  - q: Do you publish fixed prices?
+    a: >-
+      Some services may have starting fees, but final pricing depends on workload, urgency, document
+      condition, and scope. Government fees and third-party charges are separate.
+  - q: Is my business data safe?
+    a: >-
+      Maven follows confidentiality, organized document handling, and controlled access practices
+      for client records.
+footerDisclaimer: >-
+  Maven Consultancy Services Pvt. Ltd. is a business consultancy and outsourced
+  accounting/compliance service provider. Maven is not a licensed audit firm and does not provide
+  statutory audit, legal, or certification services. Where such services are required, Maven helps
+  clients coordinate with independent licensed professionals.
+serviceOptions:
+  - Business Registration & Setup
+  - Outsourced Accounting & Bookkeeping
+  - Tax & Compliance Support
+  - Payroll & Salary Support
+  - Financial Reporting & Business Reports
+  - Business Advisory
+  - Not sure / need guidance
+businessTypeOptions:
+  - Not yet registered
+  - Sole Proprietorship (Firm)
+  - Partnership
+  - Private Limited Company
+  - NGO / Non-profit
+  - Other
+
+# ---------------------------------------------------------------------------
+# PAGE VISIBILITY
+# One entry per page. Set hidden: true to remove a page from the site
+# navigation, mobile menu, and footer quick links, and mark it noindex.
+# The page HTML is still generated (so existing buttons/links never break).
+# Blog is hidden by default until the first real post is published.
+# key MUST match the page's activeKey in build.js.
+# ---------------------------------------------------------------------------
+pages:
+  - key: home
+    label: Home
+    href: index.html
+    hidden: false
+  - key: about
+    label: About
+    href: about.html
+    hidden: false
+  - key: services
+    label: Services
+    href: services.html
+    hidden: false
+  - key: outsourced-accounting
+    label: Outsourced Accounting
+    href: outsourced-accounting.html
+    hidden: false
+  - key: packages
+    label: Packages
+    href: packages.html
+    hidden: false
+  - key: documents-needed
+    label: Documents Checklist
+    href: documents-needed.html
+    hidden: false
+  - key: industries
+    label: Industries
+    href: industries.html
+    hidden: false
+  - key: useful-links
+    label: Useful Links
+    href: useful-links.html
+    hidden: false
+  - key: calculators
+    label: Financial Calculators
+    href: calculators.html
+    hidden: false
+  - key: team
+    label: Team
+    href: team.html
+    hidden: false
+  - key: testimonials
+    label: Testimonials
+    href: testimonials.html
+    hidden: false
+  - key: faq
+    label: FAQ
+    href: faq.html
+    hidden: false
+  - key: contact
+    label: Contact
+    href: contact.html
+    hidden: false
+  - key: privacy
+    label: Privacy Policy
+    href: privacy.html
+    hidden: false
+  - key: blog
+    label: Blog
+    href: blog.html
+    hidden: true
+
+# ---------------------------------------------------------------------------
+# PAGE HEADINGS (hero text at the top of each page)
+# eyebrow = small heading, title = main heading, subtitle = supporting line.
+# Editable from the admin panel under "Pages: Hide & Headings".
+# ---------------------------------------------------------------------------
+pageHeaders:
+  about:
+    eyebrow: About Maven
+    title: About Maven Consultancy
+    subtitle: A focused, practical consultancy built for startups, SMEs, and growing businesses across Nepal.
+  services:
+    eyebrow: Our Services
+    title: Accounting, Tax, Registration & Compliance Services in Nepal
+    subtitle: Practical support across six core areas — from first registration to ongoing monthly compliance.
+  outsourced-accounting:
+    eyebrow: Outsourced Accounting
+    title: Outsourced Accounting Services in Nepal
+    subtitle: A dependable alternative to hiring a full-time in-house accountant.
+  packages:
+    eyebrow: Packages
+    title: Accounting & Compliance Packages
+    subtitle: Three starting points, scoped to your business after a short review. Not fixed, one-size-fits-all pricing.
+  documents-needed:
+    eyebrow: Documents Checklist
+    title: Documents Needed
+    subtitle: A general guide — the exact list depends on your business type and the service you need.
+  industries:
+    eyebrow: Industries We Serve
+    title: Businesses We Support Across Nepal
+    subtitle: Maven works with a wide range of businesses, from first-time registrations to established, growing companies.
+  useful-links:
+    eyebrow: Resources
+    title: Useful Links
+    subtitle: Official Nepal government portals related to registration, tax, and compliance — handy to have in one place.
+  calculators:
+    eyebrow: Free Tools
+    title: Nepal Financial Calculators
+    subtitle: Live calculators for salary income tax, VAT, TDS, and loan EMI — with a full slab-by-slab breakdown.
+  faq:
+    eyebrow: FAQ
+    title: Frequently Asked Questions
+    subtitle: Straight answers about what Maven does — and does not — provide.
+  contact:
+    eyebrow: Contact
+    title: Contact Maven Consultancy
+    subtitle: Send an inquiry, book a free consultation, or reach us directly by phone or WhatsApp.
+  team:
+    eyebrow: Our Team
+    title: The People Behind Maven
+    subtitle: A practical, connected team supporting businesses with accounting, tax, and compliance across Nepal.
+  testimonials:
+    eyebrow: Client Feedback
+    title: What Our Clients Say
+    subtitle: Real feedback from the businesses we support across Nepal.
+  privacy:
+    eyebrow: Legal
+    title: Privacy Policy
+    subtitle: How Maven Consultancy collects, uses, and protects the information you share with us.
+
+# ---------------------------------------------------------------------------
+# TEAM MEMBERS
+# Add real people from the admin panel when ready. Set hidden: true to keep
+# a member off the public page. Hide the whole Team page under "pages" until ready.
+# ---------------------------------------------------------------------------
+teamMembers:
+  - name: Maven Consultancy Team
+    role: Accounting, Tax & Compliance Support
+    location: Kathmandu, Nepal
+    bio: Add individual team members from the admin panel when you are ready to publish names and roles.
+    hidden: false
+
+# ---------------------------------------------------------------------------
+# TESTIMONIALS
+# Only publish real, approved client feedback. The placeholder below is hidden
+# so it never appears publicly. Set hidden: false once you have permission.
+# ---------------------------------------------------------------------------
+testimonials:
+  - quote: Add approved client feedback here once you have permission to publish it.
+    name: Client Name
+    role: Business Owner
+    business: Company Name
+    hidden: true
+
+# ---------------------------------------------------------------------------
+# PRIVACY POLICY
+# Plain-language sections shown on privacy.html. Edit the text as needed.
+# Review with a legal professional before running ads or large campaigns.
+# ---------------------------------------------------------------------------
+privacyIntro: >-
+  This Privacy Policy explains how Maven Consultancy Services Pvt. Ltd. ("Maven", "we", "us")
+  collects, uses, and protects the information you share with us through this website. By using
+  this website or submitting the contact form, you agree to the practices described below.
+privacySections:
+  - title: Information we collect
+    text: >-
+      When you submit the inquiry form, we collect the details you provide — such as your name,
+      business name, phone number, email address, the service you are interested in, your business
+      type, and your message. We do not collect sensitive financial records through this website.
+  - title: How we use your information
+    text: >-
+      We use your information only to respond to your inquiry, understand your requirement, prepare
+      a quotation, and provide the services you ask for. We do not sell or rent your information to
+      anyone.
+  - title: How your information is shared
+    text: >-
+      Contact form submissions are delivered to us through Formspree, a third-party form service.
+      We share your details only with our own team members who need them to respond to you. We do
+      not share your information with unrelated third parties for marketing.
+  - title: Data retention
+    text: >-
+      We keep inquiry details only as long as needed to respond to you and, where you become a
+      client, to provide our services and meet record-keeping obligations. You can ask us to delete
+      your inquiry information at any time.
+  - title: Confidentiality
+    text: >-
+      Client financial and business information is handled with confidentiality, organized document
+      handling, and controlled access, consistent with our professional practice.
+  - title: Your choices
+    text: >-
+      You can contact us by phone, WhatsApp, or email instead of using the form. You may request
+      access to, correction of, or deletion of the information you have shared with us.
+  - title: Contact about privacy
+    text: >-
+      For any questions about this policy or your information, contact us using the details on our
+      Contact page. We will respond as promptly as we can.
+
+# ---------------------------------------------------------------------------
+# CALCULATOR RATES
+# Update these every year when the Finance Act is published (usually May/June).
+# All changes made here take effect automatically on the next build.
+# ---------------------------------------------------------------------------
+calculators:
+  vatRate: 13
+  vatNote: "Nepal's standard VAT rate is 13%. Whether VAT applies depends on registration status and the nature of goods/services."
+
+  tdsTypes:
+    - label: "Rent — paid to company/entity (10%)"
+      rate: 10
+      note: "Rent — land/building paid to a company/entity"
+    - label: "Service/contract — VAT-registered (1.5%)"
+      rate: 1.5
+      note: "Service/contract — VAT-registered supplier"
+    - label: "Service fee — PAN-only supplier (15%)"
+      rate: 15
+      note: "Service fee — PAN-only supplier (not VAT-registered)"
+    - label: "Consultancy fee (15%)"
+      rate: 15
+      note: "Consultancy fee"
+    - label: "Commission (15%)"
+      rate: 15
+      note: "Commission"
+    - label: "Royalty (15%)"
+      rate: 15
+      note: "Royalty"
+    - label: "Dividend — final (5%)"
+      rate: 5
+      note: "Dividend (final withholding)"
+    - label: "Bank interest — individual, final (5%)"
+      rate: 5
+      note: "Bank interest to resident individual (final)"
+    - label: "Interest — entities/others (15%)"
+      rate: 15
+      note: "Interest — entities/others"
+    - label: "Windfall gain / lottery (25%)"
+      rate: 25
+      note: "Windfall gain / lottery (final)"
+  tdsNote: "Common rates under the Income Tax Act 2058 / Finance Act 2082. Notes: rent paid to an individual landlord is generally not subject to income-tax TDS (local rent tax may apply); contract TDS applies once cumulative payments to one supplier exceed NPR 50,000 in a year; rates change with each Finance Act. Confirm the right treatment with Maven before deducting."
+
+  incomeTaxFYHint: "FY 2082/83 runs to mid-July 2026. FY 2083/84 slabs are per the Budget of Jestha 2083 — verify against the gazetted Finance Act."
+  deductionCapRetirement: 500000
+  deductionCapLife: 40000
+  deductionCapHealth: 20000
+
+  taxTables:
+    - key: "2082"
+      label: "FY 2082/83 · 2025/26"
+      hasCouple: true
+      disclaimer: "Estimate only, based on FY 2082/83 resident salary slabs (Finance Act 2082). Actual liability depends on your full circumstances. For accurate filing, get in touch."
+      single:
+        - width: 500000
+          rate: 1
+          sst: true
+        - width: 200000
+          rate: 10
+        - width: 300000
+          rate: 20
+        - width: 1000000
+          rate: 30
+        - width: 3000000
+          rate: 36
+        - width: null
+          rate: 39
+      couple:
+        - width: 600000
+          rate: 1
+          sst: true
+        - width: 200000
+          rate: 10
+        - width: 300000
+          rate: 20
+        - width: 900000
+          rate: 30
+        - width: 3000000
+          rate: 36
+        - width: null
+          rate: 39
+    - key: "2083"
+      label: "FY 2083/84 · 2026/27"
+      hasCouple: false
+      disclaimer: "Estimate only, based on the FY 2083/84 slabs announced in the Budget of Jestha 2083 — verify against the gazetted Finance Act. For accurate filing, get in touch."
+      single:
+        - width: 1000000
+          rate: 1
+          sst: true
+        - width: 500000
+          rate: 10
+        - width: 1000000
+          rate: 20
+        - width: 1500000
+          rate: 27
+        - width: null
+          rate: 29
+      couple: []

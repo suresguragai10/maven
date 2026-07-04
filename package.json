@@ -1,0 +1,13 @@
+{
+  "name": "maven-consultancy-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static website for Maven Consultancy Services Pvt. Ltd. Content lives in content/site.yaml; run 'npm run build' to regenerate the HTML pages in dist/.",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "js-yaml": "^5.2.0",
+    "marked": "^18.0.5"
+  }
+}
