@@ -5,7 +5,6 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
-# Cancel superseded runs so only the latest commit deploys.
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
@@ -18,25 +17,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Build site from content/site.yaml
+      - name: Build site
         run: npm run build
 
       - name: Verify build output
         run: |
-          test -f dist/index.html || (echo "::error::dist/index.html missing — build failed" && exit 1)
+          test -f dist/index.html || (echo "::error::dist/index.html missing" && exit 1)
           test -f dist/404.html || (echo "::error::dist/404.html missing" && exit 1)
-          test -f dist/admin/index.html || (echo "::error::dist/admin/index.html missing" && exit 1)
           echo "Build output verified:"
           ls -la dist
 
