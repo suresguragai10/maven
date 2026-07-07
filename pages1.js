@@ -1,4 +1,5 @@
 const data = require('./data');
+const { esc } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
@@ -48,13 +49,13 @@ function homeServiceCard(cat) {
     <div class="service-card-head">
       <span class="service-icon">${icon(cat.icon)}</span>
       <div>
-        <span class="service-letter">Category ${cat.letter}</span>
-        <h3>${cat.title}</h3>
+        <span class="service-letter">Category ${esc(cat.letter)}</span>
+        <h3>${esc(cat.title)}</h3>
       </div>
     </div>
-    <p class="service-tagline">${cat.tagline}</p>
+    <p class="service-tagline">${esc(cat.tagline)}</p>
     <ul class="stamp-list">
-      ${preview.map((i) => `<li>${stampMark('stamp-sm')}<span>${i}</span></li>`).join('')}
+      ${preview.map((i) => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}
       <li>${stampMark('stamp-sm')}<span>+ ${cat.items.length - preview.length} more</span></li>
     </ul>
   </article>`;
@@ -62,11 +63,11 @@ function homeServiceCard(cat) {
 
 function homePackageCard(pkg) {
   return `<article class="package-card reveal">
-    <h3>${pkg.name}</h3>
-    <p class="package-audience">${pkg.audience}</p>
+    <h3>${esc(pkg.name)}</h3>
+    <p class="package-audience">${esc(pkg.audience)}</p>
     <p class="package-price">Quote after review</p>
     <ul class="stamp-list stamp-list--pkg">
-      ${pkg.items.slice(0, 3).map((i) => `<li>${stampMark('stamp-sm')}<span>${i}</span></li>`).join('')}
+      ${pkg.items.slice(0, 3).map((i) => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}
     </ul>
     <a class="btn btn-outline btn-block" href="packages.html">See Full Package</a>
   </article>`;
@@ -96,11 +97,11 @@ function home() {
     <div class="container two-col">
       <div class="reveal">
         ${sectionHead({ eyebrow: 'About Maven', title: 'A practical consultancy partner, not a large impersonal firm', align: 'left' })}
-        <p>${data.aboutText}</p>
+        <p>${esc(data.aboutText)}</p>
         <div style="margin-top:22px">${button('Learn More About Us', 'about.html', 'outline')}</div>
       </div>
       <ul class="stamp-list">
-        ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${f}</span></li>`).join('')}
+        ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
       </ul>
     </div>
   </section>
@@ -119,12 +120,12 @@ function home() {
     <div class="container two-col">
       <div class="reveal">
         <p class="eyebrow eyebrow--on-dark">Outsourced Accounting</p>
-        <h2>${data.outsourced.title}</h2>
-        <p style="margin-top:14px">${data.outsourced.paragraph}</p>
+        <h2>${esc(data.outsourced.title)}</h2>
+        <p style="margin-top:14px">${esc(data.outsourced.paragraph)}</p>
         <div style="margin-top:26px">${button(data.outsourced.cta, 'outsourced-accounting.html', 'primary')}</div>
       </div>
       <ul class="stamp-list reveal">
-        ${data.outsourced.benefits.map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${b}</span></li>`).join('')}
+        ${data.outsourced.benefits.map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b)}</span></li>`).join('')}
       </ul>
     </div>
   </section>
@@ -171,7 +172,7 @@ function home() {
     <div class="container">
       ${sectionHead({ eyebrow: 'Frequently Asked', title: 'Quick answers before you reach out' })}
       <div class="accordion" style="max-width:760px;margin:0 auto">
-        ${data.faqs.slice(0, 3).map((f, i) => accordionItem({ id: `home-faq-${i}`, headingHtml: f.q, bodyHtml: `<p>${f.a}</p>` })).join('')}
+        ${data.faqs.slice(0, 3).map((f, i) => accordionItem({ id: `home-faq-${i}`, headingHtml: esc(f.q), bodyHtml: `<p>${esc(f.a)}</p>` })).join('')}
       </div>
       <div class="text-center" style="margin-top:32px">${button('View All FAQs', 'faq.html', 'outline')}</div>
     </div>
@@ -198,11 +199,11 @@ function about() {
     <div class="container two-col">
       <div class="reveal">
         ${sectionHead({ eyebrow: 'Who We Are', title: 'Practical support, organized records, clear communication', align: 'left' })}
-        <p>${data.aboutText}</p>
-        <p style="margin-top:16px">${data.aboutClosing}</p>
+        <p>${esc(data.aboutText)}</p>
+        <p style="margin-top:16px">${esc(data.aboutClosing)}</p>
       </div>
       <ul class="stamp-list reveal">
-        ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${f}</span></li>`).join('')}
+        ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
       </ul>
     </div>
   </section>

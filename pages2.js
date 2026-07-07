@@ -3,6 +3,7 @@ const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, serviceCard, packageCard, ctaBand,
 } = require('./ui');
+const { esc } = require('./escape');
 
 function services() {
   const h = data.pageHeader('services');
@@ -21,7 +22,7 @@ function services() {
     <div class="container" style="max-width:820px">
       <div class="partner-note reveal">
         <h4>Category G · Support Through Partners</h4>
-        <p>${data.partnerNote}</p>
+        <p>${esc(data.partnerNote)}</p>
       </div>
       <p class="tag-note text-center" style="margin-top:18px">Maven positions itself as a business consultancy and outsourced accounts/compliance partner — not as a statutory audit firm or CA firm.</p>
     </div>
@@ -45,13 +46,13 @@ function outsourcedAccounting() {
     <div class="container two-col">
       <div class="reveal">
         ${sectionHead({ eyebrow: 'Why Outsource', title: 'Support that scales with your business', align: 'left' })}
-        <p>${data.outsourced.paragraph}</p>
+        <p>${esc(data.outsourced.paragraph)}</p>
         <p style="margin-top:16px">This support is available through our <a href="packages.html" style="color:var(--gold-700);font-weight:700">Monthly Compliance and Business Growth packages</a>, scoped to your transaction volume and reporting needs.</p>
-        <div style="margin-top:24px">${button(data.outsourced.cta, 'contact.html', 'primary')}</div>
+        <div style="margin-top:24px">${button(esc(data.outsourced.cta), 'contact.html', 'primary')}</div>
       </div>
       <div class="reveal">
         <ul class="stamp-list">
-          ${data.outsourced.benefits.map((b) => `<li>${stampMark('stamp-sm')}<span>${b}</span></li>`).join('')}
+          ${data.outsourced.benefits.map((b) => `<li>${stampMark('stamp-sm')}<span>${esc(b)}</span></li>`).join('')}
         </ul>
       </div>
     </div>
@@ -88,7 +89,7 @@ function packages() {
       <div class="grid grid-3">
         ${data.packages.map((p, i) => packageCard(p, i)).join('')}
       </div>
-      <div class="info-note reveal" style="margin-top:40px">${data.packagesFeeNote}</div>
+      <div class="info-note reveal" style="margin-top:40px">${esc(data.packagesFeeNote)}</div>
     </div>
   </section>
 

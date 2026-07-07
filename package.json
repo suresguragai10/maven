@@ -7,7 +7,7 @@
     "build": "node build.js"
   },
   "dependencies": {
-    "js-yaml": "^5.2.0",
+    "js-yaml": "^4.1.0",
     "marked": "^18.0.5"
   }
 }

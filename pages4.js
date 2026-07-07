@@ -1,4 +1,5 @@
 const data = require('./data');
+const { esc } = require('./escape');
 const { icon } = require('./icons');
 const { button, sectionHead, pageHero, ctaBand } = require('./ui');
 
@@ -6,10 +7,10 @@ function usefulLinksCard(link) {
   return `<article class="service-card reveal" style="display:flex;flex-direction:column;">
     <div class="service-card-head">
       <span class="service-icon">${icon('external')}</span>
-      <div><h3 style="margin-top:2px">${link.name}</h3></div>
+      <div><h3 style="margin-top:2px">${esc(link.name)}</h3></div>
     </div>
-    <p class="service-tagline" style="flex:1">${link.description}</p>
-    <a class="btn btn-outline" href="${link.url}" target="_blank" rel="noopener noreferrer">Visit Website ${icon('external')}</a>
+    <p class="service-tagline" style="flex:1">${esc(link.description)}</p>
+    <a class="btn btn-outline" href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">Visit Website ${icon('external')}</a>
   </article>`;
 }
 
@@ -42,16 +43,16 @@ function blogIndex(posts) {
   const list = hasPosts
     ? `<div class="grid grid-3">
         ${posts.map((p) => `<article class="service-card reveal">
-          <p class="tag-note" style="margin-bottom:6px">${p.dateDisplay}</p>
-          <h3 style="margin-bottom:10px">${p.title}</h3>
-          <p class="service-tagline" style="flex:1">${p.excerpt}</p>
+          <p class="tag-note" style="margin-bottom:6px">${esc(p.dateDisplay)}</p>
+          <h3 style="margin-bottom:10px">${esc(p.title)}</h3>
+          <p class="service-tagline" style="flex:1">${esc(p.excerpt)}</p>
           <a class="btn btn-outline" href="${p.file}">Read More ${icon('arrowRight')}</a>
         </article>`).join('')}
       </div>`
     : `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">No posts published yet — check back soon.</div>`;
 
   return `
-  ${pageHero('Blog', 'Insights &amp; Updates', 'Practical notes on accounting, tax, and compliance for businesses in Nepal.')}
+  ${pageHero('Blog', 'Insights & Updates', 'Practical notes on accounting, tax, and compliance for businesses in Nepal.')}
   <section class="section-pad">
     <div class="container">${list}</div>
   </section>

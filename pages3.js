@@ -1,4 +1,5 @@
 const data = require('./data');
+const { esc } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, accordionItem, industryBadge, ctaBand, bulletList,
@@ -8,7 +9,7 @@ function documentsNeeded() {
   const h = data.pageHeader('documents-needed');
   const groupsHtml = data.documentGroups.map((g, i) => accordionItem({
     id: `doc-${i}`,
-    headingHtml: g.title,
+    headingHtml: esc(g.title),
     bodyHtml: bulletList(g.items),
     open: i === 0,
   })).join('');
@@ -20,12 +21,12 @@ function documentsNeeded() {
     <div class="container" style="max-width:760px">
       <div class="accordion-note reveal">
         ${icon('shield')}
-        <p>${data.documentsTopNote}</p>
+        <p>${esc(data.documentsTopNote)}</p>
       </div>
       <div class="accordion">
         ${groupsHtml}
       </div>
-      <div class="info-note reveal" style="margin-top:32px">${data.documentsBottomNote}</div>
+      <div class="info-note reveal" style="margin-top:32px">${esc(data.documentsBottomNote)}</div>
     </div>
   </section>
 
@@ -64,8 +65,8 @@ function faq() {
   const h = data.pageHeader('faq');
   const items = data.faqs.map((f, i) => accordionItem({
     id: `faq-${i}`,
-    headingHtml: f.q,
-    bodyHtml: `<p>${f.a}</p>`,
+    headingHtml: esc(f.q),
+    bodyHtml: `<p>${esc(f.a)}</p>`,
     open: i === 0,
   })).join('');
 
@@ -102,7 +103,7 @@ function contact() {
         <div class="contact-info-list">
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('mapPin')}</span>
-            <div><h4>Office</h4><p>${b.addressLine}<br><span class="tag-note">${b.addressNote}</span></p></div>
+            <div><h4>Office</h4><p>${esc(b.addressLine)}<br><span class="tag-note">${esc(b.addressNote)}</span></p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('phone')}</span>
@@ -155,14 +156,14 @@ function contact() {
                 <label for="f-service">Service Required</label>
                 <select id="f-service" name="service" required>
                   <option value="">Select a service</option>
-                  ${data.serviceOptions.map((s) => `<option value="${s}">${s}</option>`).join('')}
+                  ${data.serviceOptions.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
                 </select>
               </div>
               <div class="form-field">
                 <label for="f-type">Business Type</label>
                 <select id="f-type" name="businessType">
                   <option value="">Select business type</option>
-                  ${data.businessTypeOptions.map((s) => `<option value="${s}">${s}</option>`).join('')}
+                  ${data.businessTypeOptions.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
                 </select>
               </div>
               <div class="form-field full">

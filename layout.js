@@ -77,6 +77,17 @@ function renderHeader(activeKey) {
 
 function renderFooter() {
   const b = data.brand;
+  const social = b.social || {};
+  // Only show an icon when a URL is actually set (blank = hidden).
+  const socialLinks = [
+    { key: 'facebook', label: 'Facebook', url: social.facebook },
+    { key: 'tiktok', label: 'TikTok', url: social.tiktok },
+  ].filter((s) => s.url && String(s.url).trim());
+  const socialHtml = socialLinks.length
+    ? `<div class="footer-social">
+          ${socialLinks.map((s) => `<a href="${s.url}" aria-label="${s.label}" target="_blank" rel="noopener noreferrer">${icon(s.key)}</a>`).join('')}
+        </div>`
+    : '';
   return `<footer class="site-footer">
     <div class="container footer-grid">
       <div class="footer-brand">
@@ -85,10 +96,7 @@ function renderFooter() {
           <span class="brand-text"><span class="brand-name" style="color:#fff">${b.shortName}</span></span>
         </div>
         <p>${b.legalName}. A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
-        <div class="footer-social">
-          <a href="#" aria-label="Facebook">${icon('facebook')}</a>
-          <a href="#" aria-label="LinkedIn">${icon('linkedin')}</a>
-        </div>
+        ${socialHtml}
       </div>
       <div class="footer-col">
         <h4>Quick Links</h4>

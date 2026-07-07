@@ -1,0 +1,101 @@
+AUDIT FIXES APPLIED
+===================
+This project now includes fixes for the issues raised in the audit report,
+PLUS the earlier EMI calculator upgrade (full schedule + CSV export).
+
+Everything below has been implemented and the site rebuilds cleanly
+(npm run build) with all fixes verified.
+
+--------------------------------------------------------------------
+FIX 1 (HIGH) — Wrong WhatsApp / phone number
+--------------------------------------------------------------------
+The "Call" buttons and the "WhatsApp" buttons pointed to two different
+numbers (last two digits swapped). Confirmed correct number is
+...3802.
+  Changed: content/site.yaml -> brand.mobile
+           from  +977-98-4827-3820
+           to    +977-98-4827-3802
+  (brand.whatsappDigits was already 9779848273802 — now everything matches.)
+  Verified: tel: links, wa.me links, and the displayed number are all
+            identical across the built pages.
+
+--------------------------------------------------------------------
+FIX 2 (HIGH) — Special characters could break pages
+--------------------------------------------------------------------
+Content typed in the admin panel (service names, package items, FAQs,
+taglines, notes, team/testimonial text, etc.) is now made safe before
+being placed into the page HTML. Typing an &, <, >, or quote no longer
+breaks the layout or injects markup.
+  Added:   escape.js  (one shared esc() helper, with an explanation)
+  Changed: ui.js       (all shared cards/sections now escape CMS text)
+           pages1.js, pages2.js, pages3.js, pages4.js
+                       (the remaining direct content insertions escaped)
+  Left as-is on purpose: blog post BODY text (it is written in Markdown
+           and intentionally becomes formatted HTML), and code-built
+           structure like icons and buttons.
+  Verified: a test value containing <script>, &, >, and quotes was
+            injected into the content and confirmed to render harmlessly
+            as text — with no double-escaping anywhere on the site.
+
+--------------------------------------------------------------------
+FIX 4 (MEDIUM) — Two different YAML engines
+--------------------------------------------------------------------
+The website build and the admin panel now use the same modern version
+of the content library, so saving from the admin panel and building the
+site can no longer disagree on special characters.
+  Changed: package.json -> js-yaml from ^5.2.0 to ^4.1.0
+           (matches the js-yaml 4.1.0 the admin panel already loads)
+  Verified: content still loads and builds correctly.
+
+--------------------------------------------------------------------
+FIX 5 (MEDIUM) — Build reproducibility
+--------------------------------------------------------------------
+  Regenerated and included: package-lock.json (pins exact versions).
+
+--------------------------------------------------------------------
+EARLIER: EMI calculator upgrade (already delivered)
+--------------------------------------------------------------------
+  Changed: pages5.js, client.js
+  Adds "Show Full Schedule" (Month / Opening / Principal / Interest /
+  EMI / Closing + Totals) and "Export to CSV" on the Loan EMI tab.
+
+--------------------------------------------------------------------
+NOT changed in code — needs YOU or your host (from the audit)
+--------------------------------------------------------------------
+FIX 3 (HIGH) — Lock down the /admin/ panel with Cloudflare Access.
+  This is a setting in your Cloudflare dashboard (Zero Trust > Access),
+  not a code change. Do this before giving anyone else admin access.
+
+FIX 6 (MEDIUM/minor):
+  - Footer social links: DONE. Facebook and TikTok links are now editable
+    from the admin panel (Brand & Contact section -> "Facebook Page URL"
+    and "TikTok Profile URL"). Leave a field blank and that icon is hidden
+    automatically -- no empty/broken icon. (The old hardcoded, dead
+    Facebook/LinkedIn "#" links are removed; LinkedIn was swapped for
+    TikTok as requested.) Both start blank; fill them in when ready.
+  - Optional: add Cloudflare Turnstile to the contact form before ads.
+  - Set brand.siteUrl in the admin panel once your domain is live so the
+    sitemap and social-share links generate.
+
+--------------------------------------------------------------------
+HOW TO ADD YOUR FACEBOOK / TIKTOK LINKS (no coding)
+--------------------------------------------------------------------
+1. Open the admin panel (/admin/) and connect as usual.
+2. Go to the "Brand & Contact" section.
+3. Paste your full Facebook page link into "Facebook Page URL"
+   (e.g. https://facebook.com/YourPage).
+4. Paste your full TikTok profile link into "TikTok Profile URL"
+   (e.g. https://tiktok.com/@yourhandle).
+5. Save Changes. The icons appear in the website footer automatically.
+   Clear a field and save to hide that icon again.
+
+--------------------------------------------------------------------
+HOW TO USE THIS FOLDER
+--------------------------------------------------------------------
+This is the full corrected website source. Your developer can replace the
+existing repository contents with this, then:
+    npm install
+    npm run build
+and push to the main branch to deploy (GitHub Actions -> Cloudflare).
+(node_modules and dist are intentionally not included — they are
+generated by the commands above.)
