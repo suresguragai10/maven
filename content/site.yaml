@@ -27,11 +27,8 @@ brand:
   email: account@mavenconsultancy.com.np
   hours: Sunday – Friday · 10:00 AM – 5:00 PM (Saturday closed)
   mapQuery: New Baneshwor, Kathmandu, Nepal
-  # Formspree form ID only — just the code after /f/ (e.g. xgojnjby), NOT the full web address.
   formspreeId: xgojnjby
-  # Public website URL, set this once your final domain is live (e.g. https://mavenconsultancy.com.np).
-  # When set, the build generates sitemap.xml + canonical/Open Graph URLs. Leave blank until then.
-  siteUrl: ''
+  siteUrl: https://mavennepal.com.np
 trustPoints:
   - Registered private limited consultancy
   - Based in Kathmandu, serving clients across Nepal
@@ -364,15 +361,6 @@ businessTypeOptions:
   - Private Limited Company
   - NGO / Non-profit
   - Other
-
-# ---------------------------------------------------------------------------
-# PAGE VISIBILITY
-# One entry per page. Set hidden: true to remove a page from the site
-# navigation, mobile menu, and footer quick links, and mark it noindex.
-# The page HTML is still generated (so existing buttons/links never break).
-# Blog is hidden by default until the first real post is published.
-# key MUST match the page's activeKey in build.js.
-# ---------------------------------------------------------------------------
 pages:
   - key: home
     label: Home
@@ -434,21 +422,19 @@ pages:
     label: Blog
     href: blog.html
     hidden: true
-
-# ---------------------------------------------------------------------------
-# PAGE HEADINGS (hero text at the top of each page)
-# eyebrow = small heading, title = main heading, subtitle = supporting line.
-# Editable from the admin panel under "Pages: Hide & Headings".
-# ---------------------------------------------------------------------------
 pageHeaders:
   about:
     eyebrow: About Maven
     title: About Maven Consultancy
-    subtitle: A focused, practical consultancy built for startups, SMEs, and growing businesses across Nepal.
+    subtitle: >-
+      A focused, practical consultancy built for startups, SMEs, and growing businesses across
+      Nepal.
   services:
     eyebrow: Our Services
     title: Accounting, Tax, Registration & Compliance Services in Nepal
-    subtitle: Practical support across six core areas — from first registration to ongoing monthly compliance.
+    subtitle: >-
+      Practical support across six core areas — from first registration to ongoing monthly
+      compliance.
   outsourced-accounting:
     eyebrow: Outsourced Accounting
     title: Outsourced Accounting Services in Nepal
@@ -456,7 +442,9 @@ pageHeaders:
   packages:
     eyebrow: Packages
     title: Accounting & Compliance Packages
-    subtitle: Three starting points, scoped to your business after a short review. Not fixed, one-size-fits-all pricing.
+    subtitle: >-
+      Three starting points, scoped to your business after a short review. Not fixed,
+      one-size-fits-all pricing.
   documents-needed:
     eyebrow: Documents Checklist
     title: Documents Needed
@@ -464,15 +452,21 @@ pageHeaders:
   industries:
     eyebrow: Industries We Serve
     title: Businesses We Support Across Nepal
-    subtitle: Maven works with a wide range of businesses, from first-time registrations to established, growing companies.
+    subtitle: >-
+      Maven works with a wide range of businesses, from first-time registrations to established,
+      growing companies.
   useful-links:
     eyebrow: Resources
     title: Useful Links
-    subtitle: Official Nepal government portals related to registration, tax, and compliance — handy to have in one place.
+    subtitle: >-
+      Official Nepal government portals related to registration, tax, and compliance — handy to have
+      in one place.
   calculators:
     eyebrow: Free Tools
     title: Nepal Financial Calculators
-    subtitle: Live calculators for salary income tax, VAT, TDS, and loan EMI — with a full slab-by-slab breakdown.
+    subtitle: >-
+      Live calculators for salary income tax, VAT, TDS, and loan EMI — with a full slab-by-slab
+      breakdown.
   faq:
     eyebrow: FAQ
     title: Frequently Asked Questions
@@ -484,7 +478,9 @@ pageHeaders:
   team:
     eyebrow: Our Team
     title: The People Behind Maven
-    subtitle: A practical, connected team supporting businesses with accounting, tax, and compliance across Nepal.
+    subtitle: >-
+      A practical, connected team supporting businesses with accounting, tax, and compliance across
+      Nepal.
   testimonials:
     eyebrow: Client Feedback
     title: What Our Clients Say
@@ -493,40 +489,24 @@ pageHeaders:
     eyebrow: Legal
     title: Privacy Policy
     subtitle: How Maven Consultancy collects, uses, and protects the information you share with us.
-
-# ---------------------------------------------------------------------------
-# TEAM MEMBERS
-# Add real people from the admin panel when ready. Set hidden: true to keep
-# a member off the public page. Hide the whole Team page under "pages" until ready.
-# ---------------------------------------------------------------------------
 teamMembers:
   - name: Maven Consultancy Team
     role: Accounting, Tax & Compliance Support
     location: Kathmandu, Nepal
-    bio: Add individual team members from the admin panel when you are ready to publish names and roles.
+    bio: >-
+      Add individual team members from the admin panel when you are ready to publish names and
+      roles.
     hidden: false
-
-# ---------------------------------------------------------------------------
-# TESTIMONIALS
-# Only publish real, approved client feedback. The placeholder below is hidden
-# so it never appears publicly. Set hidden: false once you have permission.
-# ---------------------------------------------------------------------------
 testimonials:
   - quote: Add approved client feedback here once you have permission to publish it.
     name: Client Name
     role: Business Owner
     business: Company Name
     hidden: true
-
-# ---------------------------------------------------------------------------
-# PRIVACY POLICY
-# Plain-language sections shown on privacy.html. Edit the text as needed.
-# Review with a legal professional before running ads or large campaigns.
-# ---------------------------------------------------------------------------
 privacyIntro: >-
   This Privacy Policy explains how Maven Consultancy Services Pvt. Ltd. ("Maven", "we", "us")
-  collects, uses, and protects the information you share with us through this website. By using
-  this website or submitting the contact form, you agree to the practices described below.
+  collects, uses, and protects the information you share with us through this website. By using this
+  website or submitting the contact form, you agree to the practices described below.
 privacySections:
   - title: Information we collect
     text: >-
@@ -540,9 +520,9 @@ privacySections:
       anyone.
   - title: How your information is shared
     text: >-
-      Contact form submissions are delivered to us through Formspree, a third-party form service.
-      We share your details only with our own team members who need them to respond to you. We do
-      not share your information with unrelated third parties for marketing.
+      Contact form submissions are delivered to us through Formspree, a third-party form service. We
+      share your details only with our own team members who need them to respond to you. We do not
+      share your information with unrelated third parties for marketing.
   - title: Data retention
     text: >-
       We keep inquiry details only as long as needed to respond to you and, where you become a
@@ -560,59 +540,60 @@ privacySections:
     text: >-
       For any questions about this policy or your information, contact us using the details on our
       Contact page. We will respond as promptly as we can.
-
-# ---------------------------------------------------------------------------
-# CALCULATOR RATES
-# Update these every year when the Finance Act is published (usually May/June).
-# All changes made here take effect automatically on the next build.
-# ---------------------------------------------------------------------------
 calculators:
   vatRate: 13
-  vatNote: "Nepal's standard VAT rate is 13%. Whether VAT applies depends on registration status and the nature of goods/services."
-
+  vatNote: >-
+    Nepal's standard VAT rate is 13%. Whether VAT applies depends on registration status and the
+    nature of goods/services.
   tdsTypes:
-    - label: "Rent — paid to company/entity (10%)"
+    - label: Rent — paid to company/entity (10%)
       rate: 10
-      note: "Rent — land/building paid to a company/entity"
-    - label: "Service/contract — VAT-registered (1.5%)"
+      note: Rent — land/building paid to a company/entity
+    - label: Service/contract — VAT-registered (1.5%)
       rate: 1.5
-      note: "Service/contract — VAT-registered supplier"
-    - label: "Service fee — PAN-only supplier (15%)"
+      note: Service/contract — VAT-registered supplier
+    - label: Service fee — PAN-only supplier (15%)
       rate: 15
-      note: "Service fee — PAN-only supplier (not VAT-registered)"
-    - label: "Consultancy fee (15%)"
+      note: Service fee — PAN-only supplier (not VAT-registered)
+    - label: Consultancy fee (15%)
       rate: 15
-      note: "Consultancy fee"
-    - label: "Commission (15%)"
+      note: Consultancy fee
+    - label: Commission (15%)
       rate: 15
-      note: "Commission"
-    - label: "Royalty (15%)"
+      note: Commission
+    - label: Royalty (15%)
       rate: 15
-      note: "Royalty"
-    - label: "Dividend — final (5%)"
+      note: Royalty
+    - label: Dividend — final (5%)
       rate: 5
-      note: "Dividend (final withholding)"
-    - label: "Bank interest — individual, final (5%)"
+      note: Dividend (final withholding)
+    - label: Bank interest — individual, final (5%)
       rate: 5
-      note: "Bank interest to resident individual (final)"
-    - label: "Interest — entities/others (15%)"
+      note: Bank interest to resident individual (final)
+    - label: Interest — entities/others (15%)
       rate: 15
-      note: "Interest — entities/others"
-    - label: "Windfall gain / lottery (25%)"
+      note: Interest — entities/others
+    - label: Windfall gain / lottery (25%)
       rate: 25
-      note: "Windfall gain / lottery (final)"
-  tdsNote: "Common rates under the Income Tax Act 2058 / Finance Act 2082. Notes: rent paid to an individual landlord is generally not subject to income-tax TDS (local rent tax may apply); contract TDS applies once cumulative payments to one supplier exceed NPR 50,000 in a year; rates change with each Finance Act. Confirm the right treatment with Maven before deducting."
-
-  incomeTaxFYHint: "FY 2082/83 runs to mid-July 2026. FY 2083/84 slabs are per the Budget of Jestha 2083 — verify against the gazetted Finance Act."
+      note: Windfall gain / lottery (final)
+  tdsNote: >-
+    Common rates under the Income Tax Act 2058 / Finance Act 2082. Notes: rent paid to an individual
+    landlord is generally not subject to income-tax TDS (local rent tax may apply); contract TDS
+    applies once cumulative payments to one supplier exceed NPR 50,000 in a year; rates change with
+    each Finance Act. Confirm the right treatment with Maven before deducting.
+  incomeTaxFYHint: >-
+    FY 2082/83 runs to mid-July 2026. FY 2083/84 slabs are per the Budget of Jestha 2083 — verify
+    against the gazetted Finance Act.
   deductionCapRetirement: 500000
   deductionCapLife: 40000
   deductionCapHealth: 20000
-
   taxTables:
-    - key: "2082"
-      label: "FY 2082/83 · 2025/26"
+    - key: '2082'
+      label: FY 2082/83 · 2025/26
       hasCouple: true
-      disclaimer: "Estimate only, based on FY 2082/83 resident salary slabs (Finance Act 2082). Actual liability depends on your full circumstances. For accurate filing, get in touch."
+      disclaimer: >-
+        Estimate only, based on FY 2082/83 resident salary slabs (Finance Act 2082). Actual
+        liability depends on your full circumstances. For accurate filing, get in touch.
       single:
         - width: 500000
           rate: 1
@@ -641,10 +622,12 @@ calculators:
           rate: 36
         - width: null
           rate: 39
-    - key: "2083"
-      label: "FY 2083/84 · 2026/27"
+    - key: '2083'
+      label: FY 2083/84 · 2026/27
       hasCouple: false
-      disclaimer: "Estimate only, based on the FY 2083/84 slabs announced in the Budget of Jestha 2083 — verify against the gazetted Finance Act. For accurate filing, get in touch."
+      disclaimer: >-
+        Estimate only, based on the FY 2083/84 slabs announced in the Budget of Jestha 2083 — verify
+        against the gazetted Finance Act. For accurate filing, get in touch.
       single:
         - width: 1000000
           rate: 1
