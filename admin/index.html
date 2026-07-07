@@ -152,6 +152,7 @@
       <a href="#sec-process">Process Steps</a>
       <a href="#sec-faqs">FAQs</a>
       <a href="#sec-calculators">Tax &amp; Calculator Rates</a>
+      <a href="#sec-seo">SEO / Search Engine</a>
       <a href="#sec-footer">Footer &amp; Options</a>
     </nav>
     <main id="formArea"></main>
@@ -711,6 +712,40 @@
   }
 
 
+  // SEO editor: per-page browser title + Google description. Blank = use the
+  // built-in default for that page. Keys are the built HTML filenames.
+  var SEO_PAGES = [
+    ['index.html', 'Home'],
+    ['about.html', 'About'],
+    ['services.html', 'Services'],
+    ['outsourced-accounting.html', 'Outsourced Accounting'],
+    ['packages.html', 'Packages'],
+    ['documents-needed.html', 'Documents Checklist'],
+    ['industries.html', 'Industries'],
+    ['useful-links.html', 'Useful Links'],
+    ['calculators.html', 'Calculators'],
+    ['faq.html', 'FAQ'],
+    ['contact.html', 'Contact'],
+    ['team.html', 'Team'],
+    ['testimonials.html', 'Testimonials'],
+    ['privacy.html', 'Privacy Policy'],
+    ['blog.html', 'Blog'],
+  ];
+  function seoEditor(seoObj) {
+    var wrap = el('div');
+    SEO_PAGES.forEach(function (row) {
+      var file = row[0], label = row[1];
+      if (!seoObj[file]) seoObj[file] = { title: '', description: '' };
+      var entry = seoObj[file];
+      var card = el('div', 'sub-card');
+      var head = el('div', 'sub-head'); var strong = el('strong'); strong.textContent = label + ' page'; head.appendChild(strong); card.appendChild(head);
+      card.appendChild(textField('Browser / Google Title', function () { return entry.title; }, function (v) { entry.title = v; }, { hint: 'Aim for ~50\u201360 characters. Leave blank to use the built-in default for this page.' }));
+      card.appendChild(textField('Google Description', function () { return entry.description; }, function (v) { entry.description = v; }, { multiline: true, rows: 2, hint: 'Aim for ~150\u2013160 characters \u2014 the grey text shown under the title in Google results. Leave blank to use the default.' }));
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
   function section(id, title, desc, bodyEl) {
     var card = el('div', 'card'); card.id = id;
     var h = el('h2'); h.textContent = title; card.appendChild(h);
@@ -742,6 +777,10 @@
     brandBody.appendChild(textField('Alternative Tagline', function () { return c.brand.altTagline; }, function (v) { c.brand.altTagline = v; }));
     brandBody.appendChild(textField('Formspree Form ID (contact form email delivery)', function () { return c.brand.formspreeId; }, function (v) { c.brand.formspreeId = v; }, { hint: 'From formspree.io — just the ID (e.g. xgojnjby), not the full web address. Leave blank to keep the manual email/WhatsApp send flow.' }));
     brandBody.appendChild(textField('Website URL (for sitemap & sharing links)', function () { return c.brand.siteUrl; }, function (v) { c.brand.siteUrl = v; }, { hint: 'Your live domain, e.g. https://mavenconsultancy.com.np — leave blank until the final domain is ready. When set, the build creates sitemap.xml and canonical links.' }));
+    // Social links — footer icons. Blank = the icon is hidden on the site.
+    if (!c.brand.social) c.brand.social = { facebook: '', tiktok: '' };
+    brandBody.appendChild(textField('Facebook Page URL', function () { return c.brand.social.facebook; }, function (v) { c.brand.social.facebook = v; }, { hint: 'Full link to your Facebook page, e.g. https://facebook.com/YourPage — leave blank to hide the Facebook icon.' }));
+    brandBody.appendChild(textField('TikTok Profile URL', function () { return c.brand.social.tiktok; }, function (v) { c.brand.social.tiktok = v; }, { hint: 'Full link to your TikTok profile, e.g. https://tiktok.com/@yourhandle — leave blank to hide the TikTok icon.' }));
     var tpWrap = el('div', 'f-field'); var tpL = el('label'); tpL.textContent = 'Trust Points (shown under the homepage hero)'; tpWrap.appendChild(tpL);
     tpWrap.appendChild(stringListEditor(c.trustPoints, 'trust point'));
     brandBody.appendChild(tpWrap);
@@ -840,6 +879,10 @@
     calcBody.appendChild(tdsTypesEditor(cc.tdsTypes));
     calcBody.appendChild(textField('TDS Note (shown below the TDS calculator)', function () { return cc.tdsNote; }, function (v) { cc.tdsNote = v; markDirty(); }, { multiline: true, rows: 3 }));
     area.appendChild(section('sec-calculators', 'Tax & Calculator Rates', 'Update every year after the Finance Act is published (usually May/June). Changes go live automatically on the next GitHub Actions build.', calcBody));
+
+    // SEO / Search engine — per-page title + description
+    if (!c.seo || typeof c.seo !== 'object') c.seo = {};
+    area.appendChild(section('sec-seo', 'SEO / Search Engine', 'The title is what shows in the browser tab and as the blue link in Google. The description is the grey summary under it. Leave any field blank to use the sensible built-in default. Tip: set your Website URL in "Brand & Contact" too, so Google gets a sitemap.', seoEditor(c.seo)));
 
     // Footer & options
     var footBody = el('div');
