@@ -1,5 +1,6 @@
 const { icon } = require('./icons');
 const data = require('./data');
+const { esc } = require('./escape');
 
 function faviconDataUri() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="13" fill="#102A4C"/><text x="32" y="43" font-family="Georgia,serif" font-size="30" font-weight="700" fill="#C79A3E" text-anchor="middle">M</text></svg>`;
@@ -184,16 +185,16 @@ function renderPage({ activeKey, file, title, description, bodyHtml, css, client
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title}</title>
-<meta name="description" content="${description}">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}">
 <meta name="theme-color" content="#102A4C">
 <link rel="icon" type="image/svg+xml" href="${faviconDataUri()}">
 ${robotsTag}
 ${canonicalTag}
-<meta property="og:title" content="${title}">
-<meta property="og:description" content="${description}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(description)}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="${data.brand.shortName}">
+<meta property="og:site_name" content="${esc(data.brand.shortName)}">
 ${ogUrlTag}
 <meta name="twitter:card" content="summary">
 ${file === 'index.html' ? jsonLd() : ''}

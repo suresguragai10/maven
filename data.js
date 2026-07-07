@@ -122,6 +122,7 @@ module.exports = {
   isVisible,
   pageHeader,
   pageHeaders,
+  seo: content.seo || {},
   teamMembers,
   testimonials,
   privacyIntro: content.privacyIntro || '',

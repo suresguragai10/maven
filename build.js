@@ -122,14 +122,23 @@ posts.forEach((post) => {
 
 const generatedFiles = []; // track visible, indexable HTML files for the sitemap
 
+// Per-page SEO overrides from the CMS (content/site.yaml -> seo).
+// If a title/description is set there, it wins; otherwise the built-in
+// default defined in the `pages` array above is used. Blog posts use
+// their own title/excerpt and are not overridden here.
+const seoOverrides = data.brand && data.brand.seo ? data.brand.seo : (data.seo || {});
+
 for (const p of pages) {
   // A page is noindexed when its page key is hidden in the CMS.
   const noindex = data.isHidden(p.activeKey);
+  const ov = seoOverrides[p.file] || {};
+  const seoTitle = (ov.title && String(ov.title).trim()) ? String(ov.title).trim() : p.title;
+  const seoDesc = (ov.description && String(ov.description).trim()) ? String(ov.description).trim() : p.description;
   const html = renderPage({
     activeKey: p.activeKey,
     file: p.file,
-    title: p.title,
-    description: p.description,
+    title: seoTitle,
+    description: seoDesc,
     bodyHtml: p.bodyHtml,
     css,
     clientJs,
