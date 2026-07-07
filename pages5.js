@@ -52,6 +52,19 @@ const calcStyles = `<style>
 .calc-result-row.total strong{color:var(--gold-700);font-size:1.1rem;}
 .calc-note{font-size:.8rem;color:var(--ink-soft);margin-top:14px;}
 .calc-note a{color:var(--gold-700);font-weight:700;}
+
+/* EMI amortization schedule */
+.emi-sched-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;}
+.emi-sched-wrap{margin-top:18px;}
+.emi-sched-scroll{max-height:460px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm);}
+.emi-sched-table{width:100%;border-collapse:collapse;font-size:.86rem;}
+.emi-sched-table th,.emi-sched-table td{padding:9px 12px;text-align:right;white-space:nowrap;}
+.emi-sched-table th:first-child,.emi-sched-table td:first-child{text-align:center;}
+.emi-sched-table thead th{position:sticky;top:0;background:var(--navy-950);color:#fff;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;z-index:1;}
+.emi-sched-table tbody tr:nth-child(even){background:var(--mist);}
+.emi-sched-table tbody tr:hover{background:var(--mist-dark);}
+.emi-sched-table td{border-bottom:1px solid var(--border);color:var(--navy-900);}
+.emi-sched-table tfoot td{font-weight:700;background:#fff;border-top:2px solid var(--border);color:var(--navy-900);}
 </style>`;
 
 function esc(s) {
@@ -241,6 +254,30 @@ function emiPanel() {
         <div class="calc-result-row"><span>Total Interest Payable</span><strong id="emi-interest">NPR 0</strong></div>
         <div class="calc-result-row"><span>Total Payment (Principal + Interest)</span><strong id="emi-total">NPR 0</strong></div>
       </div>
+
+      <div class="emi-sched-actions">
+        <button type="button" id="emi-toggle-sched" class="btn btn-outline btn-sm" disabled>Show Full Schedule</button>
+        <button type="button" id="emi-export-sched" class="btn btn-primary btn-sm" hidden>Export to CSV</button>
+      </div>
+
+      <div id="emi-sched-wrap" class="emi-sched-wrap" hidden>
+        <div class="emi-sched-scroll">
+          <table class="emi-sched-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Opening Balance</th>
+                <th>Principal</th>
+                <th>Interest</th>
+                <th>EMI</th>
+                <th>Closing Balance</th>
+              </tr>
+            </thead>
+            <tbody id="emi-sched-body"></tbody>
+          </table>
+        </div>
+      </div>
+
       <p class="calc-note">Indicative only — actual EMI may differ based on your bank's method, fees, and rate changes. Preparing a bank loan file? <a href="contact.html">We prepare project reports and projected financials</a> for loan applications.</p>
     </div>
   </div>`;
