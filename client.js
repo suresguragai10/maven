@@ -412,28 +412,175 @@
   // ---- EMI calculator (live) ----
   var emiPanelEl = document.getElementById('calc-tab-emi');
   if (emiPanelEl) {
-    var recalcEmi = function () {
-      var P = num('emi-amount');
-      var annual = parseFloat(document.getElementById('emi-rate').value);
-      var years = num('emi-years');
-      if (!(P > 0) || !(years > 0) || !isFinite(annual) || annual < 0) {
-        setText('emi-monthly', 'NPR 0'); setText('emi-interest', 'NPR 0'); setText('emi-total', 'NPR 0');
-        return;
-      }
-      var n = Math.round(years * 12);
+    // Holds the most recent computed schedule so the CSV export matches what's on screen.
+    var emiSchedule = null;
+    var emiLastInputs = null;
+
+    // Plain-number formatter for the schedule table (no "NPR " prefix, keeps columns tight).
+    var fmtNum = function (n) {
+      if (!isFinite(n) || isNaN(n)) return '0';
+      return Math.round(n).toLocaleString('en-IN');
+    };
+
+    // Build the full month-by-month amortization schedule from the loan inputs.
+    var buildSchedule = function (P, annual, n) {
+      var r = annual / 12 / 100;
       var emi;
       if (annual === 0) {
         emi = P / n;
       } else {
-        var r = annual / 12 / 100;
         var pow = Math.pow(1 + r, n);
         emi = (P * r * pow) / (pow - 1);
       }
+      var rows = [];
+      var balance = P;
+      for (var m = 1; m <= n; m++) {
+        var interest = balance * r;
+        var principal = emi - interest;
+        var opening = balance;
+        balance = balance - principal;
+        // Absorb tiny rounding drift on the final row so the loan closes at exactly zero.
+        if (m === n) { principal += balance; balance = 0; }
+        rows.push({
+          month: m,
+          opening: opening,
+          principal: principal,
+          interest: interest,
+          emi: emi,
+          closing: balance < 0 ? 0 : balance,
+        });
+      }
+      return { emi: emi, rows: rows };
+    };
+
+    var renderScheduleTable = function (schedule) {
+      var body = document.getElementById('emi-sched-body');
+      if (!body) return;
+      var html = '';
+      var totalPrincipal = 0, totalInterest = 0, totalEmi = 0;
+      schedule.rows.forEach(function (row) {
+        totalPrincipal += row.principal;
+        totalInterest += row.interest;
+        totalEmi += row.emi;
+        html += '<tr>'
+          + '<td>' + row.month + '</td>'
+          + '<td>' + fmtNum(row.opening) + '</td>'
+          + '<td>' + fmtNum(row.principal) + '</td>'
+          + '<td>' + fmtNum(row.interest) + '</td>'
+          + '<td>' + fmtNum(row.emi) + '</td>'
+          + '<td>' + fmtNum(row.closing) + '</td>'
+          + '</tr>';
+      });
+      body.innerHTML = html;
+      // Footer totals row.
+      var table = body.parentNode;
+      var oldFoot = table.querySelector('tfoot');
+      if (oldFoot) oldFoot.parentNode.removeChild(oldFoot);
+      var foot = document.createElement('tfoot');
+      foot.innerHTML = '<tr>'
+        + '<td>Total</td><td></td>'
+        + '<td>' + fmtNum(totalPrincipal) + '</td>'
+        + '<td>' + fmtNum(totalInterest) + '</td>'
+        + '<td>' + fmtNum(totalEmi) + '</td>'
+        + '<td></td></tr>';
+      table.appendChild(foot);
+    };
+
+    var toggleBtn = document.getElementById('emi-toggle-sched');
+    var exportBtn = document.getElementById('emi-export-sched');
+    var schedWrap = document.getElementById('emi-sched-wrap');
+
+    var recalcEmi = function () {
+      var P = num('emi-amount');
+      var annual = parseFloat(document.getElementById('emi-rate').value);
+      var years = num('emi-years');
+      var valid = (P > 0) && (years > 0) && isFinite(annual) && annual >= 0;
+
+      if (!valid) {
+        setText('emi-monthly', 'NPR 0'); setText('emi-interest', 'NPR 0'); setText('emi-total', 'NPR 0');
+        emiSchedule = null; emiLastInputs = null;
+        if (toggleBtn) { toggleBtn.disabled = true; }
+        if (exportBtn) { exportBtn.hidden = true; }
+        if (schedWrap) { schedWrap.hidden = true; }
+        if (toggleBtn) { toggleBtn.textContent = 'Show Full Schedule'; }
+        return;
+      }
+
+      var n = Math.round(years * 12);
+      emiSchedule = buildSchedule(P, annual, n);
+      emiLastInputs = { P: P, annual: annual, years: years, n: n };
+      var emi = emiSchedule.emi;
       var total = emi * n;
       setText('emi-monthly', fmtNPR(emi));
       setText('emi-interest', fmtNPR(total - P));
       setText('emi-total', fmtNPR(total));
+
+      if (toggleBtn) toggleBtn.disabled = false;
+      // If the schedule is already open, refresh it live as inputs change.
+      if (schedWrap && !schedWrap.hidden) {
+        renderScheduleTable(emiSchedule);
+        if (exportBtn) exportBtn.hidden = false;
+      }
     };
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        if (!emiSchedule) return;
+        var isHidden = schedWrap.hidden;
+        if (isHidden) {
+          renderScheduleTable(emiSchedule);
+          schedWrap.hidden = false;
+          if (exportBtn) exportBtn.hidden = false;
+          toggleBtn.textContent = 'Hide Full Schedule';
+        } else {
+          schedWrap.hidden = true;
+          if (exportBtn) exportBtn.hidden = true;
+          toggleBtn.textContent = 'Show Full Schedule';
+        }
+      });
+    }
+
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function () {
+        if (!emiSchedule || !emiLastInputs) return;
+        var lines = [];
+        // A short header block so the file is self-explanatory when opened later.
+        lines.push('Loan EMI Schedule - Maven Consultancy');
+        lines.push('Loan Amount (NPR),' + Math.round(emiLastInputs.P));
+        lines.push('Annual Interest Rate (%),' + emiLastInputs.annual);
+        lines.push('Tenure (Years),' + emiLastInputs.years);
+        lines.push('Number of Months,' + emiLastInputs.n);
+        lines.push('Monthly EMI (NPR),' + Math.round(emiSchedule.emi));
+        lines.push('');
+        lines.push('Month,Opening Balance,Principal,Interest,EMI,Closing Balance');
+        var tP = 0, tI = 0, tE = 0;
+        emiSchedule.rows.forEach(function (row) {
+          tP += row.principal; tI += row.interest; tE += row.emi;
+          lines.push([
+            row.month,
+            Math.round(row.opening),
+            Math.round(row.principal),
+            Math.round(row.interest),
+            Math.round(row.emi),
+            Math.round(row.closing),
+          ].join(','));
+        });
+        lines.push(['Total', '', Math.round(tP), Math.round(tI), Math.round(tE), ''].join(','));
+
+        // Prepend a BOM so Excel opens the UTF-8 file with correct number formatting.
+        var csv = '\ufeff' + lines.join('\r\n');
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'emi-schedule.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      });
+    }
+
     liveInputs(['emi-amount', 'emi-rate', 'emi-years'], recalcEmi);
     recalcEmi();
   }
