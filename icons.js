@@ -19,6 +19,7 @@ const paths = {
   facebook: '<circle cx="12" cy="12" r="9"/><path d="M13.6 21v-6.4h2.1l.3-2.5h-2.4V10.4c0-.7.2-1.2 1.3-1.2h1.3V7c-.6-.1-1.4-.1-2.1-.1-2.1 0-3.5 1.3-3.5 3.6v1.6H8.6v2.5h2v6.3"/>',
   linkedin: '<rect x="3" y="3" width="18" height="18" rx="2.4"/><path d="M7.6 10.2v6.4"/><circle cx="7.6" cy="7.4" r="0.9" fill="currentColor" stroke="none"/><path d="M11.3 16.6v-3.8c0-1.4.9-2.4 2.2-2.4 1.3 0 2 .9 2 2.4v3.8"/><path d="M11.3 10.2v6.4"/>',
   tiktok: '<path d="M14 4c.3 2.1 1.6 3.7 3.8 4v2.3c-1.4 0-2.7-.4-3.8-1.2v5.3c0 2.7-2 4.8-4.6 4.8S4.8 21 4.8 18.4c0-2.5 2-4.5 4.5-4.5.3 0 .6 0 .9.1v2.4c-.3-.1-.6-.2-.9-.2-1.2 0-2.1.9-2.1 2.1s.9 2.1 2.1 2.1c1.2 0 2.2-.9 2.2-2.4V4H14z"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/>',
   upload: '<path d="M12 15.5V5.3"/><path d="M8 8.7L12 4.6l4 4.1"/><path d="M4.5 15.5v2.7a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2.7"/>',
   send: '<path d="M4 11.6L20 4l-6.6 16-2.9-7-6.5-1.4z"/>',
   external: '<path d="M9 6H5.5A2 2 0 0 0 3.5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V15"/><path d="M10 14L20.5 3.5"/><path d="M14.5 3.5H20.5V9.5"/>',

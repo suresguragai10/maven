@@ -82,7 +82,9 @@ function renderFooter() {
   // Only show an icon when a URL is actually set (blank = hidden).
   const socialLinks = [
     { key: 'facebook', label: 'Facebook', url: social.facebook },
+    { key: 'instagram', label: 'Instagram', url: social.instagram },
     { key: 'tiktok', label: 'TikTok', url: social.tiktok },
+    { key: 'linkedin', label: 'LinkedIn', url: social.linkedin },
   ].filter((s) => s.url && String(s.url).trim());
   const socialHtml = socialLinks.length
     ? `<div class="footer-social">
