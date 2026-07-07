@@ -778,9 +778,11 @@
     brandBody.appendChild(textField('Formspree Form ID (contact form email delivery)', function () { return c.brand.formspreeId; }, function (v) { c.brand.formspreeId = v; }, { hint: 'From formspree.io — just the ID (e.g. xgojnjby), not the full web address. Leave blank to keep the manual email/WhatsApp send flow.' }));
     brandBody.appendChild(textField('Website URL (for sitemap & sharing links)', function () { return c.brand.siteUrl; }, function (v) { c.brand.siteUrl = v; }, { hint: 'Your live domain, e.g. https://mavenconsultancy.com.np — leave blank until the final domain is ready. When set, the build creates sitemap.xml and canonical links.' }));
     // Social links — footer icons. Blank = the icon is hidden on the site.
-    if (!c.brand.social) c.brand.social = { facebook: '', tiktok: '' };
+    if (!c.brand.social) c.brand.social = { facebook: '', instagram: '', tiktok: '', linkedin: '' };
     brandBody.appendChild(textField('Facebook Page URL', function () { return c.brand.social.facebook; }, function (v) { c.brand.social.facebook = v; }, { hint: 'Full link to your Facebook page, e.g. https://facebook.com/YourPage — leave blank to hide the Facebook icon.' }));
+    brandBody.appendChild(textField('Instagram Profile URL', function () { return c.brand.social.instagram; }, function (v) { c.brand.social.instagram = v; }, { hint: 'Full link to your Instagram profile, e.g. https://instagram.com/yourhandle — leave blank to hide the Instagram icon.' }));
     brandBody.appendChild(textField('TikTok Profile URL', function () { return c.brand.social.tiktok; }, function (v) { c.brand.social.tiktok = v; }, { hint: 'Full link to your TikTok profile, e.g. https://tiktok.com/@yourhandle — leave blank to hide the TikTok icon.' }));
+    brandBody.appendChild(textField('LinkedIn Page URL', function () { return c.brand.social.linkedin; }, function (v) { c.brand.social.linkedin = v; }, { hint: 'Full link to your LinkedIn company page, e.g. https://linkedin.com/company/yourcompany — leave blank to hide the LinkedIn icon.' }));
     var tpWrap = el('div', 'f-field'); var tpL = el('label'); tpL.textContent = 'Trust Points (shown under the homepage hero)'; tpWrap.appendChild(tpL);
     tpWrap.appendChild(stringListEditor(c.trustPoints, 'trust point'));
     brandBody.appendChild(tpWrap);
