@@ -401,11 +401,11 @@ pages:
   - key: team
     label: Team
     href: team.html
-    hidden: false
+    hidden: true
   - key: testimonials
     label: Testimonials
     href: testimonials.html
-    hidden: false
+    hidden: true
   - key: faq
     label: FAQ
     href: faq.html
