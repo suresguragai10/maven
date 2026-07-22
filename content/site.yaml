@@ -29,6 +29,11 @@ brand:
   mapQuery: New Baneshwor, Kathmandu, Nepal
   formspreeId: xgojnjby
   siteUrl: https://mavennepal.com.np
+  social:
+    facebook: ''
+    instagram: ''
+    tiktok: ''
+    linkedin: ''
 trustPoints:
   - Registered private limited consultancy
   - Based in Kathmandu, serving clients across Nepal
@@ -641,3 +646,49 @@ calculators:
         - width: null
           rate: 29
       couple: []
+seo:
+  index.html:
+    title: ''
+    description: ''
+  about.html:
+    title: ''
+    description: ''
+  services.html:
+    title: ''
+    description: ''
+  outsourced-accounting.html:
+    title: ''
+    description: ''
+  packages.html:
+    title: ''
+    description: ''
+  documents-needed.html:
+    title: ''
+    description: ''
+  industries.html:
+    title: ''
+    description: ''
+  useful-links.html:
+    title: ''
+    description: ''
+  calculators.html:
+    title: ''
+    description: ''
+  faq.html:
+    title: ''
+    description: ''
+  contact.html:
+    title: ''
+    description: ''
+  team.html:
+    title: ''
+    description: ''
+  testimonials.html:
+    title: ''
+    description: ''
+  privacy.html:
+    title: ''
+    description: ''
+  blog.html:
+    title: ''
+    description: ''
