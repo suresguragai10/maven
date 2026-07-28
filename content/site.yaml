@@ -208,6 +208,10 @@ globalOutsourcing:
       a: >-
         Nepal Standard Time (UTC+5:45), with flexible, asynchronous communication to overlap with
         US and other international business hours.
+    - q: How do we pay for the work?
+      a: >-
+        We invoice monthly and currently accept payment by bank wire transfer. Other payment
+        methods may be added as this service grows.
   cta: Talk to us about outsourcing your bookkeeping
 packages:
   - name: Startup Setup Package
@@ -389,6 +393,10 @@ faqs:
     a: >-
       Maven provides registration guidance, document preparation, and submission support. Exact
       requirements depend on the business type and government office process.
+  - q: How long does company registration take?
+    a: >-
+      Typically around 7 working days once all required documents are provided, though this depends
+      on government office processing time and how quickly documents are submitted.
   - q: Do you publish fixed prices?
     a: >-
       Pricing is scoped to your specific business rather than published as a fixed price list —

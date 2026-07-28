@@ -195,6 +195,37 @@ if (siteUrl) {
   console.log('Skipped sitemap.xml — set brand.siteUrl in content/site.yaml to enable it.');
 }
 
+// --- _headers ----------------------------------------------------------------
+// Cloudflare Workers static assets reads this file the same way Cloudflare
+// Pages does. CSP is scoped to what this site actually loads: inline CSS/JS
+// (fully inlined per page, no nonce infra — hence 'unsafe-inline'), Google
+// Fonts, the Google Maps embed on the Contact page, Formspree form submission,
+// and admin-entered team-photo URLs (which can point anywhere over https).
+// If you enable Cloudflare Web Analytics later, add static.cloudflareinsights.com
+// to script-src/connect-src here, or the beacon will be silently blocked.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: https:",
+  "connect-src 'self' https://formspree.io",
+  "frame-src https://maps.google.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://formspree.io",
+  "frame-ancestors 'self'",
+].join('; ');
+const headers = `/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: ${csp}
+`;
+outDirs.forEach((d) => fs.writeFileSync(path.join(d, '_headers'), headers, 'utf8'));
+console.log('Wrote _headers');
+
 // Copy admin panel into dist so Cloudflare Workers serves it at /admin/
 const adminSrc = path.join(__dirname, 'admin', 'index.html');
 const adminDest = path.join(__dirname, 'dist', 'admin');
