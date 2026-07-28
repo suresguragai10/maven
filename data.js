@@ -46,15 +46,15 @@ const navStructure = [
     children: [
       { key: 'services', label: 'All Services', href: 'services.html' },
       { key: 'outsourced-accounting', label: 'Outsourced Accounting', href: 'outsourced-accounting.html' },
-      { key: 'global-outsourcing', label: 'Global Outsourcing', href: 'global-outsourcing.html' },
       { key: 'packages', label: 'Packages', href: 'packages.html' },
     ],
   },
-  { key: 'documents-needed', label: 'Documents Checklist', href: 'documents-needed.html' },
+  { key: 'global-outsourcing', label: 'Global Outsourcing', href: 'global-outsourcing.html' },
   { key: 'industries', label: 'Industries', href: 'industries.html' },
   {
     key: 'resources', label: 'Resources', href: 'useful-links.html',
     children: [
+      { key: 'documents-needed', label: 'Documents Checklist', href: 'documents-needed.html' },
       { key: 'useful-links', label: 'Useful Links', href: 'useful-links.html' },
       { key: 'calculators', label: 'Financial Calculators', href: 'calculators.html' },
       { key: 'blog', label: 'Blog', href: 'blog.html' },
