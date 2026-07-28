@@ -21,10 +21,10 @@ brand:
   altTagline: Your practical partner for accounting, tax, registration, and compliance.
   addressLine: New Baneshwor, Kathmandu, Nepal
   addressNote: Eyeplex Mall
-  landline: +977-1-4000000
-  mobile: +977-98-4827-3820
+  landline: ''
+  mobile: +977-98-4827-3802
   whatsappDigits: '9779848273802'
-  email: account@mavenconsultancy.com.np
+  email: info@mavennepal.com.np
   hours: Sunday – Friday · 10:00 AM – 5:00 PM (Saturday closed)
   mapQuery: New Baneshwor, Kathmandu, Nepal
   formspreeId: xgojnjby
@@ -37,28 +37,28 @@ brand:
 trustPoints:
   - Registered private limited consultancy
   - Based in Kathmandu, serving clients across Nepal
-  - Practical support for startups and SMEs
+  - Hands-on support for startups and SMEs
   - Clear document checklist and transparent quotation
   - Outsourced accounting and compliance partner
 aboutText: >-
   Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy company providing business
   setup, accounting, tax, compliance, financial reporting support, payroll, project report, and
-  advisory services. We support entrepreneurs and business owners with practical guidance, organized
-  records, timely compliance reminders, and clear communication.
+  advisory services. We support entrepreneurs and business owners with straightforward guidance,
+  organized records, timely compliance reminders, and clear communication.
 aboutFacts:
   - Based in New Baneshwor, Kathmandu
-  - Service coverage across Nepal
-  - Team connected with different cities of Nepal
+  - Established in 2022 — 100+ clients served to date
+  - Service coverage across Nepal, plus remote outsourced support for international clients
   - Focus on startups, small businesses, and growing companies
 aboutClosing: >-
   We are a focused, growing consultancy — not a large firm, and we don't try to be. We keep things
-  practical, organized, and easy to understand for business owners who need dependable support
+  grounded, organized, and easy to understand for business owners who need dependable support
   without unnecessary complexity.
 values:
   - title: Accuracy
     text: Careful, detail-checked work across every return, report, and record.
   - title: Confidentiality
-    text: Your financial and business information is handled with discretion and controlled access.
+    text: Your records are shared only with the people directly working on your file — never disclosed without your knowledge.
   - title: Timely service
     text: Deadlines and checklists are tracked so nothing is submitted late.
   - title: Professional communication
@@ -132,7 +132,7 @@ serviceCategories:
   - key: advisory
     letter: F
     title: Business Advisory
-    tagline: Practical guidance to help you plan, budget, and grow.
+    tagline: Straightforward guidance to help you plan, budget, and grow.
     icon: compass
     items:
       - Business startup consultation
@@ -274,14 +274,14 @@ industries:
   - name: Local businesses across Nepal
     icon: store
 whyChoose:
-  - title: Practical guidance for Nepali businesses
+  - title: Down-to-earth guidance for Nepali businesses
     text: >-
       Advice and support shaped around how business is actually done in Nepal — not generic
       templates.
   - title: Clear communication and follow-up
     text: You always know what stage your work is at and what's needed next.
   - title: Confidential handling of client documents
-    text: Your financial and business documents are handled with care and controlled access.
+    text: We store and share your documents only as needed to complete your work — nothing more.
   - title: Organized document management
     text: Records and files are kept systematic, so nothing is missed or lost.
   - title: Compliance deadline reminders
@@ -340,12 +340,14 @@ faqs:
       requirements depend on the business type and government office process.
   - q: Do you publish fixed prices?
     a: >-
-      Some services may have starting fees, but final pricing depends on workload, urgency, document
-      condition, and scope. Government fees and third-party charges are separate.
+      Pricing is scoped to your specific business rather than published as a fixed price list —
+      contact our team and we'll confirm a customized quote based on your business size, transaction
+      volume, document condition, urgency, and scope of work. Government fees, penalties, official
+      charges, and third-party professional charges are always billed separately.
   - q: Is my business data safe?
     a: >-
-      Maven follows confidentiality, organized document handling, and controlled access practices
-      for client records.
+      Yes. Access to your records is limited to the people working on your file, and we don't share
+      your information with anyone outside that engagement.
 footerDisclaimer: >-
   Maven Consultancy Services Pvt. Ltd. is a business consultancy and outsourced
   accounting/compliance service provider. Maven is not a licensed audit firm and does not provide
@@ -406,7 +408,7 @@ pages:
   - key: team
     label: Team
     href: team.html
-    hidden: true
+    hidden: false
   - key: testimonials
     label: Testimonials
     href: testimonials.html
@@ -432,13 +434,13 @@ pageHeaders:
     eyebrow: About Maven
     title: About Maven Consultancy
     subtitle: >-
-      A focused, practical consultancy built for startups, SMEs, and growing businesses across
+      A focused, hands-on consultancy built for startups, SMEs, and growing businesses across
       Nepal.
   services:
     eyebrow: Our Services
     title: Accounting, Tax, Registration & Compliance Services in Nepal
     subtitle: >-
-      Practical support across six core areas — from first registration to ongoing monthly
+      Straightforward support across six core areas — from first registration to ongoing monthly
       compliance.
   outsourced-accounting:
     eyebrow: Outsourced Accounting
@@ -448,8 +450,8 @@ pageHeaders:
     eyebrow: Packages
     title: Accounting & Compliance Packages
     subtitle: >-
-      Three starting points, scoped to your business after a short review. Not fixed,
-      one-size-fits-all pricing.
+      Three starting points — get in touch with our team for a customized quote scoped to your
+      business.
   documents-needed:
     eyebrow: Documents Checklist
     title: Documents Needed
@@ -484,8 +486,8 @@ pageHeaders:
     eyebrow: Our Team
     title: The People Behind Maven
     subtitle: >-
-      A practical, connected team supporting businesses with accounting, tax, and compliance across
-      Nepal.
+      A grounded, Kathmandu-based team supporting businesses with accounting, tax, and compliance
+      across Nepal, plus remote outsourced support for international clients.
   testimonials:
     eyebrow: Client Feedback
     title: What Our Clients Say
@@ -495,12 +497,16 @@ pageHeaders:
     title: Privacy Policy
     subtitle: How Maven Consultancy collects, uses, and protects the information you share with us.
 teamMembers:
-  - name: Maven Consultancy Team
-    role: Accounting, Tax & Compliance Support
+  - name: Sures Guragai
+    role: Founder & Lead Consultant
     location: Kathmandu, Nepal
+    photo: ''
     bio: >-
-      Add individual team members from the admin panel when you are ready to publish names and
-      roles.
+      Sures leads Maven's day-to-day client work, with hands-on experience in bookkeeping, tax
+      return preparation, financial reporting, and compliance support across engineering,
+      hospitality, nonprofit, and service-sector clients. He has also spent almost two years
+      providing remote financial reporting support to US-based clients — experience Maven is now
+      building on as it expands into outsourced accounting support for international clients.
     hidden: false
 testimonials:
   - quote: Add approved client feedback here once you have permission to publish it.
@@ -535,8 +541,8 @@ privacySections:
       your inquiry information at any time.
   - title: Confidentiality
     text: >-
-      Client financial and business information is handled with confidentiality, organized document
-      handling, and controlled access, consistent with our professional practice.
+      Client financial and business records are stored securely, accessed only by the team members
+      working on that engagement, and never shared with unrelated third parties.
   - title: Your choices
     text: >-
       You can contact us by phone, WhatsApp, or email instead of using the form. You may request

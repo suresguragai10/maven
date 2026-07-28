@@ -68,6 +68,10 @@
   .list-row input,.list-row textarea{flex:1;}
   .btn-remove{background:#fff;border:1.5px solid var(--border);color:var(--red);border-radius:8px;width:38px;height:38px;flex-shrink:0;}
   .btn-remove:hover{background:#FBEAE9;}
+  .move-buttons{display:inline-flex;gap:4px;margin:0 8px;flex-shrink:0;}
+  .btn-move{background:#fff;border:1.5px solid var(--border);color:var(--navy-800);border-radius:8px;width:30px;height:30px;font-size:.75rem;flex-shrink:0;}
+  .btn-move:hover:not(:disabled){background:var(--mist-dark);}
+  .btn-move:disabled{opacity:.35;cursor:default;}
   .btn-add{background:var(--mist);border:1.5px dashed var(--border);color:var(--navy-800);border-radius:8px;padding:9px 14px;font-weight:700;font-size:.85rem;margin-top:4px;}
   .btn-add:hover{border-color:var(--gold-500);color:var(--gold-700);}
   .sub-card{border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;background:var(--mist);}
@@ -151,6 +155,7 @@
       <a href="#sec-why">Why Choose Us</a>
       <a href="#sec-process">Process Steps</a>
       <a href="#sec-faqs">FAQs</a>
+      <a href="#sec-privacy">Privacy Policy</a>
       <a href="#sec-calculators">Tax &amp; Calculator Rates</a>
       <a href="#sec-seo">SEO / Search Engine</a>
       <a href="#sec-footer">Footer &amp; Options</a>
@@ -255,6 +260,26 @@
     return e;
   }
 
+  // Up/Down reorder buttons for the item at position idx within arr. Swaps
+  // it with its neighbour and re-renders the list. Disabled at each end.
+  function moveButtons(arr, idx, render) {
+    var wrap = el('span', 'move-buttons');
+    var up = el('button', 'btn-move'); up.type = 'button'; up.textContent = '▲'; up.title = 'Move up'; up.setAttribute('aria-label', 'Move up');
+    var down = el('button', 'btn-move'); down.type = 'button'; down.textContent = '▼'; down.title = 'Move down'; down.setAttribute('aria-label', 'Move down');
+    up.disabled = idx === 0;
+    down.disabled = idx === arr.length - 1;
+    up.addEventListener('click', function () {
+      var t = arr[idx]; arr[idx] = arr[idx - 1]; arr[idx - 1] = t;
+      markDirty(); render();
+    });
+    down.addEventListener('click', function () {
+      var t = arr[idx]; arr[idx] = arr[idx + 1]; arr[idx + 1] = t;
+      markDirty(); render();
+    });
+    wrap.appendChild(up); wrap.appendChild(down);
+    return wrap;
+  }
+
   function textField(labelText, getVal, setVal, opts) {
     opts = opts || {};
     var wrap = el('div', 'f-field');
@@ -292,7 +317,7 @@
         var input = el('input'); input.type = 'text'; input.value = val;
         input.addEventListener('input', function () { arr[idx] = input.value; markDirty(); });
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
         row.appendChild(input); row.appendChild(rm);
         wrap.appendChild(row);
       });
@@ -314,8 +339,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = (itemLabel || 'Item') + ' ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
         card.appendChild(head);
         card.appendChild(textField('Title', function () { return obj.title; }, function (v) { obj.title = v; }));
         card.appendChild(textField('Text', function () { return obj.text; }, function (v) { obj.text = v; }, { multiline: true, rows: 2 }));
@@ -339,8 +364,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'Question ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
         card.appendChild(head);
         card.appendChild(textField('Question', function () { return obj.q; }, function (v) { obj.q = v; }));
         card.appendChild(textField('Answer', function () { return obj.a; }, function (v) { obj.a = v; }, { multiline: true, rows: 3 }));
@@ -385,8 +410,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'Package ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
         card.appendChild(head);
         card.appendChild(textField('Package Name', function () { return pkg.name; }, function (v) { pkg.name = v; }));
         card.appendChild(textField('Audience (who it\'s for)', function () { return pkg.audience; }, function (v) { pkg.audience = v; }));
@@ -414,8 +439,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'Group ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
         card.appendChild(head);
         card.appendChild(textField('Group Title', function () { return grp.title; }, function (v) { grp.title = v; }));
         var itemsWrap = el('div', 'f-field');
@@ -442,8 +467,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'Link ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
         card.appendChild(head);
         card.appendChild(textField('Name', function () { return link.name; }, function (v) { link.name = v; }));
         card.appendChild(textField('Web Address (must start with https://)', function () { return link.url; }, function (v) { link.url = v; }));
@@ -533,17 +558,18 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'Team Member ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm); card.appendChild(head);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm); card.appendChild(head);
         card.appendChild(checkboxField('Hide this team member', function () { return m.hidden === true; }, function (v) { m.hidden = v; }));
         card.appendChild(textField('Name', function () { return m.name; }, function (v) { m.name = v; }));
         card.appendChild(textField('Role / Position', function () { return m.role; }, function (v) { m.role = v; }));
         card.appendChild(textField('Location', function () { return m.location; }, function (v) { m.location = v; }));
+        card.appendChild(textField('Photo URL (optional — upload the image to the repo\'s /images/ folder first, then paste its URL here)', function () { return m.photo; }, function (v) { m.photo = v; }));
         card.appendChild(textField('Short Bio', function () { return m.bio; }, function (v) { m.bio = v; }, { multiline: true, rows: 3 }));
         wrap.appendChild(card);
       });
       var add = el('button', 'btn-add'); add.type = 'button'; add.textContent = '+ Add Team Member';
-      add.addEventListener('click', function () { arr.push({ name: '', role: '', location: '', bio: '', hidden: false }); markDirty(); render(); });
+      add.addEventListener('click', function () { arr.push({ name: '', role: '', location: '', photo: '', bio: '', hidden: false }); markDirty(); render(); });
       wrap.appendChild(add);
     }
     render();
@@ -560,8 +586,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'Testimonial ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm); card.appendChild(head);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm); card.appendChild(head);
         card.appendChild(checkboxField('Hide this testimonial', function () { return t.hidden === true; }, function (v) { t.hidden = v; }));
         card.appendChild(textField('Client Quote', function () { return t.quote; }, function (v) { t.quote = v; }, { multiline: true, rows: 3 }));
         card.appendChild(textField('Client Name', function () { return t.name; }, function (v) { t.name = v; }));
@@ -667,7 +693,10 @@
     function render() {
       wrap.innerHTML = '';
       arr.forEach(function (table, idx) {
-        wrap.appendChild(taxTableEditor(table, function () { arr.splice(idx, 1); markDirty(); render(); }));
+        wrap.appendChild(taxTableEditor(table, function () {
+          if (!window.confirm('Remove the entire FY ' + (table.label || table.key || '') + ' tax table? This cannot be undone once you Save.')) return;
+          arr.splice(idx, 1); markDirty(); render();
+        }));
       });
       var add = el('button', 'btn-add'); add.type = 'button'; add.textContent = '+ Add new fiscal year';
       add.addEventListener('click', function () {
@@ -690,8 +719,8 @@
         var head = el('div', 'sub-head');
         var strong = el('strong'); strong.textContent = 'TDS Type ' + (idx + 1);
         var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
-        rm.addEventListener('click', function () { arr.splice(idx, 1); markDirty(); render(); });
-        head.appendChild(strong); head.appendChild(rm); card.appendChild(head);
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm); card.appendChild(head);
         var g = el('div', 'f-grid'); g.style.gridTemplateColumns = '1fr auto';
         g.appendChild(textField('Dropdown Label', function () { return t.label; }, function (v) { t.label = v; markDirty(); }));
         var rWrap = el('div', 'f-field');
@@ -860,6 +889,13 @@
 
     // FAQs
     area.appendChild(section('sec-faqs', 'FAQs', '', faqListEditor(c.faqs)));
+
+    // Privacy Policy
+    if (!Array.isArray(c.privacySections)) c.privacySections = [];
+    var privBody = el('div');
+    privBody.appendChild(textField('Intro Paragraph', function () { return c.privacyIntro; }, function (v) { c.privacyIntro = v; }, { multiline: true, rows: 3 }));
+    privBody.appendChild(titleTextListEditor(c.privacySections, 'Section'));
+    area.appendChild(section('sec-privacy', 'Privacy Policy', 'The intro paragraph and each titled section shown on the Privacy Policy page.', privBody));
 
     // Tax & Calculator Rates
     if (!c.calculators || typeof c.calculators !== 'object') c.calculators = {};

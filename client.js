@@ -30,6 +30,9 @@
       a.addEventListener('click', closeMobileNav);
     });
   }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && mobileNav && mobileNav.classList.contains('is-open')) closeMobileNav();
+  });
 
   // ---- Header scroll shadow ----
   var header = document.querySelector('.site-header');
@@ -147,11 +150,20 @@
       var phone = get('phone');
       var service = get('service');
       var message = get('message');
+      var email = get('email');
       var errorEl = document.getElementById('formError');
 
       if (!name || !phone || !service || !message) {
         if (errorEl) {
           errorEl.textContent = 'Please fill in your name, phone, service required, and message before sending.';
+          errorEl.hidden = false;
+          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (errorEl) {
+          errorEl.textContent = 'That email address doesn\'t look valid. Please check it or leave it blank.';
           errorEl.hidden = false;
           errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -312,7 +324,7 @@
     var recalcTax = function () {
       var table = TAX_TABLES[taxState.fy];
       var monthly = num('tax-monthly-salary');
-      var months = num('tax-months') || 12;
+      var months = Math.min(num('tax-months') || 12, 14);
       var bonus = num('tax-bonus');
       var gross = monthly * months + bonus;
 
@@ -494,7 +506,7 @@
       var P = num('emi-amount');
       var annual = parseFloat(document.getElementById('emi-rate').value);
       var years = num('emi-years');
-      var valid = (P > 0) && (years > 0) && isFinite(annual) && annual >= 0;
+      var valid = (P > 0) && (years > 0) && Math.round(years * 12) >= 1 && isFinite(annual) && annual >= 0;
 
       if (!valid) {
         setText('emi-monthly', 'NPR 0'); setText('emi-interest', 'NPR 0'); setText('emi-total', 'NPR 0');

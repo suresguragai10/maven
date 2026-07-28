@@ -107,6 +107,13 @@ const pages = [
 // The blog index + posts share activeKey 'blog'. When the Blog page is hidden in
 // content/site.yaml, it stays out of navigation and is marked noindex below.
 const posts = loadPosts();
+const seenSlugs = new Map();
+posts.forEach((post) => {
+  if (seenSlugs.has(post.slug)) {
+    throw new Error(`Duplicate blog slug "${post.slug}" — posts "${seenSlugs.get(post.slug)}" and "${post.title}" both build to ${post.file}. Rename one file or set a distinct "slug:" in its frontmatter.`);
+  }
+  seenSlugs.set(post.slug, post.title);
+});
 pages.push({
   file: 'blog.html', activeKey: 'blog', bodyHtml: blogIndex(posts),
   title: 'Blog | Maven Consultancy',

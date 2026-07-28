@@ -107,15 +107,15 @@ function contact() {
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('phone')}</span>
-            <div><h4>Call / WhatsApp</h4><p>${b.mobile}<br>${b.landline} (office)</p></div>
+            <div><h4>Call / WhatsApp</h4><p>${esc(b.mobile)}${b.landline ? `<br>${esc(b.landline)} (office)` : ''}</p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('mail')}</span>
-            <div><h4>Email</h4><p>${b.email}</p></div>
+            <div><h4>Email</h4><p>${esc(b.email)}</p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('clock')}</span>
-            <div><h4>Hours</h4><p>${b.hours}</p></div>
+            <div><h4>Hours</h4><p>${esc(b.hours)}</p></div>
           </div>
         </div>
         <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to send an inquiry.')}" target="_blank" rel="noopener">${icon('whatsapp')} Chat on WhatsApp</a>
@@ -184,7 +184,7 @@ function contact() {
 
           <div id="formResult" class="form-result" hidden>
             <h3>Your inquiry is ready to send</h3>
-            <p class="tag-note">Choose how you'd like to send it — this form doesn't submit automatically to a server, so please send it using one of the options below.</p>
+            <p class="tag-note">We couldn't confirm your inquiry was delivered automatically. Please send it using one of the options below so we don't miss it.</p>
             <div class="form-result-summary" id="formSummaryText"></div>
             <div class="form-result-actions">
               <a id="sendEmailLink" class="btn btn-outline" href="#">${icon('mail')} Send via Email</a>

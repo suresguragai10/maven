@@ -122,7 +122,7 @@ function home() {
         <p class="eyebrow eyebrow--on-dark">Outsourced Accounting</p>
         <h2>${esc(data.outsourced.title)}</h2>
         <p style="margin-top:14px">${esc(data.outsourced.paragraph)}</p>
-        <div style="margin-top:26px">${button(data.outsourced.cta, 'outsourced-accounting.html', 'primary')}</div>
+        <div style="margin-top:26px">${button(esc(data.outsourced.cta), 'outsourced-accounting.html', 'primary')}</div>
       </div>
       <ul class="stamp-list reveal">
         ${data.outsourced.benefits.map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b)}</span></li>`).join('')}

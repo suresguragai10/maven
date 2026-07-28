@@ -34,7 +34,7 @@ function renderMobileNav(activeKey) {
   }).join('');
   return `<div class="mobile-nav" id="mobileNav">
     <div class="mobile-nav-top">
-      <span class="brand-name" style="color:#fff">${data.brand.shortName}</span>
+      <span class="brand-name" style="color:#fff">${esc(data.brand.shortName)}</span>
       <button class="mobile-nav-close" aria-label="Close menu">${icon('close')}</button>
     </div>
     <ul>${items}</ul>
@@ -49,9 +49,9 @@ function renderHeader(activeKey) {
   return `<div class="topbar">
     <div class="container topbar-inner">
       <div class="topbar-links">
-        <span class="topbar-item">${icon('phone')} ${data.brand.mobile}</span>
-        <span class="topbar-item">${icon('mail')} ${data.brand.email}</span>
-        <span class="topbar-item">${icon('mapPin')} ${data.brand.addressLine}</span>
+        <span class="topbar-item">${icon('phone')} ${esc(data.brand.mobile)}</span>
+        <span class="topbar-item">${icon('mail')} ${esc(data.brand.email)}</span>
+        <span class="topbar-item">${icon('mapPin')} ${esc(data.brand.addressLine)}</span>
       </div>
       <a class="topbar-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to ask about your services.')}" target="_blank" rel="noopener">${icon('whatsapp')} Chat on WhatsApp</a>
     </div>
@@ -96,9 +96,9 @@ function renderFooter() {
       <div class="footer-brand">
         <div class="brand">
           <span class="brand-mark">M</span>
-          <span class="brand-text"><span class="brand-name" style="color:#fff">${b.shortName}</span></span>
+          <span class="brand-text"><span class="brand-name" style="color:#fff">${esc(b.shortName)}</span></span>
         </div>
-        <p>${b.legalName}. A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
+        <p>${esc(b.legalName)}. A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
         ${socialHtml}
       </div>
       <div class="footer-col">
@@ -120,18 +120,18 @@ function renderFooter() {
       <div class="footer-col">
         <h4>Contact</h4>
         <address>
-          <span class="footer-addr-item">${icon('mapPin')}<span>${b.addressLine}</span></span>
-          <span class="footer-addr-item">${icon('phone')}<span>${b.mobile}</span></span>
-          <span class="footer-addr-item">${icon('mail')}<span>${b.email}</span></span>
-          <span class="footer-addr-item">${icon('clock')}<span>${b.hours}</span></span>
+          <span class="footer-addr-item">${icon('mapPin')}<span>${esc(b.addressLine)}</span></span>
+          <span class="footer-addr-item">${icon('phone')}<span>${esc(b.mobile)}</span></span>
+          <span class="footer-addr-item">${icon('mail')}<span>${esc(b.email)}</span></span>
+          <span class="footer-addr-item">${icon('clock')}<span>${esc(b.hours)}</span></span>
         </address>
       </div>
     </div>
     <div class="container footer-disclaimer">
-      <p>${data.footerDisclaimer}</p>
+      <p>${esc(data.footerDisclaimer)}</p>
     </div>
     <div class="container footer-bottom">
-      <p>© <span id="year">${b.year}</span> ${b.legalName} All rights reserved.</p>
+      <p>© <span id="year">${b.year}</span> ${esc(b.legalName)} All rights reserved.</p>
       <p>Designed for practical, compliant business support in Nepal.</p>
     </div>
   </footer>
@@ -141,6 +141,11 @@ function renderFooter() {
 
 function jsonLd() {
   const b = data.brand;
+  const base = siteBase();
+  const social = b.social || {};
+  const sameAs = ['facebook', 'instagram', 'tiktok', 'linkedin']
+    .map((k) => social[k])
+    .filter((u) => u && String(u).trim());
   const obj = {
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
@@ -156,6 +161,8 @@ function jsonLd() {
     telephone: b.mobile,
     email: b.email,
   };
+  if (base) obj.url = base + '/';
+  if (sameAs.length) obj.sameAs = sameAs;
   return `<script type="application/ld+json">${JSON.stringify(obj)}</script>`;
 }
 
@@ -191,6 +198,9 @@ function renderPage({ activeKey, file, title, description, bodyHtml, css, client
 <meta name="description" content="${esc(description)}">
 <meta name="theme-color" content="#102A4C">
 <link rel="icon" type="image/svg+xml" href="${faviconDataUri()}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 ${robotsTag}
 ${canonicalTag}
 <meta property="og:title" content="${esc(title)}">

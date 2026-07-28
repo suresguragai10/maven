@@ -19,8 +19,11 @@ function escapeHtml(s) {
 function teamCard(m) {
   const loc = m.location ? `<p class="team-card-loc">${icon('mapPin')}<span>${escapeHtml(m.location)}</span></p>` : '';
   const bio = m.bio ? `<p class="team-card-bio">${escapeHtml(m.bio)}</p>` : '';
+  const avatar = m.photo
+    ? `<div class="team-card-avatar"><img src="${escapeHtml(m.photo)}" alt="${escapeHtml(m.name)}" loading="lazy"></div>`
+    : `<div class="team-card-avatar" aria-hidden="true">${initials(m.name)}</div>`;
   return `<article class="team-card reveal">
-    <div class="team-card-avatar" aria-hidden="true">${initials(m.name)}</div>
+    ${avatar}
     <h3 class="team-card-name">${escapeHtml(m.name)}</h3>
     ${m.role ? `<p class="team-card-role">${escapeHtml(m.role)}</p>` : ''}
     ${loc}
