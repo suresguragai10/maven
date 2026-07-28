@@ -28,6 +28,7 @@ brand:
   hours: Sunday – Friday · 10:00 AM – 5:00 PM (Saturday closed)
   mapQuery: New Baneshwor, Kathmandu, Nepal
   formspreeId: xgojnjby
+  cloudflareAnalyticsToken: ''
   siteUrl: https://mavennepal.com.np
   social:
     facebook: ''

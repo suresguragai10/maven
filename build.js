@@ -201,15 +201,15 @@ if (siteUrl) {
 // (fully inlined per page, no nonce infra — hence 'unsafe-inline'), Google
 // Fonts, the Google Maps embed on the Contact page, Formspree form submission,
 // and admin-entered team-photo URLs (which can point anywhere over https).
-// If you enable Cloudflare Web Analytics later, add static.cloudflareinsights.com
-// to script-src/connect-src here, or the beacon will be silently blocked.
+// Cloudflare Web Analytics is enabled (manual snippet, see layout.js head) —
+// static.cloudflareinsights.com is allow-listed below for its script + beacon.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https:",
-  "connect-src 'self' https://formspree.io",
+  "connect-src 'self' https://formspree.io https://cloudflareinsights.com",
   "frame-src https://maps.google.com",
   "object-src 'none'",
   "base-uri 'self'",

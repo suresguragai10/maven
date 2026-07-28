@@ -173,6 +173,14 @@ function siteBase() {
   return u ? u.replace(/\/+$/, '') : '';
 }
 
+// Cloudflare Web Analytics beacon — only emitted once brand.cloudflareAnalyticsToken
+// is set (via the admin panel), so nothing loads until it's actually configured.
+function analyticsScript() {
+  const token = (data.brand.cloudflareAnalyticsToken || '').trim();
+  if (!token) return '';
+  return `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token })}'></script>`;
+}
+
 function renderPage({ activeKey, file, title, description, bodyHtml, css, clientJs, extraHead = '', noindex = false }) {
   const cfgScript = `<script>window.MAVEN=${JSON.stringify({
     email: data.brand.email,
@@ -212,6 +220,7 @@ ${ogUrlTag}
 ${file === 'index.html' ? jsonLd() : ''}
 ${extraHead}
 <style>${css}</style>
+${analyticsScript()}
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
