@@ -146,6 +146,7 @@
       <a href="#sec-about">About</a>
       <a href="#sec-services">Services</a>
       <a href="#sec-outsourced">Outsourced Accounting</a>
+      <a href="#sec-global-outsourcing">Global Outsourcing</a>
       <a href="#sec-packages">Packages</a>
       <a href="#sec-documents">Documents Checklist</a>
       <a href="#sec-industries">Industries</a>
@@ -748,6 +749,7 @@
     ['about.html', 'About'],
     ['services.html', 'Services'],
     ['outsourced-accounting.html', 'Outsourced Accounting'],
+    ['global-outsourcing.html', 'Global Outsourcing'],
     ['packages.html', 'Packages'],
     ['documents-needed.html', 'Documents Checklist'],
     ['industries.html', 'Industries'],
@@ -852,6 +854,32 @@
     benWrap.appendChild(stringListEditor(c.outsourced.benefits, 'benefit'));
     outBody.appendChild(benWrap);
     area.appendChild(section('sec-outsourced', 'Outsourced Accounting', '', outBody));
+
+    // Global Outsourcing
+    if (!c.globalOutsourcing || typeof c.globalOutsourcing !== 'object') c.globalOutsourcing = {};
+    var go = c.globalOutsourcing;
+    if (!Array.isArray(go.benefits)) go.benefits = [];
+    if (!Array.isArray(go.services)) go.services = [];
+    if (!Array.isArray(go.process)) go.process = [];
+    if (!Array.isArray(go.faqs)) go.faqs = [];
+    var goBody = el('div');
+    goBody.appendChild(textField('Intro Paragraph', function () { return go.intro; }, function (v) { go.intro = v; }, { multiline: true, rows: 3 }));
+    goBody.appendChild(textField('Call-to-Action Text', function () { return go.cta; }, function (v) { go.cta = v; }));
+    var goBenWrap = el('div', 'f-field'); var goBenL = el('label'); goBenL.textContent = 'Why Outsource To Maven (benefits)'; goBenWrap.appendChild(goBenL);
+    goBenWrap.appendChild(stringListEditor(go.benefits, 'benefit'));
+    goBody.appendChild(goBenWrap);
+    var goSvcWrap = el('div', 'f-field'); var goSvcL = el('label'); goSvcL.textContent = 'What We Support (services list)'; goSvcWrap.appendChild(goSvcL);
+    goSvcWrap.appendChild(stringListEditor(go.services, 'service'));
+    goBody.appendChild(goSvcWrap);
+    goBody.appendChild(textField('Scope Note (what Maven does NOT do — e.g. tax filing/audit)', function () { return go.scopeNote; }, function (v) { go.scopeNote = v; }, { multiline: true, rows: 2 }));
+    var goProcWrap = el('div', 'f-field'); var goProcL = el('label'); goProcL.textContent = 'How It Works (onboarding steps, in order)'; goProcWrap.appendChild(goProcL);
+    goProcWrap.appendChild(titleTextListEditor(go.process, 'Step'));
+    goBody.appendChild(goProcWrap);
+    goBody.appendChild(textField('Data Security & Confidentiality Note', function () { return go.securityNote; }, function (v) { go.securityNote = v; }, { multiline: true, rows: 2 }));
+    var goFaqWrap = el('div', 'f-field'); var goFaqL = el('label'); goFaqL.textContent = 'Page FAQs'; goFaqWrap.appendChild(goFaqL);
+    goFaqWrap.appendChild(faqListEditor(go.faqs));
+    goBody.appendChild(goFaqWrap);
+    area.appendChild(section('sec-global-outsourcing', 'Global Outsourcing', 'Content for the Global Outsourcing page, aimed at international clients.', goBody));
 
     // Packages
     var pkgBody = el('div');

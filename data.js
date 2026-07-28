@@ -46,6 +46,7 @@ const navStructure = [
     children: [
       { key: 'services', label: 'All Services', href: 'services.html' },
       { key: 'outsourced-accounting', label: 'Outsourced Accounting', href: 'outsourced-accounting.html' },
+      { key: 'global-outsourcing', label: 'Global Outsourcing', href: 'global-outsourcing.html' },
       { key: 'packages', label: 'Packages', href: 'packages.html' },
     ],
   },
@@ -89,7 +90,7 @@ function buildNav() {
 const nav = buildNav();
 
 const footerQuickOrder = [
-  'about', 'services', 'packages', 'documents-needed',
+  'about', 'services', 'global-outsourcing', 'packages', 'documents-needed',
   'useful-links', 'calculators', 'team', 'testimonials', 'blog', 'faq', 'privacy',
 ];
 const footerQuickLinks = footerQuickOrder
@@ -135,6 +136,7 @@ module.exports = {
   serviceCategories: content.serviceCategories,
   partnerNote: content.partnerNote,
   outsourced: content.outsourced,
+  globalOutsourcing: content.globalOutsourcing,
   packages: content.packages,
   packagesFeeNote: content.packagesFeeNote,
   documentsTopNote: content.documentsTopNote,

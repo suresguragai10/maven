@@ -158,6 +158,57 @@ outsourced:
     - Professional review process
     - Scalable support as business grows
   cta: Talk to us about monthly accounting support
+globalOutsourcing:
+  intro: >-
+    Maven is expanding beyond Nepal to support international businesses and accounting firms with
+    day-to-day bookkeeping and financial reporting work. If you're a small business, startup, or
+    accounting firm abroad looking for a reliable remote team to handle the repetitive, time-consuming
+    parts of your books, we can help — starting small and scaling as trust builds.
+  benefits:
+    - Meaningful cost savings compared to hiring locally
+    - English-speaking team with clear written and verbal communication
+    - Comfortable working asynchronously across time zones
+    - Direct access to the person actually doing your work — no call-centre layers
+    - Flexible engagement — start with a trial period before committing long-term
+    - We work inside the software you already use, so there's no system migration
+  services:
+    - Bookkeeping and transaction categorization
+    - Bank and credit card reconciliation
+    - Accounts payable / accounts receivable support
+    - Monthly financial reporting and MIS
+    - Payroll data processing support
+    - Cleanup and catch-up bookkeeping
+    - Overflow capacity for accounting firms during busy season
+  scopeNote: >-
+    Maven supports bookkeeping, reconciliation, and reporting — we do not prepare or file tax returns
+    in any country, and we are not a licensed CPA, EA, or audit firm. Your own accountant or tax
+    preparer continues to handle filing and compliance in your jurisdiction.
+  process:
+    - title: Discovery call
+      text: Tell us about your business, current tools, and bookkeeping setup.
+    - title: Trial engagement
+      text: We start with a defined trial period so you can see the quality of work before committing long-term.
+    - title: Tool and access setup
+      text: We work inside your existing software — QuickBooks, Xero, Excel, or Google Sheets — no need to change systems.
+    - title: Ongoing monthly work
+      text: Regular reconciliation, reporting, and a monthly summary, with a direct line to the person doing your books.
+  securityNote: >-
+    Client data is handled on a confidential basis, with access limited to the people directly working
+    on your account. We work inside the accounting or cloud tools you already use rather than exporting
+    your data elsewhere, and we're happy to sign a mutual confidentiality agreement before onboarding.
+  faqs:
+    - q: Do you prepare or file our tax returns?
+      a: >-
+        No. We support bookkeeping, reconciliation, and reporting — your own accountant or tax
+        preparer continues to handle filing and compliance in your country. Maven is not a licensed
+        CPA, EA, or audit firm.
+    - q: What accounting software do you work with?
+      a: We're comfortable working in QuickBooks, Xero, Excel, or Google Sheets — whatever you already use.
+    - q: What time zone do you work in?
+      a: >-
+        Nepal Standard Time (UTC+5:45), with flexible, asynchronous communication to overlap with
+        US and other international business hours.
+  cta: Talk to us about outsourcing your bookkeeping
 packages:
   - name: Startup Setup Package
     audience: For new entrepreneurs and newly registered businesses.
@@ -385,6 +436,10 @@ pages:
     label: Outsourced Accounting
     href: outsourced-accounting.html
     hidden: false
+  - key: global-outsourcing
+    label: Global Outsourcing
+    href: global-outsourcing.html
+    hidden: false
   - key: packages
     label: Packages
     href: packages.html
@@ -446,6 +501,12 @@ pageHeaders:
     eyebrow: Outsourced Accounting
     title: Outsourced Accounting Services in Nepal
     subtitle: A dependable alternative to hiring a full-time in-house accountant.
+  global-outsourcing:
+    eyebrow: Global Outsourcing
+    title: Outsourced Accounting Support for International Businesses
+    subtitle: >-
+      A Kathmandu-based team providing remote bookkeeping, reconciliation, and reporting support for
+      businesses and accounting firms abroad.
   packages:
     eyebrow: Packages
     title: Accounting & Compliance Packages
@@ -663,6 +724,9 @@ seo:
     title: ''
     description: ''
   outsourced-accounting.html:
+    title: ''
+    description: ''
+  global-outsourcing.html:
     title: ''
     description: ''
   packages.html:

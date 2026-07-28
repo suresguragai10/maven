@@ -4,7 +4,7 @@ const path = require('path');
 const data = require('./data');
 const { renderPage } = require('./layout');
 const { home, about } = require('./pages1');
-const { services, outsourcedAccounting, packages } = require('./pages2');
+const { services, outsourcedAccounting, globalOutsourcing, packages } = require('./pages2');
 const { documentsNeeded, industries, faq, contact } = require('./pages3');
 const { usefulLinks, blogIndex, blogPost } = require('./pages4');
 const { calculators } = require('./pages5');
@@ -49,7 +49,12 @@ const pages = [
   {
     file: 'outsourced-accounting.html', activeKey: 'outsourced-accounting', bodyHtml: outsourcedAccounting(),
     title: 'Outsourced Accounting Services in Nepal | Maven Consultancy',
-    description: 'Outsourced bookkeeping, tax, payroll, and compliance support for growing businesses in Nepal, plus remote outsourced accounting support for clients abroad — a practical alternative to hiring a full-time accountant.',
+    description: 'Outsourced bookkeeping, tax, payroll, and compliance support for growing businesses in Nepal — a practical alternative to hiring a full-time accountant.',
+  },
+  {
+    file: 'global-outsourcing.html', activeKey: 'global-outsourcing', bodyHtml: globalOutsourcing(),
+    title: 'Global Outsourcing — Remote Bookkeeping for International Businesses | Maven Consultancy',
+    description: 'Maven provides remote bookkeeping, reconciliation, and financial reporting support for businesses and accounting firms abroad, from a Kathmandu-based team.',
   },
   {
     file: 'packages.html', activeKey: 'packages', bodyHtml: packages(),
