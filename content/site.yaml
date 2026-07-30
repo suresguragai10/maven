@@ -503,7 +503,7 @@ pages:
   - key: blog
     label: Blog
     href: blog.html
-    hidden: false
+    hidden: true
 pageHeaders:
   about:
     eyebrow: About Maven
