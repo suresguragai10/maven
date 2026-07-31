@@ -115,6 +115,7 @@ function renderFooter() {
           <li><a href="services.html#tax">Tax & Compliance</a></li>
           <li><a href="services.html#payroll">Payroll Support</a></li>
           <li><a href="services.html#reporting">Financial Reporting</a></li>
+          <li><a href="services.html#advisory">Business Advisory</a></li>
         </ul>
       </div>
       <div class="footer-col">

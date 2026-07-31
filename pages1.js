@@ -31,13 +31,33 @@ function heroSkyline() {
 }
 
 function docCardArt() {
+  // Purely decorative mockup — tabs auto-cycle and are also clickable (see
+  // client.js). Not aria-hidden since the tabs are real, focusable buttons.
+  // Tab labels and their 3-item previews are pulled straight from the real
+  // service categories (content/site.yaml) so this can't drift out of sync
+  // with what the Services section actually lists.
+  const tabOrder = [
+    ['registration', 'Registration'],
+    ['bookkeeping', 'Accounting'],
+    ['tax', 'Tax'],
+    ['payroll', 'Payroll'],
+    ['reporting', 'Reports'],
+  ];
+  const tabs = tabOrder
+    .map(([key, label]) => ({ label, cat: data.serviceCategories.find((c) => c.key === key) }))
+    .filter((t) => t.cat);
+
   return `<div class="hero-art reveal">
     <div class="doc-card">
-      <div class="doc-card-tabs"><span>Registration</span><span>Tax</span><span>Payroll</span><span>Reports</span></div>
-      <div class="doc-card-row"><span class="dot done"></span><span class="bar w60"></span></div>
-      <div class="doc-card-row"><span class="dot done"></span><span class="bar"></span></div>
-      <div class="doc-card-row"><span class="dot"></span><span class="bar w60"></span></div>
-      <div class="doc-card-row"><span class="dot"></span><span class="bar"></span></div>
+      <div class="doc-card-tabs">
+        ${tabs.map((t, i) => `<button type="button" class="doc-card-tab${i === 0 ? ' is-active' : ''}" aria-pressed="${i === 0}">${esc(t.label)}</button>`).join('')}
+      </div>
+      <div class="doc-card-panels">
+        ${tabs.map((t, i) => `
+        <ul class="doc-card-panel${i === 0 ? ' is-active' : ''}">
+          ${t.cat.items.slice(0, 3).map((item) => `<li>${stampMark('stamp-sm')}<span>${esc(item)}</span></li>`).join('')}
+        </ul>`).join('')}
+      </div>
       <div class="doc-card-stamp">${stampMark()}</div>
     </div>
   </div>`;
@@ -119,13 +139,13 @@ function home() {
   <section class="section-pad bg-navy">
     <div class="container two-col">
       <div class="reveal">
-        <p class="eyebrow eyebrow--on-dark">Outsourced Accounting</p>
-        <h2>${esc(data.outsourced.title)}</h2>
-        <p style="margin-top:14px">${esc(data.outsourced.paragraph)}</p>
-        <div style="margin-top:26px">${button(esc(data.outsourced.cta), 'outsourced-accounting.html', 'primary')}</div>
+        <p class="eyebrow eyebrow--on-dark">Global Outsourcing</p>
+        <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
+        <p style="margin-top:14px">${esc(data.globalOutsourcing.intro)}</p>
+        <div style="margin-top:26px">${button(esc(data.globalOutsourcing.cta), 'global-outsourcing.html', 'primary')}</div>
       </div>
       <ul class="stamp-list reveal">
-        ${data.outsourced.benefits.map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b)}</span></li>`).join('')}
+        ${data.globalOutsourcing.benefits.slice(0, 6).map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b)}</span></li>`).join('')}
       </ul>
     </div>
   </section>
@@ -144,7 +164,7 @@ function home() {
     <div class="container">
       ${sectionHead({ eyebrow: 'Why Choose Maven', title: 'Practical support, clearly communicated' })}
       <div class="grid grid-4">
-        ${data.whyChoose.map(whyCard).join('')}
+        ${data.whyChoose.slice(0, 6).map(whyCard).join('')}
       </div>
     </div>
   </section>
@@ -153,7 +173,18 @@ function home() {
     <div class="container">
       ${sectionHead({ eyebrow: 'How It Works', title: 'A clear, step-by-step process from inquiry to file closing' })}
       <div class="process-list process-list--row">
-        ${data.process.map((p, i) => processStep(p, i === data.process.length - 1)).join('')}
+        ${(() => {
+          // Homepage teaser: the full 9-step breakdown lives only in this data
+          // (there's no separate process page), so we hand-pick steps that still
+          // span the whole arc — inquiry, scoping, requirements, delivery, closing —
+          // rather than truncating to the first N and cutting off before any work
+          // actually gets done.
+          const teaserSteps = data.process.filter((p) => [1, 2, 3, 6, 8, 9].includes(p.step));
+          // Renumber 1-5 for display so the badges read as a clean sequence
+          // instead of showing the underlying step's real number (which would
+          // jump 1, 3, 4, 6, 9 and look like steps are missing).
+          return teaserSteps.map((p, i) => processStep({ ...p, step: i + 1 }, i === teaserSteps.length - 1)).join('');
+        })()}
       </div>
     </div>
   </section>
@@ -162,7 +193,7 @@ function home() {
     <div class="container">
       ${sectionHead({ eyebrow: 'Industries We Serve', title: 'Built for the businesses that keep Nepal running' })}
       <div class="grid grid-4">
-        ${data.industries.map(industryBadge).join('')}
+        ${data.industries.slice(0, 8).map(industryBadge).join('')}
       </div>
       <div class="text-center" style="margin-top:36px">${button('See All Industries', 'industries.html', 'outline')}</div>
     </div>

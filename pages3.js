@@ -173,7 +173,7 @@ function contact() {
               <div class="form-field full">
                 <label for="f-file">Upload Document <span class="optional">(optional)</span></label>
                 <input id="f-file" name="attachment" type="file">
-                <span class="form-hint">If this doesn't attach automatically, please attach it directly in your email or WhatsApp message.</span>
+                <span class="form-hint">This form can't attach files yet — after sending, please email or WhatsApp the document to us directly so we receive it.</span>
               </div>
             </div>
             <div class="form-actions">
@@ -185,6 +185,7 @@ function contact() {
           <div id="formResult" class="form-result" hidden>
             <h3>Your inquiry is ready to send</h3>
             <p class="tag-note">We couldn't confirm your inquiry was delivered automatically. Please send it using one of the options below so we don't miss it.</p>
+            <p class="tag-note" id="formFileNote" hidden><strong>Remember to attach your file</strong> — it isn't included automatically in the email or WhatsApp draft.</p>
             <div class="form-result-summary" id="formSummaryText"></div>
             <div class="form-result-actions">
               <a id="sendEmailLink" class="btn btn-outline" href="#">${icon('mail')} Send via Email</a>

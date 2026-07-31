@@ -225,22 +225,42 @@ body.nav-open { overflow: hidden; }
   .hero-art { max-width: 320px; }
 }
 
+/* Narrow phones: 5 tabs (Registration/Accounting/Tax/Payroll/Reports) need to
+   stay tidy at a 320px card width — flex-wrap already prevents overflow, but
+   shrinking the tabs a bit keeps more of them on one row before wrapping. */
+@media (max-width: 480px) {
+  .doc-card-tabs { gap: 5px; }
+  .doc-card-tab { font-size: 0.62rem; padding: 4px 7px; }
+}
+
 /* ---------- Doc-stamp illustration (hero signature) ---------- */
 .doc-card { background: #fff; border-radius: 16px; padding: 26px 24px; box-shadow: var(--shadow-lg); transform: rotate(-2deg); position: relative; }
 .doc-card::before {
   content: ''; position: absolute; inset: -10px -10px auto auto; width: 120px; height: 120px;
   background: radial-gradient(circle, var(--gold-100) 0%, transparent 72%); z-index: -1;
 }
-.doc-card-row { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
-.doc-card-row .bar { height: 9px; border-radius: 5px; background: var(--mist-dark); flex: 1; }
-.doc-card-row .bar.w60 { flex: 0 0 60%; }
-.doc-card-row .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--navy-800); flex-shrink: 0; }
-.doc-card-row .dot.done { background: var(--gold-500); border-color: var(--gold-500); }
 .doc-card-stamp { position: absolute; right: -18px; bottom: -22px; width: 92px; height: 92px; color: var(--gold-500); background: #fff; border-radius: 50%; box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; transform: rotate(8deg); }
 .doc-card-stamp .stamp { width: 66px; height: 66px; }
-.doc-card-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
-.doc-card-tabs span { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--mist); color: var(--navy-800); }
-.doc-card-tabs span:first-child { background: var(--navy-900); color: #fff; }
+.doc-card-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.doc-card-tab {
+  font: inherit; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 999px; background: var(--mist); color: var(--navy-800);
+  border: none; cursor: pointer;
+}
+.doc-card-tab.is-active { background: var(--navy-900); color: #fff; }
+.doc-card-tab:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
+.doc-card-panels { position: relative; min-height: 84px; }
+.doc-card-panel { display: none; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.doc-card-panel.is-active { display: flex; }
+.doc-card-panel li { display: flex; gap: 9px; align-items: flex-start; font-size: 0.86rem; color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .doc-card-tab { transition: background-color 0.3s ease, color 0.3s ease; }
+  .doc-card-panel.is-active { animation: doc-panel-in 0.3s ease; }
+}
+@keyframes doc-panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* ---------- Signature stamp motif ---------- */
 .stamp { color: var(--gold-600); }

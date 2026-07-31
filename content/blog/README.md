@@ -4,7 +4,15 @@ The blog is currently **built but hidden** — it's not linked from the menu or
 footer yet, so visitors won't stumble onto it, but the whole system works.
 When you're ready to launch it publicly, see "Making it public" at the bottom.
 
-## Adding a post
+## Easiest way: the admin panel
+
+Open `admin/index.html`, connect with your GitHub token, and go to the
+**Blog Posts** section in the sidebar. Click **+ Write New Post**, fill in
+the title, date, excerpt, and body (Markdown), then click **Publish Post** —
+it commits the file straight to GitHub and the site rebuilds automatically.
+You can also **Edit** or **Delete** any existing post from the same list.
+
+## Adding a post manually (without the admin panel)
 
 Create a new file in this folder named `content/blog/your-post-slug.md`
 (the filename becomes the post's URL, so keep it short, lowercase, and

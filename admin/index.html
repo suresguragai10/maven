@@ -32,8 +32,6 @@
   .connect-card .f{margin-bottom:14px;}
   .connect-card label{display:block;font-size:.82rem;font-weight:700;color:var(--navy-900);margin-bottom:5px;}
   .connect-card .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .remember{display:flex;align-items:center;gap:8px;font-size:.86rem;color:var(--ink-soft);margin:12px 0 18px;}
-  .remember input{width:auto;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;padding:12px 20px;border-radius:999px;border:2px solid transparent;background:var(--gold-500);color:var(--navy-950);width:100%;}
   .btn:hover{background:var(--gold-600);}
   .btn:disabled{opacity:.55;cursor:not-allowed;}
@@ -110,9 +108,8 @@
     <div class="f">
       <label for="in-token">Personal Access Token</label>
       <input id="in-token" type="password" placeholder="ghp_... or github_pat_...">
-      <span class="f-hint">This is sent only from your browser directly to GitHub — never stored anywhere else.</span>
+      <span class="f-hint">Kept only for this browser tab's session (cleared when you close the tab) — never stored permanently, and sent nowhere except GitHub.</span>
     </div>
-    <label class="remember"><input type="checkbox" id="in-remember"> Remember token on this device (saved in this browser only)</label>
     <button class="btn" id="connectBtn">Connect &amp; Load Content</button>
 
     <details>
@@ -124,7 +121,7 @@
         <li>Under <strong>Repository access</strong>, choose "Only select repositories" and pick your site's repo.</li>
         <li>Under <strong>Permissions → Repository permissions</strong>, set <strong>Contents</strong> to <strong>Read and write</strong>. Leave everything else as "No access".</li>
         <li>Set an expiration (e.g. 90 days) and click <strong>Generate token</strong>.</li>
-        <li>Copy the token (starts with <code>github_pat_</code>) and paste it above. You won't be able to see it again on GitHub, so keep it somewhere safe if you didn't check "remember".</li>
+        <li>Copy the token (starts with <code>github_pat_</code>) and paste it above. You won't be able to see it again on GitHub, so keep it somewhere safe — you'll need to paste it in again next time you open this page.</li>
       </ol>
     </details>
   </div>
@@ -153,6 +150,7 @@
       <a href="#sec-team">Team Page</a>
       <a href="#sec-testimonials">Testimonials Page</a>
       <a href="#sec-useful-links">Useful Links</a>
+      <a href="#sec-blog">Blog Posts</a>
       <a href="#sec-why">Why Choose Us</a>
       <a href="#sec-process">Process Steps</a>
       <a href="#sec-faqs">FAQs</a>
@@ -252,6 +250,28 @@
       .then(function (data) {
         state.sha = data.content.sha;
       });
+  }
+
+  // Generic single-file helpers (used by the Blog Posts editor, which manages
+  // its own files/commits independently of the site.yaml save button).
+  function ghListDir(path) {
+    var url = '/repos/' + state.owner + '/' + state.repo + '/contents/' + path + '?ref=' + encodeURIComponent(state.branch);
+    return ghApi(url);
+  }
+  function ghGetFile(path) {
+    var url = '/repos/' + state.owner + '/' + state.repo + '/contents/' + path + '?ref=' + encodeURIComponent(state.branch);
+    return ghApi(url);
+  }
+  function ghPutFile(path, text, sha, message) {
+    var body = { message: message, content: b64EncodeUtf8(text), branch: state.branch };
+    if (sha) body.sha = sha;
+    var url = '/repos/' + state.owner + '/' + state.repo + '/contents/' + path;
+    return ghApi(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  }
+  function ghDeleteFile(path, sha, message) {
+    var body = { message: message, sha: sha, branch: state.branch };
+    var url = '/repos/' + state.owner + '/' + state.repo + '/contents/' + path;
+    return ghApi(url, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
 
   // ---------- form helpers ----------
@@ -742,6 +762,158 @@
   }
 
 
+  // Blog posts: list existing content/blog/*.md files, plus a form to write a
+  // new one or edit/delete an existing one. Each post is its own file in the
+  // repo, so this saves directly via its own GitHub commit rather than the
+  // page's main "Save Changes" button (which only writes content/site.yaml).
+  function yamlStr(v) { return JSON.stringify(v == null ? '' : String(v)); }
+  function slugify(s) {
+    return (s || '').toLowerCase().trim()
+      .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  }
+  function slugFromFilename(name) { return slugify(name.replace(/\.md$/i, '')); }
+
+  function blogEditor() {
+    var wrap = el('div');
+    var addBtn = el('button', 'btn-add'); addBtn.type = 'button'; addBtn.textContent = '+ Write New Post';
+    addBtn.addEventListener('click', function () { showForm(null); });
+    wrap.appendChild(addBtn);
+    var listWrap = el('div'); listWrap.style.marginTop = '10px';
+    var formWrap = el('div'); formWrap.style.marginTop = '18px';
+    wrap.appendChild(listWrap);
+    wrap.appendChild(formWrap);
+
+    function loadList() {
+      listWrap.innerHTML = '<p class="desc">Loading posts…</p>';
+      ghListDir('content/blog').then(function (files) {
+        listWrap.innerHTML = '';
+        var mdFiles = (files || []).filter(function (f) {
+          return f.type === 'file' && /\.md$/i.test(f.name) && f.name.toLowerCase() !== 'readme.md';
+        });
+        if (!mdFiles.length) {
+          var p = el('p', 'desc'); p.textContent = 'No posts yet — click "Write New Post" to add your first one.';
+          listWrap.appendChild(p);
+          return;
+        }
+        mdFiles.forEach(function (f) {
+          var row = el('div', 'page-row');
+          var name = el('span', 'page-row-label'); name.textContent = f.name;
+          row.appendChild(name);
+          var editBtn = el('button', 'btn-outline'); editBtn.type = 'button'; editBtn.textContent = 'Edit';
+          editBtn.style.width = 'auto'; editBtn.style.padding = '6px 14px';
+          editBtn.addEventListener('click', function () { showForm(f.name); });
+          row.appendChild(editBtn);
+          listWrap.appendChild(row);
+        });
+      }).catch(function (err) {
+        listWrap.innerHTML = '';
+        var p = el('p', 'desc'); p.textContent = 'Could not load posts: ' + err.message; listWrap.appendChild(p);
+      });
+    }
+
+    function showForm(filename) {
+      var isNew = !filename;
+      var post = { title: '', date: new Date().toISOString().slice(0, 10), excerpt: '', body: '', slug: '', sha: null };
+      var card = el('div', 'sub-card');
+      formWrap.innerHTML = '';
+      formWrap.appendChild(card);
+      var saveBtn;
+
+      function doSave() {
+        var title = (post.title || '').trim();
+        if (!title) { showToast('Please enter a title.', true); return; }
+        var path;
+        if (isNew) {
+          var slug = slugify(post.slug) || slugify(title);
+          if (!slug) { showToast('Please enter a title or slug.', true); return; }
+          path = 'content/blog/' + slug + '.md';
+        } else {
+          path = 'content/blog/' + filename;
+        }
+        var frontmatter = '---\ntitle: ' + yamlStr(title) + '\ndate: ' + yamlStr(post.date) + '\nexcerpt: ' + yamlStr(post.excerpt) + '\n---\n\n';
+        var text = frontmatter + (post.body || '');
+        saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+        ghPutFile(path, text, post.sha, (isNew ? 'Add blog post: ' : 'Update blog post: ') + title).then(function () {
+          showToast((isNew ? 'Post published! ' : 'Post updated! ') + 'The site will rebuild automatically — check "View Actions" in about a minute.', false);
+          formWrap.innerHTML = '';
+          loadList();
+        }).catch(function (err) {
+          saveBtn.disabled = false; saveBtn.textContent = isNew ? 'Publish Post' : 'Save Post';
+          showToast('Could not save post: ' + err.message, true);
+        });
+      }
+
+      function doDelete() {
+        if (!window.confirm('Delete "' + post.title + '" permanently? This cannot be undone.')) return;
+        ghDeleteFile('content/blog/' + filename, post.sha, 'Delete blog post: ' + filename).then(function () {
+          showToast('Post deleted. The site will rebuild automatically.', false);
+          formWrap.innerHTML = '';
+          loadList();
+        }).catch(function (err) { showToast('Could not delete post: ' + err.message, true); });
+      }
+
+      function renderFields() {
+        card.innerHTML = '';
+        var head = el('div', 'sub-head');
+        var strong = el('strong'); strong.textContent = isNew ? 'New Post' : ('Editing: ' + filename);
+        head.appendChild(strong);
+        card.appendChild(head);
+
+        card.appendChild(textField('Title', function () { return post.title; }, function (v) { post.title = v; }));
+        card.appendChild(textField('Date', function () { return post.date; }, function (v) { post.date = v; }, { hint: 'Format YYYY-MM-DD. Controls sort order on the blog listing page.' }));
+        card.appendChild(textField('Excerpt', function () { return post.excerpt; }, function (v) { post.excerpt = v; }, { multiline: true, rows: 2, hint: 'One or two sentence summary shown on the blog listing page.' }));
+        if (isNew) {
+          card.appendChild(textField('URL slug (optional)', function () { return post.slug; }, function (v) { post.slug = v; }, { hint: 'Lowercase, hyphenated — becomes the page address (e.g. "5-vat-mistakes" → blog-5-vat-mistakes.html). Leave blank to auto-generate from the title.' }));
+        }
+        card.appendChild(textField('Post Body (Markdown)', function () { return post.body; }, function (v) { post.body = v; }, { multiline: true, rows: 16, hint: 'Use Markdown: ## for a subheading, **bold**, *italic*, - for bullet points, [link text](https://example.com) for links.' }));
+
+        var btnRow = el('div'); btnRow.style.cssText = 'display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;';
+        saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.style.width = 'auto';
+        saveBtn.textContent = isNew ? 'Publish Post' : 'Save Post';
+        saveBtn.addEventListener('click', doSave);
+        btnRow.appendChild(saveBtn);
+        if (!isNew) {
+          var delBtn = el('button', 'btn-outline'); delBtn.type = 'button'; delBtn.textContent = 'Delete Post';
+          delBtn.style.borderColor = 'var(--red)'; delBtn.style.color = 'var(--red)';
+          delBtn.addEventListener('click', doDelete);
+          btnRow.appendChild(delBtn);
+        }
+        var cancelBtn = el('button', 'btn-outline'); cancelBtn.type = 'button'; cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () { formWrap.innerHTML = ''; });
+        btnRow.appendChild(cancelBtn);
+        card.appendChild(btnRow);
+      }
+
+      if (isNew) {
+        renderFields();
+      } else {
+        card.innerHTML = '<p class="desc">Loading post…</p>';
+        ghGetFile('content/blog/' + filename).then(function (data) {
+          post.sha = data.sha;
+          var text = b64DecodeUtf8(data.content);
+          var m = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+          var meta = {};
+          if (m) {
+            try { meta = jsyaml.load(m[1]) || {}; } catch (e) { meta = {}; }
+            post.body = m[2] || '';
+          } else {
+            post.body = text;
+          }
+          post.title = meta.title || slugFromFilename(filename);
+          post.date = meta.date || '';
+          post.excerpt = meta.excerpt || '';
+          renderFields();
+        }).catch(function (err) {
+          card.innerHTML = '';
+          var p = el('p', 'desc'); p.textContent = 'Could not load post: ' + err.message; card.appendChild(p);
+        });
+      }
+    }
+
+    loadList();
+    return wrap;
+  }
+
   // SEO editor: per-page browser title + Google description. Blank = use the
   // built-in default for that page. Keys are the built HTML filenames.
   var SEO_PAGES = [
@@ -910,6 +1082,9 @@
     if (!c.usefulLinks) c.usefulLinks = [];
     area.appendChild(section('sec-useful-links', 'Useful Links', 'Official government portals shown on the Useful Links page. Double-check web addresses carefully — a broken link is easy to miss.', usefulLinksEditor(c.usefulLinks)));
 
+    // Blog posts — each post is its own file, saved independently of the main Save button.
+    area.appendChild(section('sec-blog', 'Blog Posts', 'Write, edit, or delete blog posts here. Each post publishes with its own "Publish"/"Save" button below — it does not use the main "Save Changes" button at the top. Remember: the Blog section itself still needs to be ticked "Show in menu" under "Pages: Hide & Headings" before visitors can find it.', blogEditor()));
+
     // Why choose
     area.appendChild(section('sec-why', 'Why Choose Us', '', titleTextListEditor(c.whyChoose, 'Point')));
 
@@ -967,22 +1142,25 @@
   }
 
   // ---------- connect / boot ----------
-  function saveLocal(remember) {
-    var store = remember ? localStorage : sessionStorage;
-    store.setItem('maven_admin_owner', state.owner);
-    store.setItem('maven_admin_repo', state.repo);
-    store.setItem('maven_admin_branch', state.branch);
-    if (remember) localStorage.setItem('maven_admin_token', state.token);
+  // Owner/repo/branch are non-sensitive, so they're remembered in localStorage
+  // for convenience. The token is a GitHub PAT with repo write access — it's
+  // kept in sessionStorage only, so it's gone as soon as the tab/browser closes
+  // rather than sitting in the browser's storage indefinitely.
+  function saveLocal() {
+    localStorage.setItem('maven_admin_owner', state.owner);
+    localStorage.setItem('maven_admin_repo', state.repo);
+    localStorage.setItem('maven_admin_branch', state.branch);
+    sessionStorage.setItem('maven_admin_token', state.token);
   }
 
-  function connect(owner, repo, branch, token, remember) {
+  function connect(owner, repo, branch, token) {
     state.owner = owner; state.repo = repo; state.branch = branch || 'main'; state.token = token;
     var msg = document.getElementById('connectMsg');
     msg.innerHTML = '';
     document.getElementById('connectBtn').disabled = true;
     document.getElementById('connectBtn').textContent = 'Connecting…';
     loadContent().then(function () {
-      saveLocal(remember);
+      saveLocal();
       document.getElementById('connectScreen').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
       // Prefer the configured live domain; otherwise hide the live link (GitHub Pages
@@ -1007,12 +1185,11 @@
     var repo = document.getElementById('in-repo').value.trim();
     var branch = document.getElementById('in-branch').value.trim() || 'main';
     var token = document.getElementById('in-token').value.trim();
-    var remember = document.getElementById('in-remember').checked;
     if (!owner || !repo || !token) {
       document.getElementById('connectMsg').innerHTML = '<div class="msg msg-error">Please fill in username, repository, and token.</div>';
       return;
     }
-    connect(owner, repo, branch, token, remember);
+    connect(owner, repo, branch, token);
   });
 
   document.getElementById('saveBtn').addEventListener('click', function () {
@@ -1028,7 +1205,7 @@
   });
 
   document.getElementById('disconnectBtn').addEventListener('click', function () {
-    localStorage.removeItem('maven_admin_token');
+    localStorage.removeItem('maven_admin_token'); // clears any token saved by older versions of this page
     sessionStorage.clear();
     location.reload();
   });
@@ -1045,18 +1222,17 @@
     var parts = location.pathname.split('/').filter(Boolean);
     var guessedRepo = parts.length ? parts[0] : '';
 
-    var savedOwner = localStorage.getItem('maven_admin_owner') || sessionStorage.getItem('maven_admin_owner') || guessedOwner;
-    var savedRepo = localStorage.getItem('maven_admin_repo') || sessionStorage.getItem('maven_admin_repo') || guessedRepo;
-    var savedBranch = localStorage.getItem('maven_admin_branch') || sessionStorage.getItem('maven_admin_branch') || 'main';
-    var savedToken = localStorage.getItem('maven_admin_token') || '';
+    var savedOwner = localStorage.getItem('maven_admin_owner') || guessedOwner;
+    var savedRepo = localStorage.getItem('maven_admin_repo') || guessedRepo;
+    var savedBranch = localStorage.getItem('maven_admin_branch') || 'main';
+    // Token is session-only — only survives if this is the same tab/session
+    // that connected (e.g. a page refresh), never a fresh browser session.
+    var savedToken = sessionStorage.getItem('maven_admin_token') || '';
 
     document.getElementById('in-owner').value = savedOwner;
     document.getElementById('in-repo').value = savedRepo;
     document.getElementById('in-branch').value = savedBranch;
-    if (savedToken) {
-      document.getElementById('in-token').value = savedToken;
-      document.getElementById('in-remember').checked = true;
-    }
+    if (savedToken) document.getElementById('in-token').value = savedToken;
   })();
 })();
 </script>

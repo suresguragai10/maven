@@ -73,6 +73,49 @@
     });
   });
 
+  // ---- Hero mockup card (Registration/Accounting/Tax/Payroll/Reports) ----
+  // Purely decorative: auto-cycles through the tabs, and clicking a tab jumps
+  // there and stops the auto-cycle (once a visitor engages, don't yank their
+  // choice away). Each tab reveals its own panel of 3 real service items
+  // (rendered server-side from content/site.yaml — see pages1.js docCardArt).
+  var docCard = document.querySelector('.doc-card');
+  if (docCard) {
+    var docTabs = docCard.querySelectorAll('.doc-card-tab');
+    var docPanels = docCard.querySelectorAll('.doc-card-panel');
+    var docActiveIndex = 0;
+    var docCycleTimer = null;
+
+    var setActiveDocTab = function (idx) {
+      docActiveIndex = idx;
+      docTabs.forEach(function (tab, i) {
+        tab.classList.toggle('is-active', i === idx);
+        tab.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
+      });
+      docPanels.forEach(function (panel, i) {
+        panel.classList.toggle('is-active', i === idx);
+      });
+    };
+
+    var stopDocCycle = function () {
+      if (docCycleTimer) { clearInterval(docCycleTimer); docCycleTimer = null; }
+    };
+
+    docTabs.forEach(function (tab, i) {
+      tab.addEventListener('click', function () {
+        stopDocCycle();
+        setActiveDocTab(i);
+      });
+    });
+
+    setActiveDocTab(0);
+    var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReducedMotion && docTabs.length) {
+      docCycleTimer = setInterval(function () {
+        setActiveDocTab((docActiveIndex + 1) % docTabs.length);
+      }, 3000);
+    }
+  }
+
   // ---- Scroll reveal ----
   var revealEls = document.querySelectorAll('.reveal');
   if (revealEls.length) {
@@ -110,7 +153,7 @@
       ].join('\n');
     };
 
-    var showFallback = function (summary) {
+    var showFallback = function (summary, hadFile) {
       var cfg = window.MAVEN || {};
       var subject = encodeURIComponent('Website Inquiry');
       var body = encodeURIComponent(summary);
@@ -120,6 +163,8 @@
       if (waLink && cfg.whatsapp) waLink.href = 'https://wa.me/' + cfg.whatsapp + '?text=' + body;
       var summaryBox = document.getElementById('formSummaryText');
       if (summaryBox) summaryBox.textContent = summary;
+      var fileNote = document.getElementById('formFileNote');
+      if (fileNote) fileNote.hidden = !hadFile;
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
         resultBox.hidden = false;
@@ -127,10 +172,16 @@
       }
     };
 
-    var showSuccess = function () {
+    // hadFile: Formspree's free plan doesn't accept file uploads, so any file
+    // chosen in the form is never actually sent — the success message must say
+    // so explicitly rather than let the user believe it went through.
+    var showSuccess = function (hadFile) {
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
-        resultBox.innerHTML = '<h3>✓ Inquiry sent — thank you!</h3><p class="tag-note">We\'ve received your message and will get back to you within one business day. If it\'s urgent, feel free to call or WhatsApp us directly.</p>';
+        var fileNote = hadFile
+          ? ' <strong>Note: the file you attached was not included</strong> — please send it to us directly by email or WhatsApp so we have it.'
+          : '';
+        resultBox.innerHTML = '<h3>✓ Inquiry sent — thank you!</h3><p class="tag-note">We\'ve received your message and will get back to you within one business day. If it\'s urgent, feel free to call or WhatsApp us directly.' + fileNote + '</p>';
         resultBox.hidden = false;
         resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -142,9 +193,12 @@
       var fd = new FormData(form);
       var get = function (k) { return (fd.get(k) || '').toString().trim(); };
 
+      var fileInput = document.getElementById('f-file');
+      var hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
+
       // Honeypot: if this hidden field is filled, it's almost certainly a bot.
       // Pretend success and silently drop the submission.
-      if (get('company_website')) { showSuccess(); return; }
+      if (get('company_website')) { showSuccess(hasFile); return; }
 
       var name = get('name');
       var phone = get('phone');
@@ -198,16 +252,16 @@
           headers: { Accept: 'application/json' },
         }).then(function (res) {
           if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Send Inquiry'; }
-          if (res.ok) { showSuccess(); } else { showFallback(summary); }
+          if (res.ok) { showSuccess(hasFile); } else { showFallback(summary, hasFile); }
         }).catch(function () {
           if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Send Inquiry'; }
-          showFallback(summary);
+          showFallback(summary, hasFile);
         });
         return;
       }
 
       // No Formspree configured — fall back to email/WhatsApp handoff.
-      showFallback(summary);
+      showFallback(summary, hasFile);
     });
   }
 
