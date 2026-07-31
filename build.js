@@ -34,12 +34,12 @@ const pages = [
   {
     file: 'index.html', activeKey: 'home', bodyHtml: home(),
     title: `${data.brand.legalName} | Accounting, Tax & Compliance Services in Nepal`,
-    description: 'Maven Consultancy Services Pvt. Ltd. provides accounting, tax, business registration, PAN/VAT, payroll, and compliance support for startups, SMEs, and growing businesses across Nepal.',
+    description: 'Maven Consultancy Services Pvt. Ltd. provides accounting, tax, registration, PAN/VAT, payroll, and compliance support for startups and SMEs across Nepal.',
   },
   {
     file: 'about.html', activeKey: 'about', bodyHtml: about(),
     title: 'About Maven Consultancy | Business Consultancy in Kathmandu, Nepal',
-    description: 'Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy providing business setup, accounting, tax, compliance, and advisory services with practical, organized support.',
+    description: 'Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy providing business setup, accounting, tax, compliance, and advisory services.',
   },
   {
     file: 'services.html', activeKey: 'services', bodyHtml: services(),
@@ -74,7 +74,7 @@ const pages = [
   {
     file: 'useful-links.html', activeKey: 'useful-links', bodyHtml: usefulLinks(),
     title: 'Useful Links — Nepal Government Portals | Maven Consultancy',
-    description: 'Official Nepal government portals for tax (IRD), company registration (OCR), social security (SSF), and banking (Nepal Rastra Bank), curated by Maven Consultancy.',
+    description: 'Official Nepal government portals for tax (IRD), company registration (OCR), social security (SSF), and banking (NRB) — curated by Maven Consultancy.',
   },
   {
     file: 'calculators.html', activeKey: 'calculators', bodyHtml: calculators(),
@@ -129,10 +129,12 @@ posts.forEach((post) => {
     file: post.file, activeKey: 'blog', bodyHtml: blogPost(post),
     title: `${post.title} | Maven Consultancy Blog`,
     description: post.excerpt || post.title,
+    date: post.date, // used for a more accurate sitemap <lastmod> below
   });
 });
 
-const generatedFiles = []; // track visible, indexable HTML files for the sitemap
+const today = new Date().toISOString().slice(0, 10);
+const generatedFiles = []; // track visible, indexable pages (+ lastmod) for the sitemap
 
 // Per-page SEO overrides from the CMS (content/site.yaml -> seo).
 // If a title/description is set there, it wins; otherwise the built-in
@@ -158,7 +160,9 @@ for (const p of pages) {
     noindex,
   });
   outDirs.forEach((d) => fs.writeFileSync(path.join(d, p.file), html, 'utf8'));
-  if (!noindex) generatedFiles.push(p.file);
+  // Blog posts have a real publish date to use as <lastmod>; everything else
+  // falls back to today's build date, since we don't track per-page content history.
+  if (!noindex) generatedFiles.push({ file: p.file, lastmod: p.date || today });
   console.log('Wrote', p.file, `(${(html.length / 1024).toFixed(1)} KB)`, noindex ? '[noindex]' : '');
 }
 
@@ -183,10 +187,9 @@ console.log('Wrote robots.txt');
 
 // --- sitemap.xml (only when a site URL is configured) -----------------------
 if (siteUrl) {
-  const today = new Date().toISOString().slice(0, 10);
-  const urls = generatedFiles.map((file) => {
+  const urls = generatedFiles.map(({ file, lastmod }) => {
     const loc = file === 'index.html' ? `${siteUrl}/` : `${siteUrl}/${file}`;
-    return `  <url><loc>${loc}</loc><lastmod>${today}</lastmod></url>`;
+    return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod></url>`;
   }).join('\n');
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
   outDirs.forEach((d) => fs.writeFileSync(path.join(d, 'sitemap.xml'), sitemap, 'utf8'));
@@ -225,6 +228,17 @@ const headers = `/*
 `;
 outDirs.forEach((d) => fs.writeFileSync(path.join(d, '_headers'), headers, 'utf8'));
 console.log('Wrote _headers');
+
+// Copy static assets (e.g. images/og-image.png) into dist/ verbatim.
+const imagesSrc = path.join(__dirname, 'images');
+if (fs.existsSync(imagesSrc)) {
+  const imagesDest = path.join(__dirname, 'dist', 'images');
+  fs.mkdirSync(imagesDest, { recursive: true });
+  for (const file of fs.readdirSync(imagesSrc)) {
+    fs.copyFileSync(path.join(imagesSrc, file), path.join(imagesDest, file));
+  }
+  console.log('Copied images/ to dist/images/');
+}
 
 // Copy admin panel into dist so Cloudflare Workers serves it at /admin/
 const adminSrc = path.join(__dirname, 'admin', 'index.html');

@@ -149,7 +149,10 @@ function jsonLd() {
     .filter((u) => u && String(u).trim());
   const obj = {
     '@context': 'https://schema.org',
-    '@type': 'ProfessionalService',
+    // AccountingService is a more specific schema.org subtype than the
+    // generic ProfessionalService — matches what Maven actually offers
+    // (bookkeeping/tax/compliance, not statutory audit).
+    '@type': 'AccountingService',
     name: b.legalName,
     description: 'Accounting, tax, business registration, payroll, financial reporting, and compliance consultancy services for startups, SMEs, and growing businesses across Nepal.',
     address: {
@@ -161,8 +164,17 @@ function jsonLd() {
     areaServed: 'Nepal',
     telephone: b.mobile,
     email: b.email,
+    // Matches brand.hours ("Sunday – Friday · 10:00 AM – 5:00 PM (Saturday
+    // closed)") — this is hand-written, not parsed from that free-text field,
+    // so if hours ever change via the admin panel, update this too.
+    openingHoursSpecification: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      opens: '10:00',
+      closes: '17:00',
+    },
   };
-  if (base) obj.url = base + '/';
+  if (base) { obj.url = base + '/'; obj.image = base + '/images/og-image.png'; }
   if (sameAs.length) obj.sameAs = sameAs;
   return `<script type="application/ld+json">${JSON.stringify(obj)}</script>`;
 }
@@ -197,6 +209,14 @@ function renderPage({ activeKey, file, title, description, bodyHtml, css, client
   const canonicalTag = pageUrl ? `<link rel="canonical" href="${pageUrl}">` : '';
   const ogUrlTag = pageUrl ? `<meta property="og:url" content="${pageUrl}">` : '';
   const robotsTag = noindex ? '<meta name="robots" content="noindex, nofollow">' : '';
+  // Social share preview image — only emitted once a site URL is set, since
+  // og:image/twitter:image need a real absolute URL to be fetchable.
+  const ogImageUrl = base ? `${base}/images/og-image.png` : '';
+  const ogImageTags = ogImageUrl ? `
+<meta property="og:image" content="${ogImageUrl}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:image" content="${ogImageUrl}">` : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -216,9 +236,9 @@ ${canonicalTag}
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="${esc(data.brand.shortName)}">
-${ogUrlTag}
-<meta name="twitter:card" content="summary">
-${file === 'index.html' ? jsonLd() : ''}
+${ogUrlTag}${ogImageTags}
+<meta name="twitter:card" content="${ogImageUrl ? 'summary_large_image' : 'summary'}">
+${jsonLd()}
 ${extraHead}
 <style>${css}</style>
 ${analyticsScript()}
