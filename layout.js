@@ -1,6 +1,6 @@
 const { icon } = require('./icons');
 const data = require('./data');
-const { esc } = require('./escape');
+const { esc, internalHref } = require('./escape');
 
 function faviconDataUri() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="13" fill="#102A4C"/><text x="32" y="43" font-family="Georgia,serif" font-size="30" font-weight="700" fill="#C79A3E" text-anchor="middle">M</text></svg>`;
@@ -39,7 +39,7 @@ function renderMobileNav(activeKey) {
     </div>
     <ul>${items}</ul>
     <div class="mobile-nav-cta">
-      <a class="btn btn-primary" href="contact.html">Book Free Consultation</a>
+      <a class="btn btn-primary" href="${internalHref('contact.html')}">Book Free Consultation</a>
       <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to ask about your services.')}" target="_blank" rel="noopener">${icon('whatsapp')} WhatsApp Us</a>
     </div>
   </div>`;
@@ -58,7 +58,7 @@ function renderHeader(activeKey) {
   </div>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="index.html">
+      <a class="brand" href="${internalHref('index.html')}">
         <span class="brand-mark">M</span>
         <span class="brand-text">
           <span class="brand-name">${data.brand.shortName}</span>
@@ -68,7 +68,7 @@ function renderHeader(activeKey) {
       ${renderDesktopNav(activeKey)}
       <div class="header-cta">
         <a class="btn btn-outline btn-sm" href="tel:${data.brand.mobile.replace(/[^+\d]/g, '')}">${icon('phone')} Call</a>
-        <a class="btn btn-primary btn-sm" href="contact.html">Book Free Consultation</a>
+        <a class="btn btn-primary btn-sm" href="${internalHref('contact.html')}">Book Free Consultation</a>
       </div>
       <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">${icon('menu')}</button>
     </div>
@@ -110,12 +110,12 @@ function renderFooter() {
       <div class="footer-col">
         <h4>Services</h4>
         <ul>
-          <li><a href="services.html#registration">Registration & Setup</a></li>
-          <li><a href="outsourced-accounting.html">Outsourced Accounting</a></li>
-          <li><a href="services.html#tax">Tax & Compliance</a></li>
-          <li><a href="services.html#payroll">Payroll Support</a></li>
-          <li><a href="services.html#reporting">Financial Reporting</a></li>
-          <li><a href="services.html#advisory">Business Advisory</a></li>
+          <li><a href="${internalHref('services.html#registration')}">Registration & Setup</a></li>
+          <li><a href="${internalHref('outsourced-accounting.html')}">Outsourced Accounting</a></li>
+          <li><a href="${internalHref('services.html#tax')}">Tax & Compliance</a></li>
+          <li><a href="${internalHref('services.html#payroll')}">Payroll Support</a></li>
+          <li><a href="${internalHref('services.html#reporting')}">Financial Reporting</a></li>
+          <li><a href="${internalHref('services.html#advisory')}">Business Advisory</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -204,8 +204,11 @@ function renderPage({ activeKey, file, title, description, bodyHtml, css, client
   })};</script>`;
 
   const base = siteBase();
-  // index.html canonicalises to the domain root, everything else to /file.
-  const pageUrl = base ? (file === 'index.html' ? base + '/' : base + '/' + file) : '';
+  // Canonicalises to the extensionless path Cloudflare actually serves (it
+  // redirects *.html -> extensionless by default) — index.html -> "/",
+  // everything else -> "/file" — so the canonical URL never points at a
+  // page that immediately redirects elsewhere.
+  const pageUrl = base ? base + internalHref(file) : '';
   const canonicalTag = pageUrl ? `<link rel="canonical" href="${pageUrl}">` : '';
   const ogUrlTag = pageUrl ? `<meta property="og:url" content="${pageUrl}">` : '';
   const robotsTag = noindex ? '<meta name="robots" content="noindex, nofollow">' : '';

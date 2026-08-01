@@ -1,10 +1,10 @@
 const { icon, stampMark } = require('./icons');
-const { esc } = require('./escape');
+const { esc, internalHref } = require('./escape');
 
 function button(label, href, variant = 'primary', extra = '') {
   // label may legitimately contain code-built markup (e.g. an icon), so it is
   // NOT escaped here. href comes from code, not the CMS.
-  return `<a class="btn btn-${variant}" href="${href}" ${extra}>${label}</a>`;
+  return `<a class="btn btn-${variant}" href="${internalHref(href)}" ${extra}>${label}</a>`;
 }
 
 function eyebrow(text) {
@@ -77,7 +77,7 @@ function packageCard(pkg, i) {
     <p class="package-audience">${esc(pkg.audience)}</p>
     <p class="package-price">Quote after review</p>
     ${bulletList(pkg.items, 'stamp-list stamp-list--pkg')}
-    <a class="btn btn-outline btn-block" href="contact.html">Enquire About This Package</a>
+    <a class="btn btn-outline btn-block" href="${internalHref('contact.html')}">Enquire About This Package</a>
   </article>`;
 }
 

@@ -4,7 +4,8 @@
   "private": true,
   "description": "Static website for Maven Consultancy Services Pvt. Ltd. Content lives in content/site.yaml; run 'npm run build' to regenerate the HTML pages in dist/.",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22.0.0"

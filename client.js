@@ -327,30 +327,10 @@
   var TAX_TABLES = {};
   (_calc.taxTables || []).forEach(function (t) { TAX_TABLES[t.key] = t; });
 
-  function computeSlabs(bands, income, isSSF) {
-    var remaining = income;
-    var lower = 0;
-    var rows = [];
-    var total = 0;
-    for (var i = 0; i < bands.length && remaining > 0; i++) {
-      var b = bands[i];
-      var slabAmt = b.width === null ? remaining : Math.min(remaining, b.width);
-      var rate = (b.sst && isSSF) ? 0 : b.rate;
-      var tax = (slabAmt * rate) / 100;
-      var upper = b.width === null ? lower + slabAmt : lower + b.width;
-      rows.push({
-        label: b.width === null
-          ? 'Above ' + lower.toLocaleString('en-IN')
-          : lower.toLocaleString('en-IN') + ' – ' + upper.toLocaleString('en-IN'),
-        rate: rate + '%' + (b.sst && isSSF ? '*' : ''),
-        tax: tax,
-      });
-      total += tax;
-      remaining -= slabAmt;
-      lower = upper;
-    }
-    return { rows: rows, total: total };
-  }
+  // Defined in tax-calc.js, inlined into the page just before this script
+  // (see build.js) so it's a plain global here — also unit-tested directly
+  // as a Node module in test/tax-calc.test.js.
+  var computeSlabs = TaxCalc.computeSlabs;
 
   var taxPanel = document.getElementById('calc-tab-tax');
   if (taxPanel) {

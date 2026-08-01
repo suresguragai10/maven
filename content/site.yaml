@@ -641,6 +641,9 @@ calculators:
     - label: Rent — paid to company/entity (10%)
       rate: 10
       note: Rent — land/building paid to a company/entity
+    - label: Rent — paid to individual landlord (0%)
+      rate: 0
+      note: Not subject to income-tax TDS — rent to an individual landlord is generally exempt (local rent tax may still apply separately)
     - label: Service/contract — VAT-registered (1.5%)
       rate: 1.5
       note: Service/contract — VAT-registered supplier

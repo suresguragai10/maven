@@ -1,5 +1,5 @@
 const data = require('./data');
-const { esc } = require('./escape');
+const { esc, internalHref } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
@@ -89,7 +89,7 @@ function homePackageCard(pkg) {
     <ul class="stamp-list stamp-list--pkg">
       ${pkg.items.slice(0, 3).map((i) => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}
     </ul>
-    <a class="btn btn-outline btn-block" href="packages.html">See Full Package</a>
+    <a class="btn btn-outline btn-block" href="${internalHref('packages.html')}">See Full Package</a>
   </article>`;
 }
 

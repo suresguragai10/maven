@@ -3,7 +3,7 @@ const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, serviceCard, packageCard, ctaBand, bulletList, accordionItem,
 } = require('./ui');
-const { esc } = require('./escape');
+const { esc, internalHref } = require('./escape');
 
 function services() {
   const h = data.pageHeader('services');
@@ -47,7 +47,7 @@ function outsourcedAccounting() {
       <div class="reveal">
         ${sectionHead({ eyebrow: 'Why Outsource', title: 'Support that scales with your business', align: 'left' })}
         <p>${esc(data.outsourced.paragraph)}</p>
-        <p style="margin-top:16px">This support is available through our <a href="packages.html" style="color:var(--gold-700);font-weight:700">Monthly Compliance and Business Growth packages</a>, scoped to your transaction volume and reporting needs.</p>
+        <p style="margin-top:16px">This support is available through our <a href="${internalHref('packages.html')}" style="color:var(--gold-700);font-weight:700">Monthly Compliance and Business Growth packages</a>, scoped to your transaction volume and reporting needs.</p>
         <div style="margin-top:24px">${button(esc(data.outsourced.cta), 'contact.html', 'primary')}</div>
       </div>
       <div class="reveal">

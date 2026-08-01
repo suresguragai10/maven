@@ -26,4 +26,22 @@ function escArr(arr) {
   return (Array.isArray(arr) ? arr : []).map(esc);
 }
 
-module.exports = { esc, escArr };
+// ============================================================
+// internalHref() — Cloudflare Workers' static-asset serving redirects any
+// *.html request to its extensionless equivalent by default (e.g.
+// /calculators.html -> 307 -> /calculators). That means every internal link
+// built as "foo.html" costs a redirect round-trip. This converts an internal
+// *.html path (optionally with a #fragment) to the extensionless absolute
+// path Cloudflare actually serves, so links go straight there. Anything that
+// isn't an internal *.html path (mailto:, tel:, http(s)://, wa.me, a bare
+// #fragment) is returned unchanged.
+// ============================================================
+function internalHref(href) {
+  if (!href || /^(https?:|mailto:|tel:|#)/i.test(href)) return href;
+  const [path, hash] = href.split('#');
+  if (!path.endsWith('.html')) return href;
+  const base = path === 'index.html' ? '' : path.slice(0, -'.html'.length);
+  return '/' + base + (hash ? '#' + hash : '');
+}
+
+module.exports = { esc, escArr, internalHref };

@@ -585,7 +585,7 @@
         card.appendChild(textField('Name', function () { return m.name; }, function (v) { m.name = v; }));
         card.appendChild(textField('Role / Position', function () { return m.role; }, function (v) { m.role = v; }));
         card.appendChild(textField('Location', function () { return m.location; }, function (v) { m.location = v; }));
-        card.appendChild(textField('Photo URL (optional — upload the image to the repo\'s /images/ folder first, then paste its URL here)', function () { return m.photo; }, function (v) { m.photo = v; }));
+        card.appendChild(textField('Photo URL (optional)', function () { return m.photo; }, function (v) { m.photo = v; }, { hint: 'Prefer uploading the image to the repo\'s /images/ folder and pasting that URL here, rather than linking to an external site — every visitor to the Team page loads this URL directly, so an untrusted external host could see visitor traffic.' }));
         card.appendChild(textField('Short Bio', function () { return m.bio; }, function (v) { m.bio = v; }, { multiline: true, rows: 3 }));
         wrap.appendChild(card);
       });

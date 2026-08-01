@@ -1,5 +1,5 @@
 const data = require('./data');
-const { esc } = require('./escape');
+const { esc, internalHref } = require('./escape');
 const { icon } = require('./icons');
 const { button, sectionHead, pageHero, ctaBand } = require('./ui');
 
@@ -46,7 +46,7 @@ function blogIndex(posts) {
           <p class="tag-note" style="margin-bottom:6px">${esc(p.dateDisplay)}</p>
           <h3 style="margin-bottom:10px">${esc(p.title)}</h3>
           <p class="service-tagline" style="flex:1">${esc(p.excerpt)}</p>
-          <a class="btn btn-outline" href="${p.file}">Read More ${icon('arrowRight')}</a>
+          <a class="btn btn-outline" href="${internalHref(p.file)}">Read More ${icon('arrowRight')}</a>
         </article>`).join('')}
       </div>`
     : `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">No posts published yet — check back soon.</div>`;
@@ -71,7 +71,7 @@ function blogPost(post) {
     <div class="container" style="max-width:720px">
       <div class="reveal" style="font-size:1.02rem;line-height:1.75;color:var(--ink)">${post.contentHtml}</div>
       <div class="divider"></div>
-      <a class="btn btn-outline" href="blog.html">${icon('arrowRight')} Back to Blog</a>
+      <a class="btn btn-outline" href="${internalHref('blog.html')}">${icon('arrowRight')} Back to Blog</a>
     </div>
   </section>
   ${ctaBand({

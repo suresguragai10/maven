@@ -1,6 +1,7 @@
 const data = require('./data');
 const { icon } = require('./icons');
 const { button, pageHero, ctaBand } = require('./ui');
+const { esc, internalHref } = require('./escape');
 
 // Calculator-specific styles kept here so only this page carries them.
 const calcStyles = `<style>
@@ -67,11 +68,6 @@ const calcStyles = `<style>
 .emi-sched-table tfoot td{font-weight:700;background:#fff;border-top:2px solid var(--border);color:var(--navy-900);}
 </style>`;
 
-function esc(s) {
-  return (s == null ? '' : String(s))
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 function incomeTaxPanel() {
   const calc = data.calculators || {};
   const tables = calc.taxTables || [];
@@ -121,13 +117,14 @@ function incomeTaxPanel() {
         </div>
 
         <p class="calc-sec-label">Deductions</p>
-        <label class="calc-check"><input id="tax-ssf" type="checkbox"> SSF contributor
-          <span style="font-weight:400;color:var(--ink-soft);font-size:.82rem;display:block">Waives the 1% social security tax on the first slab</span>
+        <span class="calc-hint" style="margin:-4px 0 12px">Caps below are the same across all fiscal years shown here (per the Finance Act in effect when last confirmed) — they may change in a future Finance Act, so double-check before relying on them for filing.</span>
+        <label class="calc-check"><input id="tax-ssf" type="checkbox"> I contribute to SSF (Social Security Fund)
+          <span style="font-weight:400;color:var(--ink-soft);font-size:.82rem;display:block">Waives only the 1% Social Security Tax on the first income slab below. This is separate from the retirement contribution deduction field further down — fill in both if they apply to you.</span>
         </label>
         <div class="form-field" style="margin-top:12px">
-          <label for="tax-retirement">SSF / EPF / CIT — Annual (NPR)</label>
+          <label for="tax-retirement">Retirement Contribution — SSF / EPF / CIT, Annual (NPR)</label>
           <input id="tax-retirement" type="number" min="0" inputmode="numeric" value="0">
-          <span class="calc-hint" style="margin-top:5px">Combined cap: NPR ${capRetirement} or 1/3 of income, whichever is lower.</span>
+          <span class="calc-hint" style="margin-top:5px">A separate deduction from the 1% SST waiver above. Combined cap: NPR ${capRetirement} or 1/3 of income, whichever is lower.</span>
         </div>
         <div class="form-field">
           <label for="tax-life">Life Insurance Premium — Annual (NPR)</label>
@@ -160,7 +157,7 @@ function incomeTaxPanel() {
         </table>
 
         <p class="calc-out-note" id="tax-out-disclaimer"></p>
-        <a class="btn btn-primary" href="contact.html">Need help with tax filing?</a>
+        <a class="btn btn-primary" href="${internalHref('contact.html')}">Need help with tax filing?</a>
       </div>
     </div>
   </div>`;
@@ -225,7 +222,7 @@ function tdsPanel() {
         <div class="calc-result-row"><span>TDS to deduct &amp; deposit</span><strong id="tds-tax">NPR 0</strong></div>
         <div class="calc-result-row total"><span>Net payable to recipient</span><strong id="tds-net">NPR 0</strong></div>
       </div>
-      <p class="calc-note">${tdsNote} <a href="contact.html">Confirm the right treatment with Maven</a> before deducting.</p>
+      <p class="calc-note">${tdsNote} <a href="${internalHref('contact.html')}">Confirm the right treatment with Maven</a> before deducting.</p>
     </div>
   </div>`;
 }
@@ -278,7 +275,7 @@ function emiPanel() {
         </div>
       </div>
 
-      <p class="calc-note">Indicative only — actual EMI may differ based on your bank's method, fees, and rate changes. Preparing a bank loan file? <a href="contact.html">We prepare project reports and projected financials</a> for loan applications.</p>
+      <p class="calc-note">Indicative only — actual EMI may differ based on your bank's method, fees, and rate changes. Preparing a bank loan file? <a href="${internalHref('contact.html')}">We prepare project reports and projected financials</a> for loan applications.</p>
     </div>
   </div>`;
 }

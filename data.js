@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
+const { internalHref } = require('./escape');
 
 const raw = fs.readFileSync(path.join(__dirname, 'content', 'site.yaml'), 'utf8');
 const content = yaml.load(raw);
@@ -72,16 +73,17 @@ function labelFor(key, fallback) {
 function buildNav() {
   const out = [];
   navStructure.forEach((item) => {
+    const itemHref = internalHref(item.href);
     if (item.children) {
       const kids = item.children.filter((c) => isVisible(c.key)).map((c) => ({
-        key: c.key, href: c.href, label: labelFor(c.key, c.label),
+        key: c.key, href: internalHref(c.href), label: labelFor(c.key, c.label),
       }));
       if (kids.length === 0) return;
-      const parentHref = kids.some((k) => k.href === item.href) ? item.href : kids[0].href;
+      const parentHref = kids.some((k) => k.href === itemHref) ? itemHref : kids[0].href;
       out.push({ key: item.key, label: item.label, href: parentHref, children: kids });
     } else {
       if (!isVisible(item.key)) return;
-      out.push({ key: item.key, href: item.href, label: labelFor(item.key, item.label) });
+      out.push({ key: item.key, href: itemHref, label: labelFor(item.key, item.label) });
     }
   });
   return out;
@@ -97,7 +99,7 @@ const footerQuickLinks = footerQuickOrder
   .filter((key) => isVisible(key))
   .map((key) => {
     const p = pageByKey[key] || {};
-    return { key, href: p.href || (key + '.html'), label: p.label || key };
+    return { key, href: internalHref(p.href || (key + '.html')), label: p.label || key };
   });
 
 const pageHeaders = content.pageHeaders || {};

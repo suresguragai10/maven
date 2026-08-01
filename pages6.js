@@ -1,6 +1,7 @@
 const data = require('./data');
 const { icon, stampMark } = require('./icons');
 const { button, sectionHead, pageHero, ctaBand } = require('./ui');
+const { esc } = require('./escape');
 
 // Build initials (max 2) from a name for the avatar placeholder.
 function initials(name) {
@@ -10,22 +11,16 @@ function initials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function escapeHtml(s) {
-  return (s == null ? '' : String(s))
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 function teamCard(m) {
-  const loc = m.location ? `<p class="team-card-loc">${icon('mapPin')}<span>${escapeHtml(m.location)}</span></p>` : '';
-  const bio = m.bio ? `<p class="team-card-bio">${escapeHtml(m.bio)}</p>` : '';
+  const loc = m.location ? `<p class="team-card-loc">${icon('mapPin')}<span>${esc(m.location)}</span></p>` : '';
+  const bio = m.bio ? `<p class="team-card-bio">${esc(m.bio)}</p>` : '';
   const avatar = m.photo
-    ? `<div class="team-card-avatar"><img src="${escapeHtml(m.photo)}" alt="${escapeHtml(m.name)}" loading="lazy"></div>`
+    ? `<div class="team-card-avatar"><img src="${esc(m.photo)}" alt="${esc(m.name)}" loading="lazy"></div>`
     : `<div class="team-card-avatar" aria-hidden="true">${initials(m.name)}</div>`;
   return `<article class="team-card reveal">
     ${avatar}
-    <h3 class="team-card-name">${escapeHtml(m.name)}</h3>
-    ${m.role ? `<p class="team-card-role">${escapeHtml(m.role)}</p>` : ''}
+    <h3 class="team-card-name">${esc(m.name)}</h3>
+    ${m.role ? `<p class="team-card-role">${esc(m.role)}</p>` : ''}
     ${loc}
     ${bio}
   </article>`;
@@ -55,7 +50,7 @@ function team() {
 }
 
 function testimonialCard(t) {
-  const meta = [t.name, t.role, t.business].filter(Boolean).map(escapeHtml);
+  const meta = [t.name, t.role, t.business].filter(Boolean).map(esc);
   const who = meta.length
     ? `<figcaption class="testimonial-who">
         <span class="testimonial-name">${meta[0] || ''}</span>
@@ -64,7 +59,7 @@ function testimonialCard(t) {
     : '';
   return `<figure class="testimonial-card reveal">
     <span class="testimonial-quote-mark" aria-hidden="true">&ldquo;</span>
-    <blockquote class="testimonial-text">${escapeHtml(t.quote)}</blockquote>
+    <blockquote class="testimonial-text">${esc(t.quote)}</blockquote>
     ${who}
   </figure>`;
 }
@@ -95,12 +90,12 @@ function testimonials() {
 function privacy() {
   const h = data.pageHeader('privacy');
   const intro = data.privacyIntro
-    ? `<p class="privacy-intro">${escapeHtml(data.privacyIntro)}</p>`
+    ? `<p class="privacy-intro">${esc(data.privacyIntro)}</p>`
     : '';
   const sections = (data.privacySections || []).map((s) => `
     <div class="privacy-section reveal">
-      <h2>${escapeHtml(s.title)}</h2>
-      <p>${escapeHtml(s.text)}</p>
+      <h2>${esc(s.title)}</h2>
+      <p>${esc(s.text)}</p>
     </div>`).join('');
 
   return `

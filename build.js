@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const data = require('./data');
+const { internalHref } = require('./escape');
 const { renderPage } = require('./layout');
 const { home, about } = require('./pages1');
 const { services, outsourcedAccounting, globalOutsourcing, packages } = require('./pages2');
@@ -12,7 +13,10 @@ const { team, testimonials, privacy, notFound } = require('./pages6');
 const { loadPosts } = require('./blog');
 
 const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
-const clientJs = fs.readFileSync(path.join(__dirname, 'client.js'), 'utf8');
+// tax-calc.js is inlined first so its TaxCalc global exists before client.js
+// (which reads TaxCalc.computeSlabs) runs — see tax-calc.js's header comment.
+const taxCalcJs = fs.readFileSync(path.join(__dirname, 'tax-calc.js'), 'utf8');
+const clientJs = taxCalcJs + '\n' + fs.readFileSync(path.join(__dirname, 'client.js'), 'utf8');
 
 const outDirs = [path.join(__dirname, 'dist')];
 outDirs.forEach((d) => fs.mkdirSync(d, { recursive: true }));
@@ -188,7 +192,9 @@ console.log('Wrote robots.txt');
 // --- sitemap.xml (only when a site URL is configured) -----------------------
 if (siteUrl) {
   const urls = generatedFiles.map(({ file, lastmod }) => {
-    const loc = file === 'index.html' ? `${siteUrl}/` : `${siteUrl}/${file}`;
+    // Extensionless — matches what Cloudflare actually serves (it redirects
+    // *.html -> extensionless by default), same reasoning as canonical URLs.
+    const loc = `${siteUrl}${internalHref(file)}`;
     return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod></url>`;
   }).join('\n');
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
