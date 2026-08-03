@@ -2,11 +2,6 @@ const { icon } = require('./icons');
 const data = require('./data');
 const { esc, internalHref } = require('./escape');
 
-function faviconDataUri() {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="13" fill="#102A4C"/><text x="32" y="43" font-family="Georgia,serif" font-size="30" font-weight="700" fill="#C79A3E" text-anchor="middle">M</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
 function renderDesktopNav(activeKey) {
   const items = data.nav.map((item) => {
     const isActive = item.key === activeKey || (item.children && item.children.some((c) => c.key === activeKey));
@@ -59,7 +54,7 @@ function renderHeader(activeKey) {
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="${internalHref('index.html')}">
-        <span class="brand-mark">M</span>
+        <img class="brand-mark" src="/images/logo-icon.png" alt="" width="40" height="40">
         <span class="brand-text">
           <span class="brand-name">${data.brand.shortName}</span>
           <span class="brand-sub">Accounting · Tax · Compliance</span>
@@ -95,7 +90,7 @@ function renderFooter() {
     <div class="container footer-grid">
       <div class="footer-brand">
         <div class="brand">
-          <span class="brand-mark">M</span>
+          <img class="brand-mark" src="/images/logo-icon.png" alt="" width="40" height="40">
           <span class="brand-text"><span class="brand-name" style="color:#fff">${esc(b.shortName)}</span></span>
         </div>
         <p>${esc(b.legalName)}. A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
@@ -229,7 +224,7 @@ function renderPage({ activeKey, file, title, description, bodyHtml, css, client
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <meta name="theme-color" content="#102A4C">
-<link rel="icon" type="image/svg+xml" href="${faviconDataUri()}">
+<link rel="icon" type="image/png" href="/images/logo-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
