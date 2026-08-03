@@ -5,6 +5,10 @@ const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
 } = require('./ui');
 
+// Decorative Kathmandu skyline: generic building silhouettes plus three
+// recognizable landmarks. At 90px tall and 22% opacity (see .hero-skyline in
+// styles.css), fine detail wouldn't read at all — so each landmark is told
+// apart by overall silhouette shape, not iconographic detail.
 function heroSkyline() {
   const heights = [46, 68, 40, 78, 52, 60, 38, 70, 48, 66, 42, 58, 50, 74, 44, 62, 36, 56, 48, 40];
   let x = 0;
@@ -14,20 +18,70 @@ function heroSkyline() {
     x += w + 9;
     return rect;
   }).join('');
-  const pagoda = `<g transform="translate(420,0)">
-    <path d="M0 140 L0 100 L34 100 L34 140 Z" fill="currentColor"/>
-    <path d="M-10 100 L44 100 L34 86 L0 86 Z" fill="currentColor"/>
-    <path d="M-4 86 L38 86 L30 74 L4 74 Z" fill="currentColor"/>
-    <rect x="13" y="50" width="8" height="24" fill="currentColor"/>
-    <path d="M17 34 L23 50 L11 50 Z" fill="currentColor"/>
+  // Pashupatinath — a tiered pagoda tower with flared, overhanging eaves.
+  const pashupatinath = `<g transform="translate(150,0)">
+    <rect x="10" y="100" width="30" height="40" fill="currentColor"/>
+    <path d="M-6 100 L46 100 L36 84 L4 84 Z" fill="currentColor"/>
+    <rect x="14" y="60" width="22" height="24" fill="currentColor"/>
+    <path d="M0 60 L50 60 L38 44 L12 44 Z" fill="currentColor"/>
+    <rect x="20" y="30" width="10" height="14" fill="currentColor"/>
+    <path d="M25 14 L31 30 L19 30 Z" fill="currentColor"/>
   </g>`;
-  const stupa = `<g transform="translate(830,0)">
-    <circle cx="26" cy="120" r="24" fill="currentColor"/>
-    <rect x="18" y="72" width="16" height="28" fill="currentColor"/>
-    <path d="M18 72 L34 72 L26 42 Z" fill="currentColor"/>
-    <circle cx="26" cy="38" r="4" fill="currentColor"/>
+  // Boudhanath — a large stupa dome, the biggest landmark in the skyline.
+  const boudhanath = `<g transform="translate(560,0)">
+    <path d="M-8 140 L60 140 L48 116 L4 116 Z" fill="currentColor"/>
+    <circle cx="26" cy="86" r="30" fill="currentColor"/>
+    <rect x="12" y="54" width="28" height="22" fill="currentColor"/>
+    <path d="M12 54 L40 54 L26 12 Z" fill="currentColor"/>
+    <circle cx="26" cy="8" r="5" fill="currentColor"/>
   </g>`;
-  return `<svg class="hero-skyline" viewBox="0 0 1200 140" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${buildings}${pagoda}${stupa}</svg>`;
+  // Swayambhunath — a smaller stupa on a hill mound (its defining feature).
+  const swayambhunath = `<g transform="translate(1000,0)">
+    <path d="M-20 140 L72 140 L52 96 L0 96 Z" fill="currentColor"/>
+    <rect x="16" y="76" width="18" height="20" fill="currentColor"/>
+    <path d="M4 76 L46 76 L36 62 L14 62 Z" fill="currentColor"/>
+    <rect x="21" y="44" width="8" height="18" fill="currentColor"/>
+    <path d="M25 30 L30 44 L20 44 Z" fill="currentColor"/>
+  </g>`;
+  return `<svg class="hero-skyline" viewBox="0 0 1200 140" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${buildings}${pashupatinath}${boudhanath}${swayambhunath}</svg>`;
+}
+
+// Decorative international skyline for the Global Outsourcing section —
+// same treatment as heroSkyline(), but Statue of Liberty + Tower Bridge in
+// place of the Kathmandu landmarks, signalling the international client base.
+function globalSkyline() {
+  // 18 entries (not 12) so the buildings actually span the full 1200-unit
+  // viewBox width — too few left a visible empty gap on the right side.
+  const heights = [50, 70, 42, 60, 46, 66, 38, 56, 44, 62, 48, 40, 54, 68, 44, 58, 50, 42];
+  let x = 0;
+  const buildings = heights.map((h, i) => {
+    const w = 58 + (i % 3) * 8;
+    const rect = `<rect x="${x}" y="${140 - h}" width="${w}" height="${h}" fill="currentColor"/>`;
+    x += w + 10;
+    return rect;
+  }).join('');
+  // Statue of Liberty — pedestal, robed figure, crown, raised torch arm.
+  const statueOfLiberty = `<g transform="translate(280,0)">
+    <rect x="0" y="112" width="46" height="28" fill="currentColor"/>
+    <rect x="6" y="104" width="34" height="10" fill="currentColor"/>
+    <path d="M10 104 L36 104 L30 50 L16 50 Z" fill="currentColor"/>
+    <circle cx="23" cy="44" r="7" fill="currentColor"/>
+    <path d="M14 40 L18 30 L23 38 L28 30 L32 40 Z" fill="currentColor"/>
+    <path d="M32 55 L48 34 L52 34 L38 58 Z" fill="currentColor"/>
+    <circle cx="50" cy="27" r="6" fill="currentColor"/>
+    <path d="M44 23 L50 8 L56 23 Z" fill="currentColor"/>
+  </g>`;
+  // Tower Bridge — twin towers, upper walkway, suspension cables to the deck.
+  const towerBridge = `<g transform="translate(760,0)">
+    <rect x="0" y="120" width="140" height="8" fill="currentColor"/>
+    <rect x="10" y="60" width="22" height="60" fill="currentColor"/>
+    <path d="M8 60 L21 40 L34 60 Z" fill="currentColor"/>
+    <rect x="108" y="60" width="22" height="60" fill="currentColor"/>
+    <path d="M106 60 L119 40 L132 60 Z" fill="currentColor"/>
+    <rect x="32" y="70" width="76" height="8" fill="currentColor"/>
+    <path d="M32 78 L0 120 M108 78 L140 120" stroke="currentColor" stroke-width="3" fill="none"/>
+  </g>`;
+  return `<svg class="hero-skyline" viewBox="0 0 1200 140" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${buildings}${statueOfLiberty}${towerBridge}</svg>`;
 }
 
 function docCardArt() {
@@ -136,7 +190,7 @@ function home() {
     </div>
   </section>
 
-  <section class="section-pad bg-navy">
+  <section class="section-pad bg-navy skyline-section">
     <div class="container two-col">
       <div class="reveal">
         <p class="eyebrow eyebrow--on-dark">Global Outsourcing</p>
@@ -148,6 +202,7 @@ function home() {
         ${data.globalOutsourcing.benefits.slice(0, 6).map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b)}</span></li>`).join('')}
       </ul>
     </div>
+    ${globalSkyline()}
   </section>
 
   <section class="section-pad">

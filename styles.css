@@ -215,6 +215,12 @@ body.nav-open { overflow: hidden; }
 .hero-skyline { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; opacity: 0.22; z-index: 1; }
 .hero-art { position: relative; }
 
+/* Reused by any other bg-navy section that gets the same decorative-skyline
+   treatment as the hero (e.g. the homepage's Global Outsourcing section) —
+   keeps the section's real content above the absolutely-positioned SVG. */
+.skyline-section { position: relative; overflow: hidden; }
+.skyline-section > .container { position: relative; z-index: 2; }
+
 .trust-bar { display: flex; flex-wrap: wrap; gap: 14px 26px; padding: 22px 0 0; border-top: 1px solid rgba(255,255,255,0.14); margin-top: 42px; }
 .trust-item { display: flex; align-items: center; gap: 9px; font-size: 0.92rem; color: rgba(255,255,255,0.82); font-weight: 500; }
 .ic-trust { width: 17px; height: 17px; color: var(--gold-500); flex-shrink: 0; }
