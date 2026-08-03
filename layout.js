@@ -189,15 +189,7 @@ function analyticsScript() {
   return `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token })}'></script>`;
 }
 
-function renderPage({ activeKey, file, title, description, bodyHtml, css, clientJs, extraHead = '', noindex = false }) {
-  const cfgScript = `<script>window.MAVEN=${JSON.stringify({
-    email: data.brand.email,
-    whatsapp: data.brand.whatsappDigits,
-    brandName: data.brand.shortName,
-    formspree: data.brand.formspreeId || '',
-    calc: data.calculators,
-  })};</script>`;
-
+function renderPage({ activeKey, file, title, description, bodyHtml, cssFile, jsFile, extraHead = '', noindex = false }) {
   const base = siteBase();
   // Canonicalises to the extensionless path Cloudflare actually serves (it
   // redirects *.html -> extensionless by default) — index.html -> "/",
@@ -238,7 +230,7 @@ ${ogUrlTag}${ogImageTags}
 <meta name="twitter:card" content="${ogImageUrl ? 'summary_large_image' : 'summary'}">
 ${jsonLd()}
 ${extraHead}
-<style>${css}</style>
+<link rel="stylesheet" href="/${cssFile}">
 ${analyticsScript()}
 </head>
 <body>
@@ -248,8 +240,7 @@ ${renderHeader(activeKey)}
 ${bodyHtml}
 </main>
 ${renderFooter()}
-${cfgScript}
-<script>${clientJs}</script>
+<script src="/${jsFile}" defer></script>
 </body>
 </html>`;
 }

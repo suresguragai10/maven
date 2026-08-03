@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const data = require('./data');
 const { internalHref } = require('./escape');
@@ -12,14 +13,50 @@ const { calculators } = require('./pages5');
 const { team, testimonials, privacy, notFound } = require('./pages6');
 const { loadPosts } = require('./blog');
 
-const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
-// tax-calc.js is inlined first so its TaxCalc global exists before client.js
-// (which reads TaxCalc.computeSlabs) runs — see tax-calc.js's header comment.
-const taxCalcJs = fs.readFileSync(path.join(__dirname, 'tax-calc.js'), 'utf8');
-const clientJs = taxCalcJs + '\n' + fs.readFileSync(path.join(__dirname, 'client.js'), 'utf8');
-
 const outDirs = [path.join(__dirname, 'dist')];
 outDirs.forEach((d) => fs.mkdirSync(d, { recursive: true }));
+
+// --- Shared CSS/JS: written once as content-hashed static files, linked from
+// every page instead of inlined. Inlining meant every single page re-shipped
+// the same ~58KB of CSS+JS with zero browser caching across navigation; a
+// hashed filename lets these be cached forever (see _headers below) while
+// still auto-busting whenever the content actually changes.
+function contentHash(content) {
+  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 10);
+}
+
+// Written under assets/ (not the dist root) so _headers can cache-bust-proof
+// them with one simple "/assets/*" wildcard rule instead of a fragile
+// mid-filename glob.
+const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
+const cssFile = `assets/styles.${contentHash(css)}.css`;
+
+// window.MAVEN config is identical on every page (built from data.brand /
+// data.calculators, not page-specific), so it's prepended into the shared
+// bundle once here instead of as a per-page inline <script> — that also
+// means script-src no longer needs 'unsafe-inline' in the CSP (see below).
+const cfgJs = `window.MAVEN=${JSON.stringify({
+  email: data.brand.email,
+  whatsapp: data.brand.whatsappDigits,
+  brandName: data.brand.shortName,
+  formspree: data.brand.formspreeId || '',
+  calc: data.calculators,
+})};`;
+// tax-calc.js and calc-utils.js come first so their globals (TaxCalc,
+// CalcUtils) exist before client.js runs — see each file's header comment.
+// Both are also unit-tested directly as Node modules (test/).
+const taxCalcJs = fs.readFileSync(path.join(__dirname, 'tax-calc.js'), 'utf8');
+const calcUtilsJs = fs.readFileSync(path.join(__dirname, 'calc-utils.js'), 'utf8');
+const clientJs = [cfgJs, taxCalcJs, calcUtilsJs, fs.readFileSync(path.join(__dirname, 'client.js'), 'utf8')].join('\n');
+const jsFile = `assets/client.${contentHash(clientJs)}.js`;
+
+outDirs.forEach((d) => {
+  fs.mkdirSync(path.join(d, 'assets'), { recursive: true });
+  fs.writeFileSync(path.join(d, cssFile), css, 'utf8');
+  fs.writeFileSync(path.join(d, jsFile), clientJs, 'utf8');
+});
+console.log('Wrote', cssFile, `(${(css.length / 1024).toFixed(1)} KB)`);
+console.log('Wrote', jsFile, `(${(clientJs.length / 1024).toFixed(1)} KB)`);
 
 function faqJsonLd() {
   const obj = {
@@ -158,8 +195,8 @@ for (const p of pages) {
     title: seoTitle,
     description: seoDesc,
     bodyHtml: p.bodyHtml,
-    css,
-    clientJs,
+    cssFile,
+    jsFile,
     extraHead: p.extraHead || '',
     noindex,
   });
@@ -176,7 +213,7 @@ const notFoundHtml = renderPage({
   activeKey: '', file: '404.html',
   title: 'Page Not Found | Maven Consultancy',
   description: 'The page you were looking for could not be found.',
-  bodyHtml: notFound(), css, clientJs, noindex: true,
+  bodyHtml: notFound(), cssFile, jsFile, noindex: true,
 });
 outDirs.forEach((d) => fs.writeFileSync(path.join(d, '404.html'), notFoundHtml, 'utf8'));
 console.log('Wrote 404.html [noindex]');
@@ -206,15 +243,18 @@ if (siteUrl) {
 
 // --- _headers ----------------------------------------------------------------
 // Cloudflare Workers static assets reads this file the same way Cloudflare
-// Pages does. CSP is scoped to what this site actually loads: inline CSS/JS
-// (fully inlined per page, no nonce infra — hence 'unsafe-inline'), Google
-// Fonts, the Google Maps embed on the Contact page, Formspree form submission,
-// and admin-entered team-photo URLs (which can point anywhere over https).
+// Pages does. CSP is scoped to what this site actually loads: Google Fonts,
+// the Google Maps embed on the Contact page, Formspree form submission, and
+// admin-entered team-photo URLs (which can point anywhere over https).
 // Cloudflare Web Analytics is enabled (manual snippet, see layout.js head) —
 // static.cloudflareinsights.com is allow-listed below for its script + beacon.
+// script-src has no 'unsafe-inline': CSS/JS are external files (cssFile/
+// jsFile) now, not inlined, so no inline <script> exists to require it.
+// style-src still needs 'unsafe-inline' — the codebase uses inline style="..."
+// attributes throughout, which is a separate, much larger cleanup.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  "script-src 'self' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https:",
@@ -231,6 +271,12 @@ const headers = `/*
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
   Content-Security-Policy: ${csp}
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/*
+  Cache-Control: public, max-age=604800
 `;
 outDirs.forEach((d) => fs.writeFileSync(path.join(d, '_headers'), headers, 'utf8'));
 console.log('Wrote _headers');

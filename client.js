@@ -424,15 +424,10 @@
     var VAT_RATE = (_calc.vatRate != null ? _calc.vatRate : 13) / 100;
     var recalcVat = function () {
       var amt = num('vat-amount');
-      var base, vat, total;
-      if (vatMode === 'add') {
-        base = amt; vat = amt * VAT_RATE; total = amt + vat;
-      } else {
-        total = amt; base = amt / (1 + VAT_RATE); vat = total - base;
-      }
-      setText('vat-base', fmtNPR(base));
-      setText('vat-tax', fmtNPR(vat));
-      setText('vat-total', fmtNPR(total));
+      var result = CalcUtils.computeVat(amt, VAT_RATE, vatMode);
+      setText('vat-base', fmtNPR(result.base));
+      setText('vat-tax', fmtNPR(result.vat));
+      setText('vat-total', fmtNPR(result.total));
     };
     wireSeg('vat-mode-seg', 'data-mode', function (v) { vatMode = v; recalcVat(); });
     liveInputs(['vat-amount'], recalcVat);
@@ -469,35 +464,9 @@
     };
 
     // Build the full month-by-month amortization schedule from the loan inputs.
-    var buildSchedule = function (P, annual, n) {
-      var r = annual / 12 / 100;
-      var emi;
-      if (annual === 0) {
-        emi = P / n;
-      } else {
-        var pow = Math.pow(1 + r, n);
-        emi = (P * r * pow) / (pow - 1);
-      }
-      var rows = [];
-      var balance = P;
-      for (var m = 1; m <= n; m++) {
-        var interest = balance * r;
-        var principal = emi - interest;
-        var opening = balance;
-        balance = balance - principal;
-        // Absorb tiny rounding drift on the final row so the loan closes at exactly zero.
-        if (m === n) { principal += balance; balance = 0; }
-        rows.push({
-          month: m,
-          opening: opening,
-          principal: principal,
-          interest: interest,
-          emi: emi,
-          closing: balance < 0 ? 0 : balance,
-        });
-      }
-      return { emi: emi, rows: rows };
-    };
+    // Defined in calc-utils.js (inlined just before this script — see build.js),
+    // also unit-tested as a Node module in test/calc-utils.test.js.
+    var buildSchedule = CalcUtils.buildSchedule;
 
     var renderScheduleTable = function (schedule) {
       var body = document.getElementById('emi-sched-body');

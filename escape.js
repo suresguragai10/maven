@@ -9,8 +9,7 @@
 // safely. Structural HTML/SVG that the code itself builds
 // (icons, buttons) is NOT escaped — only human-entered content.
 //
-// esc()      — escape a single value.
-// escArr()   — escape an array of values (returns a new array).
+// esc() — escape a single value.
 // ============================================================
 
 function esc(s) {
@@ -20,10 +19,6 @@ function esc(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-function escArr(arr) {
-  return (Array.isArray(arr) ? arr : []).map(esc);
 }
 
 // ============================================================
@@ -44,4 +39,4 @@ function internalHref(href) {
   return '/' + base + (hash ? '#' + hash : '');
 }
 
-module.exports = { esc, escArr, internalHref };
+module.exports = { esc, internalHref };
