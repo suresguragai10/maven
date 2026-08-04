@@ -32,7 +32,7 @@ function services() {
     eyebrow: 'Not Sure Where To Start?',
     title: 'Tell us about your business and we will recommend the right services',
     subtitle: 'Every engagement starts with a short, free conversation.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('Get a Customized Document Checklist', 'documents-needed.html', 'outline')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('Get a Customized Document Checklist', 'documents-needed.html', 'ghost-light')],
   })}
   `;
 }
@@ -168,7 +168,7 @@ function packages() {
     eyebrow: 'Get A Quote',
     title: 'Tell us about your business for a custom quotation',
     subtitle: 'No package fits perfectly? We can scope a custom mix of services.',
-    buttons: [button('Get a Customized Quote', 'contact.html', 'primary'), button('View All Services', 'services.html', 'outline')],
+    buttons: [button('Get a Customized Quote', 'contact.html', 'primary'), button('View All Services', 'services.html', 'ghost-light')],
   })}
   `;
 }

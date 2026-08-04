@@ -69,6 +69,17 @@ function industryBadge(ind) {
   </div>`;
 }
 
+// Richer version of industryBadge, for the dedicated Industries page only —
+// the homepage/About teasers stay as compact badges (no description) so this
+// doesn't reintroduce the crowding a fuller card would add there.
+function industryCard(ind) {
+  return `<article class="industry-card reveal">
+    <span class="industry-card-icon">${icon(ind.icon)}</span>
+    <h3>${esc(ind.name)}</h3>
+    ${ind.description ? `<p>${esc(ind.description)}</p>` : ''}
+  </article>`;
+}
+
 function packageCard(pkg, i) {
   const highlight = i === 1;
   return `<article class="package-card reveal${highlight ? ' package-card--highlight' : ''}">
@@ -125,5 +136,5 @@ function trustBar(points) {
 
 module.exports = {
   button, eyebrow, sectionHead, pageHero, bulletList, serviceCard, valueCard, whyCard,
-  industryBadge, packageCard, processStep, accordionItem, ctaBand, trustBar,
+  industryBadge, industryCard, packageCard, processStep, accordionItem, ctaBand, trustBar,
 };

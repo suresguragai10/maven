@@ -317,6 +317,14 @@ body.nav-open { overflow: hidden; }
 .industry-icon { width: 38px; height: 38px; border-radius: 8px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .industry-icon .ic { width: 20px; height: 20px; }
 
+/* Richer sibling of .industry-badge — icon + title + description, used only
+   on the dedicated Industries page (see ui.js industryCard()). */
+.industry-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
+.industry-card-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+.industry-card-icon .ic { width: 22px; height: 22px; }
+.industry-card h3 { font-size: 1.05rem; margin: 0 0 8px; }
+.industry-card p { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
+
 .package-card {
   background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;
   position: relative; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;

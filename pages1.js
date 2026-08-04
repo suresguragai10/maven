@@ -153,8 +153,8 @@ function home() {
     <div class="container hero-inner">
       <div class="reveal">
         <p class="eyebrow eyebrow--on-dark">Business Consultancy · Kathmandu, Nepal</p>
-        <h1>Reliable Accounting, Tax, Registration &amp; Compliance Support for Businesses in Nepal</h1>
-        <p class="hero-sub">Maven Consultancy Services Pvt. Ltd. helps startups, SMEs, traders, service companies, and growing businesses stay organized, compliant, and financially clear through practical consultancy and outsourced accounting support.</p>
+        <h1>Reliable Accounting, Tax, Compliance &amp; Financial Management Support for Businesses in Nepal</h1>
+        <p class="hero-sub">Maven Consultancy Services Pvt. Ltd. helps startups, SMEs, traders, service companies, and growing businesses maintain accurate records, manage cash flow, meet compliance requirements, and understand financial performance through practical consultancy and outsourced accounting support.</p>
         <div class="hero-actions">
           ${button('Book Free Consultation', 'contact.html', 'primary')}
           ${button('View Services', 'services.html', 'ghost-light')}
@@ -316,7 +316,7 @@ function about() {
     eyebrow: 'Talk To Maven',
     title: 'Have a question about how we can help your business?',
     subtitle: 'Book a free initial consultation — no obligation, just clear next steps.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('Contact Maven Today', 'contact.html', 'outline')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('Contact Maven Today', 'contact.html', 'ghost-light')],
   })}
   `;
 }

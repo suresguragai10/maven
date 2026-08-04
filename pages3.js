@@ -2,7 +2,7 @@ const data = require('./data');
 const { esc } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
-  button, sectionHead, pageHero, accordionItem, industryBadge, ctaBand, bulletList,
+  button, sectionHead, pageHero, accordionItem, industryCard, ctaBand, bulletList,
 } = require('./ui');
 
 function documentsNeeded() {
@@ -44,10 +44,16 @@ function industries() {
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle)}
 
-  <section class="section-pad">
+  <section class="section-pad-sm">
+    <div class="container" style="max-width:820px">
+      <p class="text-center reveal">Every industry has different transaction flows, cash patterns, and reporting needs. Across all of them, Maven combines day-to-day bookkeeping with practical financial visibility — monitoring cash, collections, payments, costs, and budgets using clear records and owner-friendly reports.</p>
+    </div>
+  </section>
+
+  <section class="section-pad" style="padding-top:0">
     <div class="container">
-      <div class="grid grid-4">
-        ${data.industries.map(industryBadge).join('')}
+      <div class="grid grid-3">
+        ${data.industries.map(industryCard).join('')}
       </div>
       <p class="text-center tag-note" style="margin-top:28px">Don't see your type of business listed? Reach out — Maven supports most business structures across Nepal.</p>
     </div>
@@ -56,7 +62,8 @@ function industries() {
   ${ctaBand({
     eyebrow: 'Tell Us About Your Business',
     title: 'Whatever your industry, we can help you stay organized and compliant',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('View Services', 'services.html', 'outline')],
+    subtitle: 'Tell us how your business operates and what records you currently keep — we will recommend a practical mix of accounting, compliance, and reporting support.',
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('View Services', 'services.html', 'ghost-light')],
   })}
   `;
 }

@@ -508,15 +508,18 @@
   function industriesEditor(arr) {
     var wrap = el('div');
     arr.forEach(function (ind) {
-      var row = el('div', 'list-row');
-      var input = el('input'); input.type = 'text'; input.value = ind.name;
-      input.addEventListener('input', function () { ind.name = input.value; markDirty(); });
-      var lock = el('span', 'locked-tag'); lock.textContent = ind.icon;
-      row.appendChild(input); row.appendChild(lock);
-      wrap.appendChild(row);
+      var card = el('div', 'sub-card');
+      var head = el('div', 'sub-head');
+      var strong = el('strong'); strong.textContent = ind.name || 'Industry';
+      var lock = el('span', 'locked-tag'); lock.textContent = 'icon: ' + ind.icon;
+      head.appendChild(strong); head.appendChild(lock);
+      card.appendChild(head);
+      card.appendChild(textField('Name', function () { return ind.name; }, function (v) { ind.name = v; strong.textContent = v || 'Industry'; }));
+      card.appendChild(textField('Short description (shown on the Industries page)', function () { return ind.description; }, function (v) { ind.description = v; }, { multiline: true, rows: 2 }));
+      wrap.appendChild(card);
     });
     var hint = el('span', 'f-hint');
-    hint.textContent = 'Icons are locked to a fixed set — renaming an industry is fine, but adding a brand-new one needs a developer to add a matching icon.';
+    hint.textContent = 'Icons are locked to a fixed set — renaming an industry or editing its description is fine, but adding a brand-new one needs a developer to add a matching icon.';
     wrap.appendChild(hint);
     return wrap;
   }

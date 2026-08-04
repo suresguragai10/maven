@@ -18,7 +18,7 @@ brand:
   legalName: Maven Consultancy Services Pvt. Ltd.
   shortName: Maven Consultancy
   tagline: Compliance made simple. Business made stronger.
-  altTagline: Your practical partner for accounting, tax, registration, and compliance.
+  altTagline: Your practical partner for accounting, tax, compliance, and financial management.
   addressLine: New Baneshwor, Kathmandu, Nepal
   addressNote: Eyeplex Mall
   landline: ''
@@ -43,9 +43,10 @@ trustPoints:
   - Outsourced accounting and compliance partner
 aboutText: >-
   Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy company providing business
-  setup, accounting, tax, compliance, financial reporting support, payroll, project report, and
-  advisory services. We support entrepreneurs and business owners with straightforward guidance,
-  organized records, timely compliance reminders, and clear communication.
+  setup, accounting, tax, compliance, financial management and reporting, payroll, project report,
+  and advisory services. We help business owners maintain organized records, meet routine
+  compliance obligations, understand their financial performance, and plan ahead with
+  straightforward guidance and clear communication.
 aboutFacts:
   - Based in New Baneshwor, Kathmandu
   - Established in 2022 — 100+ clients served to date
@@ -122,10 +123,12 @@ serviceCategories:
       - Payroll reports for small and growing businesses
   - key: reporting
     letter: E
-    title: Financial Reporting & Business Reports
-    tagline: Clear reports and statements for decisions, loans, and stakeholders.
+    title: Financial Management & Reporting
+    tagline: Cash-flow visibility, management reports, and statements for decisions, loans, and stakeholders.
     icon: barChart
     items:
+      - Monthly management summary reports
+      - Cash-flow monitoring and forecasting
       - Financial statement preparation support
       - Project report preparation
       - Bank loan report preparation
@@ -241,15 +244,18 @@ packages:
       - Bookkeeping
       - VAT/TDS support
       - Monthly compliance reminder
-      - Basic financial summary
+      - Monthly cash/bank summary
+      - Receivable/payable schedule
       - Tax query support
   - name: Business Growth Package
     audience: For growing companies needing deeper support.
     items:
       - Complete accounting support
       - Payroll support
-      - Monthly reports
+      - Monthly management summary
+      - Receivable/payable schedule
       - Financial statement preparation support
+      - Budget and cash-flow review (optional add-on)
       - Advisory discussion
       - Compliance tracking
 packagesFeeNote: >-
@@ -319,28 +325,63 @@ documentsBottomNote: >-
 industries:
   - name: Startups
     icon: rocket
+    description: >-
+      A simple financial foundation from day one — organized records, compliance support, and a
+      clear view of cash and early performance.
   - name: SMEs
     icon: briefcase
+    description: >-
+      Reliable monthly closing, reporting, and dependable finance support without building a full
+      in-house team.
   - name: Traders and shops
     icon: store
+    description: >-
+      Accurate purchase, sales, and stock records so you understand margins, working capital, and
+      payment obligations.
   - name: Restaurants and cafes
     icon: coffee
+    description: >-
+      Frequent daily transactions and thin margins make timely reconciliation and cost tracking
+      essential.
   - name: Service companies
     icon: briefcase
+    description: >-
+      Clear project or client billing, expense allocation, and profitability reporting for
+      consultancies and agencies.
   - name: Construction businesses
     icon: hardHat
+    description: >-
+      Project-based costing, contract billing, and retention tracking that generic monthly
+      bookkeeping alone can't handle.
   - name: Online businesses
     icon: globe
+    description: >-
+      Reconciling marketplace settlements, payment gateways, refunds, and delivery costs across
+      multiple channels.
   - name: Freelancers
     icon: laptop
+    description: >-
+      Simple, affordable systems to separate personal and business income, track deductible costs,
+      and stay filing-ready.
   - name: Schools and training institutes
     icon: graduationCap
+    description: >-
+      Managing recurring fees, admissions, payroll, and scholarships across programs or branches.
   - name: NGOs and social organizations
     icon: heart
+    description: >-
+      Transparent, project-wise fund accounting with clear separation of restricted and
+      unrestricted spending.
   - name: Travel and tourism businesses
     icon: plane
+    description: >-
+      Booking deposits, supplier prepayments, and seasonal cash flow across trips, groups, and
+      packages.
   - name: Local businesses across Nepal
     icon: store
+    description: >-
+      Practical, owner-friendly systems that bring clarity to daily operations without unnecessary
+      complexity.
 whyChoose:
   - title: Down-to-earth guidance for Nepali businesses
     text: >-
@@ -420,17 +461,29 @@ faqs:
     a: >-
       Yes. Access to your records is limited to the people working on your file, and we don't share
       your information with anyone outside that engagement.
+  - q: Can Maven help us understand our monthly financial performance?
+    a: >-
+      Yes. Depending on the agreed scope and quality of available records, Maven can prepare monthly
+      summaries covering sales, expenses, cash/bank movement, receivables, payables, and selected
+      management indicators.
+  - q: Does Maven provide cash-flow planning and budgeting support?
+    a: >-
+      Yes. Maven can support basic budgets, cash-flow forecasts, payment planning, and
+      budget-versus-actual reviews. These are management-support services and depend on the
+      assumptions and information provided by the client — they are not investment or lending
+      advice.
 footerDisclaimer: >-
-  Maven Consultancy Services Pvt. Ltd. is a business consultancy and outsourced
-  accounting/compliance service provider. Maven is not a licensed audit firm and does not provide
-  statutory audit, legal, or certification services. Where such services are required, Maven helps
-  clients coordinate with independent licensed professionals.
+  Maven Consultancy Services Pvt. Ltd. is a business consultancy providing outsourced accounting,
+  tax, payroll, financial management, and reporting support. Maven is not a licensed audit firm,
+  bank, lender, or investment adviser, and does not provide statutory audit, legal, certification,
+  or investment advice. Where such services are required, Maven helps clients coordinate with
+  independent licensed professionals.
 serviceOptions:
   - Business Registration & Setup
   - Outsourced Accounting & Bookkeeping
   - Tax & Compliance Support
   - Payroll & Salary Support
-  - Financial Reporting & Business Reports
+  - Financial Management & Reporting
   - Business Advisory
   - Global Outsourcing (International Clients)
   - Not sure / need guidance

@@ -109,7 +109,7 @@ function renderFooter() {
           <li><a href="${internalHref('outsourced-accounting.html')}">Outsourced Accounting</a></li>
           <li><a href="${internalHref('services.html#tax')}">Tax & Compliance</a></li>
           <li><a href="${internalHref('services.html#payroll')}">Payroll Support</a></li>
-          <li><a href="${internalHref('services.html#reporting')}">Financial Reporting</a></li>
+          <li><a href="${internalHref('services.html#reporting')}">Financial Management</a></li>
           <li><a href="${internalHref('services.html#advisory')}">Business Advisory</a></li>
         </ul>
       </div>
@@ -149,7 +149,7 @@ function jsonLd() {
     // (bookkeeping/tax/compliance, not statutory audit).
     '@type': 'AccountingService',
     name: b.legalName,
-    description: 'Accounting, tax, business registration, payroll, financial reporting, and compliance consultancy services for startups, SMEs, and growing businesses across Nepal.',
+    description: 'Accounting, tax, business registration, payroll, financial management and reporting, and compliance consultancy services for startups, SMEs, and growing businesses across Nepal.',
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Kathmandu',

@@ -130,7 +130,7 @@ function notFound() {
       <div class="hero-actions" style="justify-content:center">
         ${button('Go to Homepage', 'index.html', 'primary')}
         ${button('View Services', 'services.html', 'outline')}
-        ${button('Contact Us', 'contact.html', 'ghost-light')}
+        ${button('Contact Us', 'contact.html', 'outline')}
       </div>
     </div>
   </section>

@@ -33,7 +33,7 @@ function usefulLinks() {
     eyebrow: 'Need Help Instead?',
     title: 'Not sure which office or portal applies to you?',
     subtitle: 'We can point you in the right direction, or handle the registration and filing work for you.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('View Services', 'services.html', 'outline')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('View Services', 'services.html', 'ghost-light')],
   })}
   `;
 }

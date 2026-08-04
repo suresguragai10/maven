@@ -74,8 +74,8 @@ function faqJsonLd() {
 const pages = [
   {
     file: 'index.html', activeKey: 'home', bodyHtml: home(),
-    title: `${data.brand.legalName} | Accounting, Tax & Compliance Services in Nepal`,
-    description: 'Maven Consultancy Services Pvt. Ltd. provides accounting, tax, registration, PAN/VAT, payroll, and compliance support for startups and SMEs across Nepal.',
+    title: `${data.brand.legalName} | Accounting, Tax, Compliance & Financial Management in Nepal`,
+    description: 'Maven Consultancy Services Pvt. Ltd. provides accounting, tax, compliance, payroll, and financial management support — bookkeeping, reporting, budgeting, and cash-flow visibility — for startups and SMEs across Nepal.',
   },
   {
     file: 'about.html', activeKey: 'about', bodyHtml: about(),
@@ -85,7 +85,7 @@ const pages = [
   {
     file: 'services.html', activeKey: 'services', bodyHtml: services(),
     title: 'Accounting, Tax, Registration & Compliance Services in Nepal | Maven Consultancy',
-    description: 'Business registration, PAN/VAT registration, bookkeeping, tax and compliance support, payroll, financial reporting, and business advisory services in Nepal.',
+    description: 'Business registration, PAN/VAT registration, bookkeeping, tax and compliance support, payroll, financial management and reporting, and business advisory services in Nepal.',
   },
   {
     file: 'outsourced-accounting.html', activeKey: 'outsourced-accounting', bodyHtml: outsourcedAccounting(),
