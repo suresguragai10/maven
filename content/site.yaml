@@ -382,6 +382,11 @@ industries:
     description: >-
       Practical, owner-friendly systems that bring clarity to daily operations without unnecessary
       complexity.
+  - name: Finance & financial services businesses
+    icon: barChart
+    description: >-
+      Bookkeeping, reconciliation, and management reporting for non-bank financial-service firms —
+      with strong confidentiality and clear separation from regulated advice or licensed audit work.
 whyChoose:
   - title: Down-to-earth guidance for Nepali businesses
     text: >-
