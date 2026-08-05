@@ -265,6 +265,28 @@ const csp = [
   "form-action 'self' https://formspree.io",
   "frame-ancestors 'self'",
 ].join('; ');
+// The admin panel needs a different CSP from the rest of the site: it calls
+// the GitHub API (connect-src) which no public page ever needs, and it has
+// zero inline script or third-party CDN dependencies (its logic lives in
+// admin.js, js-yaml is self-hosted from node_modules — see the copy step
+// below), so its script-src can actually be tighter than the public one.
+// Cloudflare does NOT let a more-specific block override a header set by an
+// earlier matching block — a request matching both "/*" and "/admin/*" gets
+// BOTH Content-Security-Policy values joined with a comma into one (invalid)
+// header, per Cloudflare's own docs ("If a header is applied twice... the
+// values are joined with a comma separator"). The "! Header-Name" syntax
+// below is required to strip the "/*" block's CSP before setting this one.
+const adminCsp = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self'",
+  "connect-src 'self' https://api.github.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
 const headers = `/*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
@@ -277,6 +299,10 @@ const headers = `/*
 
 /images/*
   Cache-Control: public, max-age=604800
+
+/admin/*
+  ! Content-Security-Policy
+  Content-Security-Policy: ${adminCsp}
 `;
 outDirs.forEach((d) => fs.writeFileSync(path.join(d, '_headers'), headers, 'utf8'));
 console.log('Wrote _headers');
@@ -292,11 +318,21 @@ if (fs.existsSync(imagesSrc)) {
   console.log('Copied images/ to dist/images/');
 }
 
-// Copy admin panel into dist so Cloudflare Workers serves it at /admin/
-const adminSrc = path.join(__dirname, 'admin', 'index.html');
+// Copy admin panel into dist so Cloudflare Workers serves it at /admin/.
+// js-yaml is copied straight from node_modules (already a project dependency,
+// used by data.js at build time) instead of loading it from a CDN — that was
+// the one third-party script the admin page depended on, and it was actually
+// being silently blocked in production by the site's CSP (no CDN host is
+// allow-listed in script-src). Self-hosting removes the dependency entirely
+// rather than allow-listing a CDN.
 const adminDest = path.join(__dirname, 'dist', 'admin');
 fs.mkdirSync(adminDest, { recursive: true });
-fs.copyFileSync(adminSrc, path.join(adminDest, 'index.html'));
-console.log('Copied admin/index.html to dist/admin/index.html');
+fs.copyFileSync(path.join(__dirname, 'admin', 'index.html'), path.join(adminDest, 'index.html'));
+fs.copyFileSync(path.join(__dirname, 'admin', 'admin.js'), path.join(adminDest, 'admin.js'));
+fs.copyFileSync(
+  path.join(__dirname, 'node_modules', 'js-yaml', 'dist', 'js-yaml.min.js'),
+  path.join(adminDest, 'js-yaml.min.js'),
+);
+console.log('Copied admin panel (index.html, admin.js, js-yaml.min.js) to dist/admin/');
 
 console.log('\nDone. Files written to', outDirs.join(' and '));
