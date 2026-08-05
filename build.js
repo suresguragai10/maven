@@ -276,12 +276,18 @@ const csp = [
 // header, per Cloudflare's own docs ("If a header is applied twice... the
 // values are joined with a comma separator"). The "! Header-Name" syntax
 // below is required to strip the "/*" block's CSP before setting this one.
+// script-src allows static.cloudflareinsights.com (not just 'self') because
+// Cloudflare's automatic Web Analytics injects its beacon script into every
+// response at serve time, admin page included, regardless of what the origin
+// HTML contains — confirmed live (network initiator: parser, present even
+// though the cached origin HTML has no such tag). Same host the public CSP
+// already allow-lists for the same reason.
 const adminCsp = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self'",
-  "connect-src 'self' https://api.github.com",
+  "connect-src 'self' https://api.github.com https://cloudflareinsights.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
