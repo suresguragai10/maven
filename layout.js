@@ -52,7 +52,7 @@ function renderHeader(activeKey) {
     </div>
   </div>
   <header class="site-header">
-    <div class="container header-inner">
+    <div class="container-wide header-inner">
       <a class="brand" href="${internalHref('index.html')}">
         <img class="brand-mark" src="/images/logo-icon.png" alt="" width="40" height="40">
         <span class="brand-text">

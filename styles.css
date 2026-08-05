@@ -29,6 +29,7 @@
   --font-body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   --container: 1180px;
+  --container-wide: 1400px;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow-sm: 0 1px 2px rgba(16, 42, 76, 0.06), 0 1px 1px rgba(16, 42, 76, 0.04);
@@ -72,6 +73,11 @@ h3 { font-size: 1.2rem; }
 p { color: var(--ink-soft); }
 
 .container { max-width: var(--container); margin: 0 auto; padding: 0 24px; }
+/* Header only: measured content (brand + 8 nav items + Call/Book buttons) needs
+   ~1247px on one line, wider than the site's normal 1180px content column — a
+   nav bar reads fine at a different width than the page content beneath it,
+   so this decouples the header's width rather than shrinking its content. */
+.container-wide { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px; }
 
 section { position: relative; }
 .section-pad { padding: 88px 0; }
@@ -167,7 +173,7 @@ section { position: relative; }
 .main-nav > ul { display: flex; align-items: center; gap: 4px; }
 .nav-link {
   display: flex; align-items: center; gap: 5px; padding: 10px 14px; border-radius: 8px;
-  font-weight: 600; font-size: 0.94rem; color: var(--navy-800);
+  font-weight: 600; font-size: 0.94rem; color: var(--navy-800); white-space: nowrap;
 }
 .nav-link .ic-chevron { width: 14px; height: 14px; transition: transform 0.15s ease; }
 .nav-item:hover .nav-link, .nav-item:focus-within .nav-link, .nav-link[aria-current="page"] { color: var(--navy-950); background: var(--gold-100); }
@@ -200,11 +206,16 @@ section { position: relative; }
 .mobile-nav-cta { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; }
 body.nav-open { overflow: hidden; }
 
-@media (max-width: 980px) {
+/* 1340px, not 980px: the desktop nav's real content (brand + 8 nav items +
+   Call/Book buttons) measures ~1247px on one line — below ~1340px viewport
+   width there isn't room for that plus the header's own side padding, and it
+   was silently wrapping ("Global Outsourcing" breaking to 2 lines) rather
+   than switching to the mobile nav like it should have. */
+@media (max-width: 1340px) {
   .main-nav, .header-cta .btn-outline, .header-cta .btn-primary { display: none; }
   .nav-toggle { display: inline-flex; }
 }
-@media (min-width: 981px) { .mobile-nav { display: none !important; } }
+@media (min-width: 1341px) { .mobile-nav { display: none !important; } }
 
 /* ---------- Hero ---------- */
 .hero { background: linear-gradient(180deg, var(--navy-950) 0%, var(--navy-900) 62%, var(--navy-800) 100%); color: #fff; overflow: hidden; position: relative; }

@@ -74,8 +74,13 @@ function faqJsonLd() {
 const pages = [
   {
     file: 'index.html', activeKey: 'home', bodyHtml: home(),
-    title: `${data.brand.legalName} | Accounting, Tax, Compliance & Financial Management in Nepal`,
-    description: 'Maven Consultancy Services Pvt. Ltd. provides accounting, tax, compliance, payroll, and financial management support — bookkeeping, reporting, budgeting, and cash-flow visibility — for startups and SMEs across Nepal.',
+    // Kept to ~58/152 chars respectively — Google truncates titles around
+    // ~60 chars and descriptions around ~155-160. An earlier version of
+    // this ran 102/220 chars (added when "Financial Management" was folded
+    // into the site's positioning) and would have been cut off with "..."
+    // in search results.
+    title: `${data.brand.shortName} | Accounting, Tax & Financial Management`,
+    description: `${data.brand.legalName} provides accounting, tax, compliance, payroll, and financial management support for startups and SMEs across Nepal.`,
   },
   {
     file: 'about.html', activeKey: 'about', bodyHtml: about(),
@@ -259,7 +264,11 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https:",
   "connect-src 'self' https://formspree.io https://cloudflareinsights.com",
-  "frame-src https://maps.google.com",
+  // maps.google.com's embed URL redirects the iframe to a www.google.com
+  // URL for the actual map — confirmed live: without www.google.com here,
+  // the Contact page map renders as a blank/broken-image box (the redirect
+  // target itself is blocked, not just an internal sub-frame).
+  "frame-src https://maps.google.com https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://formspree.io",
@@ -298,6 +307,7 @@ const headers = `/*
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
   Content-Security-Policy: ${csp}
 
 /assets/*
@@ -322,6 +332,39 @@ if (fs.existsSync(imagesSrc)) {
     fs.copyFileSync(path.join(imagesSrc, file), path.join(imagesDest, file));
   }
   console.log('Copied images/ to dist/images/');
+}
+
+// --- /favicon.ico ------------------------------------------------------------
+// The site's real favicon is declared via <link rel="icon"> (see layout.js) and
+// doesn't need this — but browsers request /favicon.ico by default regardless
+// of that tag, on every page, and with no file there that was a guaranteed 404
+// on every single page load. Modern ICO format allows embedding a PNG directly
+// (no re-encoding/resizing needed, and no image library required): a 6-byte
+// ICONDIR header + one 16-byte ICONDIRENTRY, followed by the PNG bytes as-is.
+const logoPngPath = path.join(imagesSrc, 'logo-icon.png');
+if (fs.existsSync(logoPngPath)) {
+  const png = fs.readFileSync(logoPngPath);
+  const width = png.readUInt32BE(16);
+  const height = png.readUInt32BE(20);
+  if (width > 256 || height > 256) {
+    throw new Error(`favicon source images/logo-icon.png is ${width}x${height} — ICO dimension bytes only hold up to 256`);
+  }
+  const iconDir = Buffer.alloc(6);
+  iconDir.writeUInt16LE(0, 0); // reserved
+  iconDir.writeUInt16LE(1, 2); // type: 1 = icon
+  iconDir.writeUInt16LE(1, 4); // image count
+  const entry = Buffer.alloc(16);
+  entry.writeUInt8(width === 256 ? 0 : width, 0);
+  entry.writeUInt8(height === 256 ? 0 : height, 1);
+  entry.writeUInt8(0, 2); // color count (0 = not palette-based)
+  entry.writeUInt8(0, 3); // reserved
+  entry.writeUInt16LE(1, 4); // color planes
+  entry.writeUInt16LE(32, 6); // bits per pixel
+  entry.writeUInt32LE(png.length, 8); // size of image data
+  entry.writeUInt32LE(iconDir.length + entry.length, 12); // offset of image data
+  const ico = Buffer.concat([iconDir, entry, png]);
+  outDirs.forEach((d) => fs.writeFileSync(path.join(d, 'favicon.ico'), ico));
+  console.log('Wrote favicon.ico', `(${(ico.length / 1024).toFixed(1)} KB)`);
 }
 
 // Copy admin panel into dist so Cloudflare Workers serves it at /admin/.

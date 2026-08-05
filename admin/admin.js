@@ -20,9 +20,9 @@
     for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     return btoa(binary);
   }
-  function showToast(text, isError, html) {
+  function showToast(text, isError) {
     var t = document.getElementById('toast');
-    if (html) { t.innerHTML = text; } else { t.textContent = text; }
+    t.textContent = text;
     t.className = isError ? 'error' : '';
     t.classList.remove('hidden');
     if (!isError) setTimeout(function () { t.classList.add('hidden'); }, 6000);
