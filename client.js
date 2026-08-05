@@ -73,6 +73,22 @@
     });
   });
 
+  // ---- Industry card expand (Industries page) ----
+  // Same expand/collapse technique as the accordion above, kept separate
+  // (distinct classes/state target) because the trigger here is a card
+  // footer, not a full-width question row, and lives inside a grid rather
+  // than a single stacked list.
+  document.querySelectorAll('.industry-card-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.industry-card');
+      var panel = card.querySelector('.industry-card-panel');
+      var isOpen = card.classList.contains('is-open');
+      card.classList.toggle('is-open', !isOpen);
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      panel.style.maxHeight = !isOpen ? panel.scrollHeight + 'px' : '0px';
+    });
+  });
+
   // ---- Hero mockup card (Registration/Accounting/Tax/Payroll/Reports) ----
   // Purely decorative: auto-cycles through the tabs, and clicking a tab jumps
   // there and stops the auto-cycle (once a visitor engages, don't yank their

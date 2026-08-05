@@ -328,65 +328,195 @@ industries:
     description: >-
       A simple financial foundation from day one — organized records, compliance support, and a
       clear view of cash and early performance.
+    needs:
+      - PAN/VAT setup and filing calendar
+      - Basic bookkeeping and expense classification
+      - Founder funding and capital record organization
+      - Cash-flow planning and startup budget
+    howWeHelp:
+      - Registration and accounting system setup
+      - Monthly bookkeeping and bank/cash summaries
+      - VAT/TDS and compliance support
+      - Budgeting, forecasting, and basic MIS reports
   - name: SMEs
     icon: briefcase
     description: >-
       Reliable monthly closing, reporting, and dependable finance support without building a full
       in-house team.
+    needs:
+      - Reliable monthly closing and reconciliations
+      - Receivable, payable, and cash-flow monitoring
+      - Budget-versus-actual tracking
+      - Management reports for owners and lenders
+    howWeHelp:
+      - Outsourced accounting and bookkeeping
+      - Monthly financial summaries and MIS support
+      - Payroll and salary reporting
+      - Financial statement and loan-report preparation support
   - name: Traders and shops
     icon: store
     description: >-
       Accurate purchase, sales, and stock records so you understand margins, working capital, and
       payment obligations.
+    needs:
+      - Purchase and sales register accuracy
+      - Inventory and cost-of-goods tracking
+      - Supplier dues and customer receivables
+      - Gross-margin and profitability visibility
+    howWeHelp:
+      - Sales and purchase register preparation
+      - Cash/bank summaries and reconciliation
+      - VAT/TDS and income-tax support
+      - Monthly margin and management reporting
   - name: Restaurants and cafes
     icon: coffee
     description: >-
       Frequent daily transactions and thin margins make timely reconciliation and cost tracking
       essential.
+    needs:
+      - Daily sales and payment-channel reconciliation
+      - Food, beverage, and operating-cost monitoring
+      - Supplier payment scheduling
+      - Outlet-level profitability and cash-flow monitoring
+    howWeHelp:
+      - Monthly bookkeeping and sales summaries
+      - Bank, cash, and digital-payment reconciliation
+      - Payroll calculation and salary records
+      - Management summaries and cost-review support
   - name: Service companies
     icon: briefcase
     description: >-
       Clear project or client billing, expense allocation, and profitability reporting for
       consultancies and agencies.
+    needs:
+      - Client invoicing and receivable follow-up
+      - Project or client profitability
+      - Advance, retainer, and deferred-income tracking
+      - Cash-flow forecasting around collection cycles
+    howWeHelp:
+      - Bookkeeping and invoice/collection tracking
+      - Payroll and contractor payment records
+      - Project or client reporting in Excel/MIS format
+      - Budgeting and cash-flow forecasting support
   - name: Construction businesses
     icon: hardHat
     description: >-
       Project-based costing, contract billing, and retention tracking that generic monthly
       bookkeeping alone can't handle.
+    needs:
+      - Project-wise income, cost, and profitability
+      - Advance, retention, and progress-billing records
+      - Material, labour, and subcontractor cost tracking
+      - Project cash-flow and payment planning
+    howWeHelp:
+      - Project-wise bookkeeping structures
+      - Receivable/payable and retention schedules
+      - Project reports and projected financial statements
+      - Budget-versus-actual and cash-flow reporting
   - name: Online businesses
     icon: globe
     description: >-
       Reconciling marketplace settlements, payment gateways, refunds, and delivery costs across
       multiple channels.
+    needs:
+      - Marketplace and payment-gateway reconciliation
+      - Refund, return, and cash-on-delivery tracking
+      - Platform fee and delivery-cost classification
+      - Inventory and product-margin reporting
+    howWeHelp:
+      - Multi-channel sales and settlement reconciliation
+      - Inventory and margin-support schedules
+      - PAN/VAT and tax-compliance support
+      - Monthly financial and performance summaries
   - name: Freelancers
     icon: laptop
     description: >-
       Simple, affordable systems to separate personal and business income, track deductible costs,
       and stay filing-ready.
+    needs:
+      - Income and expense record organization
+      - Invoice and receivable tracking
+      - Tax estimate and filing-document readiness
+      - Personal-versus-business cash separation
+    howWeHelp:
+      - Simple bookkeeping setup and periodic cleanup
+      - Income/expense summaries
+      - Tax and compliance support
+      - Bank and loan document preparation support
   - name: Schools and training institutes
     icon: graduationCap
     description: >-
       Managing recurring fees, admissions, payroll, and scholarships across programs or branches.
+    needs:
+      - Student fee billing and collection summaries
+      - Outstanding and advance-fee tracking
+      - Teacher and staff payroll records
+      - Budgeting for academic periods
+    howWeHelp:
+      - Bookkeeping and fee-collection summaries
+      - Payroll and salary-sheet support
+      - Program and branch reporting structures
+      - Tax, TDS, and compliance support
   - name: NGOs and social organizations
     icon: heart
     description: >-
       Transparent, project-wise fund accounting with clear separation of restricted and
       unrestricted spending.
+    needs:
+      - Project or donor-wise income and expenditure records
+      - Budget-versus-actual reporting
+      - Advance and settlement tracking
+      - Reports for management, donors, and reviewers
+    howWeHelp:
+      - Project-wise bookkeeping and reporting structures
+      - Budget tracking and expense summaries
+      - Payroll and TDS support
+      - Coordination support for independent audit/certification requirements
   - name: Travel and tourism businesses
     icon: plane
     description: >-
       Booking deposits, supplier prepayments, and seasonal cash flow across trips, groups, and
       packages.
+    needs:
+      - Booking deposits and advance tracking
+      - Supplier prepayments and settlement schedules
+      - Trip or package profitability
+      - Seasonal cash-flow forecasting
+    howWeHelp:
+      - Booking and advance bookkeeping structures
+      - Trip and package cost/margin summaries
+      - Cash-flow planning and monthly reporting
+      - Payroll and payment-record support
   - name: Local businesses across Nepal
     icon: store
     description: >-
       Practical, owner-friendly systems that bring clarity to daily operations without unnecessary
       complexity.
+    needs:
+      - Separation of business and personal transactions
+      - Simple daily and monthly recordkeeping
+      - Supplier and customer balance tracking
+      - Owner-friendly profit and cash summaries
+    howWeHelp:
+      - Simple bookkeeping and accounting cleanup
+      - Cash/bank and monthly summaries
+      - Receivable/payable schedules
+      - Plain-language management discussions
   - name: Finance & financial services businesses
     icon: barChart
     description: >-
       Bookkeeping, reconciliation, and management reporting for non-bank financial-service firms —
       with strong confidentiality and clear separation from regulated advice or licensed audit work.
+    needs:
+      - High-quality transaction records and reconciliations
+      - Strong confidentiality and access controls
+      - Management reporting and exception monitoring
+      - Document readiness for tax, audit, and regulatory review
+    howWeHelp:
+      - Outsourced bookkeeping and reconciliation support
+      - Management reports and Excel/MIS support
+      - Financial statement preparation support
+      - Coordination with independent licensed auditors or specialists
 whyChoose:
   - title: Down-to-earth guidance for Nepali businesses
     text: >-

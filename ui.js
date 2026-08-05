@@ -1,5 +1,6 @@
 const { icon, stampMark } = require('./icons');
 const { esc, internalHref } = require('./escape');
+const data = require('./data');
 
 function button(label, href, variant = 'primary', extra = '') {
   // label may legitimately contain code-built markup (e.g. an icon), so it is
@@ -72,11 +73,31 @@ function industryBadge(ind) {
 // Richer version of industryBadge, for the dedicated Industries page only —
 // the homepage/About teasers stay as compact badges (no description) so this
 // doesn't reintroduce the crowding a fuller card would add there.
-function industryCard(ind) {
+// Click-to-expand: the short description is always visible; needs/howWeHelp
+// (the fuller detail from the source content, too much to show on every card
+// at once) reveal on click, same pattern as the FAQ/documents accordions but
+// wired independently (see .industry-card-toggle in client.js) since the
+// trigger here is a card footer, not a full-width question row.
+function industryCard(ind, i) {
+  const id = `industry-${i}`;
+  const hasDetail = (ind.needs && ind.needs.length) || (ind.howWeHelp && ind.howWeHelp.length);
+  const detail = hasDetail ? `
+    <button type="button" class="industry-card-toggle" aria-expanded="false" aria-controls="panel-${id}" id="trigger-${id}">
+      <span>Where this gets complex &amp; how we help</span>
+      ${icon('chevronDown', 'ic-chevron')}
+    </button>
+    <div class="industry-card-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:0">
+      <div class="industry-card-panel-inner">
+        ${ind.needs && ind.needs.length ? `<span class="service-letter">Common needs</span>${bulletList(ind.needs, 'stamp-list stamp-list--pkg')}` : ''}
+        ${ind.howWeHelp && ind.howWeHelp.length ? `<span class="service-letter">How Maven helps</span>${bulletList(ind.howWeHelp, 'stamp-list stamp-list--pkg')}` : ''}
+        <a class="btn btn-outline btn-sm" href="${data.whatsappHref(`Hello Maven, I would like to ask about accounting support for my business (${ind.name}).`)}" target="_blank" rel="noopener">${icon('whatsapp')} Ask About This Industry</a>
+      </div>
+    </div>` : '';
   return `<article class="industry-card reveal">
     <span class="industry-card-icon">${icon(ind.icon)}</span>
     <h3>${esc(ind.name)}</h3>
-    ${ind.description ? `<p>${esc(ind.description)}</p>` : ''}
+    ${ind.description ? `<p style="flex:1">${esc(ind.description)}</p>` : ''}
+    ${detail}
   </article>`;
 }
 

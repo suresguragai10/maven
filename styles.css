@@ -318,12 +318,33 @@ body.nav-open { overflow: hidden; }
 .industry-icon .ic { width: 20px; height: 20px; }
 
 /* Richer sibling of .industry-badge — icon + title + description, used only
-   on the dedicated Industries page (see ui.js industryCard()). */
-.industry-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
+   on the dedicated Industries page (see ui.js industryCard()). Click-to-expand
+   footer (.industry-card-toggle/-panel) reveals needs/how-we-help detail —
+   flex column + the description's flex:1 (set inline in ui.js) keeps the
+   toggle footer aligned along a row even when descriptions differ in length. */
+.industry-card {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 26px;
+  display: flex; flex-direction: column; box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.industry-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .industry-card-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
 .industry-card-icon .ic { width: 22px; height: 22px; }
 .industry-card h3 { font-size: 1.05rem; margin: 0 0 8px; }
 .industry-card p { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
+
+.industry-card-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+  font-size: 0.84rem; font-weight: 700; color: var(--gold-700); text-align: left;
+}
+.industry-card-toggle .ic-chevron { width: 17px; height: 17px; flex-shrink: 0; transition: transform 0.2s ease; }
+.industry-card.is-open .ic-chevron { transform: rotate(180deg); }
+.industry-card-panel { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
+.industry-card-panel-inner { padding-top: 14px; }
+.industry-card-panel-inner .service-letter { display: block; margin-bottom: 8px; }
+.industry-card-panel-inner .stamp-list--pkg { margin: 0 0 18px; }
+.industry-card-panel-inner .btn { margin-top: 4px; }
 
 .package-card {
   background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;
