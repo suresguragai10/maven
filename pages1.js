@@ -119,6 +119,10 @@ function docCardArt() {
 
 function homeServiceCard(cat) {
   const preview = cat.items.slice(0, 3);
+  // "+ N more" is a direct invitation to click, same as homePackageCard()
+  // below it — but unlike that card, this one had no link at all. Matches
+  // that card's existing "See Full Package" pattern instead of inventing a
+  // new one.
   return `<article class="service-card reveal">
     <div class="service-card-head">
       <span class="service-icon">${icon(cat.icon)}</span>
@@ -132,6 +136,7 @@ function homeServiceCard(cat) {
       ${preview.map((i) => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}
       <li>${stampMark('stamp-sm')}<span>+ ${cat.items.length - preview.length} more</span></li>
     </ul>
+    <a class="btn btn-outline btn-block" href="${internalHref(`services.html#${cat.key}`)}">See Full List</a>
   </article>`;
 }
 
