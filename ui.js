@@ -63,11 +63,17 @@ function whyCard(v) {
   </div>`;
 }
 
-function industryBadge(ind) {
-  return `<div class="industry-badge reveal">
+// A plain, unlinked <div> here had a hover highlight (border/shadow) with
+// nothing behind it — every hover cue on this site otherwise means "click
+// me," so this was a real "looks clickable, does nothing" trap. Links to the
+// matching card on the Industries page, which auto-opens on arrival (see the
+// hash-handling in client.js) instead of dumping the visitor on a page they
+// have to re-find their own industry on.
+function industryBadge(ind, i) {
+  return `<a class="industry-badge reveal" href="${internalHref('industries.html')}#industry-${i}">
     <span class="industry-icon">${icon(ind.icon)}</span>
     <span>${esc(ind.name)}</span>
-  </div>`;
+  </a>`;
 }
 
 // Richer version of industryBadge, for the dedicated Industries page only —

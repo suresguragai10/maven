@@ -78,16 +78,33 @@
   // (distinct classes/state target) because the trigger here is a card
   // footer, not a full-width question row, and lives inside a grid rather
   // than a single stacked list.
+  function setIndustryCardOpen(card, open) {
+    var btn = card.querySelector('.industry-card-toggle');
+    var panel = card.querySelector('.industry-card-panel');
+    if (!btn || !panel) return;
+    card.classList.toggle('is-open', open);
+    btn.setAttribute('aria-expanded', String(open));
+    panel.style.maxHeight = open ? panel.scrollHeight + 'px' : '0px';
+  }
   document.querySelectorAll('.industry-card-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var card = btn.closest('.industry-card');
-      var panel = card.querySelector('.industry-card-panel');
-      var isOpen = card.classList.contains('is-open');
-      card.classList.toggle('is-open', !isOpen);
-      btn.setAttribute('aria-expanded', String(!isOpen));
-      panel.style.maxHeight = !isOpen ? panel.scrollHeight + 'px' : '0px';
+      setIndustryCardOpen(card, !card.classList.contains('is-open'));
     });
   });
+  // Homepage/About industry badges link here as #industry-N (see ui.js
+  // industryBadge) — a visitor clicking "Startups" on the homepage wants to
+  // land ON that industry's detail, not back on a page of collapsed cards
+  // they have to re-find it on. Opens the matching card and scrolls to it.
+  if (location.hash.indexOf('#industry-') === 0) {
+    var panelId = 'panel-' + location.hash.slice(1);
+    var panelEl = document.getElementById(panelId);
+    var cardEl = panelEl ? panelEl.closest('.industry-card') : null;
+    if (cardEl) {
+      setIndustryCardOpen(cardEl, true);
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
 
   // ---- Hero mockup card (Registration/Accounting/Tax/Payroll/Reports) ----
   // Purely decorative: auto-cycles through the tabs, and clicking a tab jumps
