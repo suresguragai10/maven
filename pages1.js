@@ -103,6 +103,10 @@ function docCardArt() {
     .filter((t) => t.cat);
 
   return `<div class="hero-art reveal">
+    <div class="hero-float-badge">
+      ${icon('users')}
+      <div><strong>${esc(data.brand.clientsServed)}</strong><span>Clients Served</span></div>
+    </div>
     <div class="doc-card">
       <div class="doc-card-tabs">
         ${tabs.map((t, i) => `<button type="button" class="doc-card-tab${i === 0 ? ' is-active' : ''}" aria-pressed="${i === 0}">${esc(t.label)}</button>`).join('')}
