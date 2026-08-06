@@ -218,7 +218,19 @@ body.nav-open { overflow: hidden; }
 @media (min-width: 1341px) { .mobile-nav { display: none !important; } }
 
 /* ---------- Hero ---------- */
-.hero { background: linear-gradient(180deg, var(--navy-950) 0%, var(--navy-900) 62%, var(--navy-800) 100%); color: #fff; overflow: hidden; position: relative; }
+/* Navy gradient layered OVER the desk photo (not replacing it) — keeps the
+   left side, where the white headline sits, reliably dark regardless of how
+   the photo itself renders at different crop widths, and ties the color
+   grading to the rest of the page. background-position "right center" so
+   any horizontal cropping (photo is wider than the hero at most viewport
+   heights) eats into the already-empty left side, not the desk detail. */
+.hero {
+  background-image: linear-gradient(180deg, rgba(10,31,58,0.55) 0%, rgba(16,42,76,0.65) 62%, rgba(22,58,99,0.82) 100%), url('/images/hero-bg.jpg');
+  background-size: cover, cover;
+  background-position: center, right center;
+  background-repeat: no-repeat, no-repeat;
+  color: #fff; overflow: hidden; position: relative;
+}
 .hero-inner { display: grid; grid-template-columns: 1.15fr 0.95fr; gap: 48px; align-items: center; padding: 76px 0 64px; position: relative; z-index: 2; }
 .hero h1 { color: #fff; }
 .hero-sub { font-size: 1.12rem; color: rgba(255,255,255,0.78); max-width: 560px; margin-top: 18px; }
