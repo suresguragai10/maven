@@ -236,6 +236,15 @@ body.nav-open { overflow: hidden; }
 .trust-item { display: flex; align-items: center; gap: 9px; font-size: 0.92rem; color: rgba(255,255,255,0.82); font-weight: 500; }
 .ic-trust { width: 17px; height: 17px; color: var(--gold-500); flex-shrink: 0; }
 
+/* Big-number trust signals (see ui.js statRow()) — numbers read as more
+   concrete evidence than the checkmark-claim style .trust-bar above. */
+.stat-row { display: flex; flex-wrap: wrap; gap: 28px 0; margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border); }
+.stat-item { flex: 1 1 140px; padding-right: 24px; border-right: 1px solid var(--border); }
+.stat-item:last-child { border-right: none; }
+.stat-value { display: block; font-family: var(--font-display); font-size: clamp(1.7rem, 3vw, 2.1rem); font-weight: 700; color: var(--navy-950); line-height: 1.1; }
+.stat-label { display: block; margin-top: 4px; font-size: 0.82rem; color: var(--ink-soft); }
+@media (max-width: 640px) { .stat-item { border-right: none; flex: 1 1 45%; } }
+
 @media (max-width: 980px) {
   .hero-inner { grid-template-columns: 1fr; padding: 52px 0 40px; text-align: left; }
   .hero-art { max-width: 320px; }
@@ -313,6 +322,20 @@ body.nav-open { overflow: hidden; }
 .service-letter { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--gold-700); }
 .service-card h3 { font-size: 1.15rem; margin-top: 2px; }
 .service-tagline { font-size: 0.94rem; margin: 10px 0 16px; }
+
+/* Closes the homepage's 6-category grid as a 7th, full-width cell (grid-
+   column spans every column regardless of the breakpoint's column count) —
+   a distinct "still deciding?" tile rather than leaving the grid ending on a
+   plain list, the CTA-tile-after-a-listing pattern seen on a competitor's
+   site, adapted here since Maven's category count divides evenly into the
+   grid (no natural gap in the last row to fill the way theirs did). */
+.service-cta-tile {
+  grid-column: 1 / -1; background: var(--navy-950); border-radius: var(--radius); padding: 30px 34px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+}
+.service-cta-tile h3 { color: #fff; font-size: 1.15rem; margin-bottom: 6px; }
+.service-cta-tile p { color: rgba(255,255,255,0.72); margin: 0; }
+@media (max-width: 640px) { .service-cta-tile { flex-direction: column; align-items: flex-start; } .service-cta-tile .btn { width: 100%; } }
 
 .value-card, .why-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
 .why-card { background: var(--mist); border-color: var(--mist-dark); }

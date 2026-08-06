@@ -812,6 +812,8 @@
     grid.appendChild(textField('Address Note (e.g. building/floor)', function () { return c.brand.addressNote; }, function (v) { c.brand.addressNote = v; }));
     grid.appendChild(textField('Business Hours', function () { return c.brand.hours; }, function (v) { c.brand.hours = v; }));
     grid.appendChild(textField('Map Search Text', function () { return c.brand.mapQuery; }, function (v) { c.brand.mapQuery = v; }));
+    grid.appendChild(textField('Founded Year', function () { return c.brand.foundedYear; }, function (v) { c.brand.foundedYear = v; }, { hint: 'Shown in the homepage stat row (e.g. 2022).' }));
+    grid.appendChild(textField('Clients Served', function () { return c.brand.clientsServed; }, function (v) { c.brand.clientsServed = v; }, { hint: 'Shown in the homepage stat row (e.g. 100+). Keep it honest — this is a displayed claim.' }));
     brandBody.appendChild(grid);
     brandBody.appendChild(textField('Tagline', function () { return c.brand.tagline; }, function (v) { c.brand.tagline = v; }));
     brandBody.appendChild(textField('Alternative Tagline', function () { return c.brand.altTagline; }, function (v) { c.brand.altTagline = v; }));

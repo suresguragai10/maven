@@ -3,6 +3,7 @@ const { esc, internalHref } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
+  statRow,
 } = require('./ui');
 
 // Decorative Kathmandu skyline: generic building silhouettes plus three
@@ -183,6 +184,14 @@ function home() {
         ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
       </ul>
     </div>
+    <div class="container">
+      ${statRow([
+        { value: data.brand.foundedYear, label: 'Founded' },
+        { value: data.brand.clientsServed, label: 'Clients served' },
+        { value: String(data.industries.length), label: 'Industries served' },
+        { value: String(data.serviceCategories.length), label: 'Service categories' },
+      ])}
+    </div>
   </section>
 
   <section class="section-pad bg-mist">
@@ -190,8 +199,15 @@ function home() {
       ${sectionHead({ eyebrow: 'What We Do', title: 'Services built around what Nepali businesses actually need', subtitle: 'From first registration to monthly compliance, Maven supports each stage with clear, practical work.' })}
       <div class="grid grid-3">
         ${data.serviceCategories.map(homeServiceCard).join('')}
+        <div class="service-cta-tile reveal">
+          <div>
+            <h3>Not sure which service fits?</h3>
+            <p>Tell us about your business — we'll recommend the right mix, no obligation.</p>
+          </div>
+          ${button('Book a Free Initial Consultation', 'contact.html', 'primary')}
+        </div>
       </div>
-      <div class="text-center" style="margin-top:36px">${button('View All Services', 'services.html', 'primary')}</div>
+      <div class="text-center" style="margin-top:36px">${button('View All Services', 'services.html', 'outline')}</div>
     </div>
   </section>
 

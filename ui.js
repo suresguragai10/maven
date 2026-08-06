@@ -130,6 +130,20 @@ function processStep(p, isLast) {
   </div>`;
 }
 
+// Big-number trust signals (Founded/Clients/Industries/Services) instead of
+// the checkmark-claim style trustBar() above — numbers read as more concrete
+// evidence than adjectives. Industries/service-category counts are computed
+// by the caller from the real data arrays (not hand-typed) so they can't
+// drift out of sync if one gets added or removed later.
+function statRow(stats) {
+  return `<div class="stat-row reveal">
+    ${stats.map((s) => `<div class="stat-item">
+      <span class="stat-value">${esc(s.value)}</span>
+      <span class="stat-label">${esc(s.label)}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
 function accordionItem({ id, headingHtml, bodyHtml, open = false }) {
   // headingHtml/bodyHtml are assembled by the caller; callers pass already-escaped
   // CMS text (see pages3.js faq) or code-built markup.
@@ -163,5 +177,5 @@ function trustBar(points) {
 
 module.exports = {
   button, eyebrow, sectionHead, pageHero, bulletList, serviceCard, valueCard, whyCard,
-  industryBadge, industryCard, packageCard, processStep, accordionItem, ctaBand, trustBar,
+  industryBadge, industryCard, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow,
 };
