@@ -153,7 +153,7 @@ function globalOutsourcing() {
 function packages() {
   const h = data.pageHeader('packages');
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/packages-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container">
