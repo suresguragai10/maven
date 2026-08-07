@@ -18,7 +18,7 @@ function usefulLinks() {
   const links = (data.usefulLinks || []);
   const h = data.pageHeader('useful-links');
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/useful-links-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container" style="max-width:960px">
