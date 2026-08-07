@@ -40,7 +40,7 @@ function services() {
 function outsourcedAccounting() {
   const h = data.pageHeader('outsourced-accounting');
   return `
-  ${pageHero(h.eyebrow, h.title || data.outsourced.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title || data.outsourced.title, h.subtitle, '/images/outsourced-accounting-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container two-col">
