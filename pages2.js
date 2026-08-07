@@ -91,7 +91,7 @@ function globalOutsourcing() {
   })).join('');
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/global-outsourcing-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container two-col">
