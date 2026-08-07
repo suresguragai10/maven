@@ -8,7 +8,7 @@ const { esc, internalHref } = require('./escape');
 function services() {
   const h = data.pageHeader('services');
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/services-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container">
