@@ -304,7 +304,7 @@ function home() {
 function about() {
   const h = data.pageHeader('about');
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/about-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container two-col">
