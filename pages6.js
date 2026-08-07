@@ -34,7 +34,7 @@ function team() {
     : `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">Team profiles are being prepared — check back soon.</div>`;
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/team-hero-bg.jpg')}
   <section class="section-pad">
     <div class="container">
       ${grid}
