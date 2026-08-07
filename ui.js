@@ -20,8 +20,16 @@ function sectionHead({ eyebrow: eb, title, subtitle, align = 'center' }) {
   </div>`;
 }
 
-function pageHero(kicker, title, sub) {
-  return `<section class="page-hero">
+// bgImage is an optional /images/... path — omitted, every page renders
+// exactly as before (plain navy). Being rolled out one page at a time (see
+// the homepage .hero for the same gradient-over-photo technique); when
+// supplied, the gradient is inlined here since each page's photo differs, so
+// there's no reason to add a new CSS class per page as more get one.
+function pageHero(kicker, title, sub, bgImage) {
+  const style = bgImage
+    ? ` style="background-image: linear-gradient(180deg, rgba(10,31,58,0.6) 0%, rgba(16,42,76,0.72) 100%), url('${esc(bgImage)}')"`
+    : '';
+  return `<section class="page-hero${bgImage ? ' page-hero--photo' : ''}"${style}>
     <div class="container">
       <p class="eyebrow eyebrow--on-dark">${esc(kicker)}</p>
       <h1>${esc(title)}</h1>

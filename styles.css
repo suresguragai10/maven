@@ -336,6 +336,7 @@ body.nav-open { overflow: hidden; }
 .page-hero { background: var(--navy-950); color: #fff; padding: 64px 0 52px; text-align: center; }
 .page-hero h1 { color: #fff; max-width: 780px; margin: 0 auto; }
 .page-hero-sub { max-width: 620px; margin: 16px auto 0; color: rgba(255,255,255,0.76); font-size: 1.05rem; }
+.page-hero--photo { background-size: cover; background-position: center; background-repeat: no-repeat; }
 
 /* ---------- Grid helpers ---------- */
 .grid { display: grid; gap: 26px; }

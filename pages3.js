@@ -101,7 +101,7 @@ function contact() {
   const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(b.mapQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/contact-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container two-col">
