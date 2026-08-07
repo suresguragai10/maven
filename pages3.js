@@ -42,7 +42,7 @@ function documentsNeeded() {
 function industries() {
   const h = data.pageHeader('industries');
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/industries-hero-bg.jpg')}
 
   <section class="section-pad-sm">
     <div class="container" style="max-width:820px">
