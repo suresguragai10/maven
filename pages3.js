@@ -78,7 +78,7 @@ function faq() {
   })).join('');
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/faq-hero-bg.jpg')}
 
   <section class="section-pad">
     <div class="container" style="max-width:760px">
