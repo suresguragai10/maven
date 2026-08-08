@@ -122,26 +122,25 @@ function docCardArt() {
   </div>`;
 }
 
+// Photo header + icon badge, matching the object-photo language used
+// throughout the hero-photo rollout (see [[maven_hero_photo_rollout]] in
+// memory) — deliberately objects, not people, for consistency with every
+// other photo on the site and to avoid the trust risk of AI-generated fake
+// "staff" photos. Image path is derived from cat.key (images/card-<key>.jpg)
+// so adding a 7th category needs only a new image file, no code change.
+// Dropped the old bullet-list preview: with a photo now providing visual
+// interest, repeating 3 of the category's items just crowded the card.
 function homeServiceCard(cat) {
-  const preview = cat.items.slice(0, 3);
-  // "+ N more" is a direct invitation to click, same as homePackageCard()
-  // below it — but unlike that card, this one had no link at all. Matches
-  // that card's existing "See Full Package" pattern instead of inventing a
-  // new one.
-  return `<article class="service-card reveal">
-    <div class="service-card-head">
-      <span class="service-icon">${icon(cat.icon)}</span>
-      <div>
-        <span class="service-letter">Category ${esc(cat.letter)}</span>
-        <h3>${esc(cat.title)}</h3>
-      </div>
+  return `<article class="service-card service-card--photo reveal">
+    <div class="service-card-photo" style="background-image:url('/images/card-${esc(cat.key)}.jpg')">
+      <span class="service-card-photo-badge">${icon(cat.icon)}</span>
     </div>
-    <p class="service-tagline">${esc(cat.tagline)}</p>
-    <ul class="stamp-list">
-      ${preview.map((i) => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}
-      <li>${stampMark('stamp-sm')}<span>+ ${cat.items.length - preview.length} more</span></li>
-    </ul>
-    <a class="btn btn-outline btn-block" href="${internalHref(`services.html#${cat.key}`)}">See Full List</a>
+    <div class="service-card-body">
+      <span class="service-letter">Category ${esc(cat.letter)}</span>
+      <h3>${esc(cat.title)}</h3>
+      <p class="service-tagline">${esc(cat.tagline)}</p>
+      <a class="service-card-link" href="${internalHref(`services.html#${cat.key}`)}">See Full List ${icon('arrowRight')}</a>
+    </div>
   </article>`;
 }
 

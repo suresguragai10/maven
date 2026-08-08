@@ -360,6 +360,29 @@ body.nav-open { overflow: hidden; }
 .service-card h3 { font-size: 1.15rem; margin-top: 2px; }
 .service-tagline { font-size: 0.94rem; margin: 10px 0 16px; }
 
+/* Photo-header variant of .service-card (homepage "What We Do" only — the
+   dedicated Services page keeps the plain icon card, which already shows
+   every item and doesn't need the extra visual weight). Padding moves from
+   the card itself to .service-card-body so the photo can bleed to the
+   card's edges. */
+.service-card--photo { padding: 0; overflow: hidden; }
+.service-card-photo {
+  position: relative; aspect-ratio: 4 / 3; background-size: cover; background-position: center;
+  background-color: var(--navy-950);
+}
+.service-card-photo-badge {
+  position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--navy-950); color: var(--gold-500); display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-md);
+}
+.service-card-photo-badge .ic { width: 20px; height: 20px; }
+.service-card-body { padding: 24px 26px 26px; }
+.service-card-link {
+  display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 0.9rem; color: var(--gold-700);
+}
+.service-card-link:hover { text-decoration: underline; }
+.service-card-link .ic { width: 16px; height: 16px; }
+
 /* Closes the homepage's 6-category grid as a 7th, full-width cell (grid-
    column spans every column regardless of the breakpoint's column count) —
    a distinct "still deciding?" tile rather than leaving the grid ending on a
