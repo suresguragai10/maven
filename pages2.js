@@ -21,7 +21,7 @@ function services() {
   <section class="section-pad-sm bg-mist">
     <div class="container" style="max-width:820px">
       <div class="partner-note reveal">
-        <h4>Category G · Support Through Partners</h4>
+        <h4>Support Through Partners</h4>
         <p>${esc(data.partnerNote)}</p>
       </div>
       <p class="tag-note text-center" style="margin-top:18px">Maven positions itself as a business consultancy and outsourced accounts/compliance partner — not as a statutory audit firm or CA firm.</p>

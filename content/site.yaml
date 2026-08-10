@@ -132,7 +132,6 @@ serviceCategories:
       - Monthly management summary reports
       - Cash-flow monitoring and forecasting
       - Financial statement preparation support
-      - NFRS / IFRS implementation and reporting support
       - Project report preparation
       - Bank loan report preparation
       - Projected financial statement preparation
@@ -150,6 +149,18 @@ serviceCategories:
       - Basic internal control review
       - Budgeting and forecasting support
       - Business expansion planning
+  - key: nfrs-ifrs
+    letter: G
+    title: NFRS / IFRS Implementation & Financial Reporting
+    tagline: Structured support for businesses preparing, transitioning, and reporting under NFRS / IFRS.
+    icon: shield
+    items:
+      - Readiness assessment and gap analysis
+      - First-time implementation and transition support
+      - Technical accounting and reporting support
+      - Financial statement preparation and disclosure support
+      - Accounting policy documentation
+      - Audit preparation and coordination support
 partnerNote: >-
   For services requiring licensed legal, audit, or specialized professional approval, Maven can help
   clients organize documents and coordinate with independent licensed professionals where required.
