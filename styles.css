@@ -134,7 +134,11 @@ section { position: relative; }
 .btn-outline:hover { background: var(--navy-900); color: #fff; }
 .btn-ghost-light { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.35); color: #fff; }
 .btn-ghost-light:hover { background: rgba(255,255,255,0.18); }
-.btn-whatsapp { background: var(--whatsapp); color: #fff; }
+/* White text on WhatsApp green measures 1.98:1 — fails even the 3:1 floor
+   for UI components, let alone 4.5:1 for text. Navy on the same green is
+   8.34:1 (6.75:1 on the hover shade), so navy text/icon is the fix rather
+   than picking a new color — keeps the recognizable WhatsApp green. */
+.btn-whatsapp { background: var(--whatsapp); color: var(--navy-950); }
 .btn-whatsapp:hover { background: var(--whatsapp-dark); }
 .btn-sm { padding: 10px 18px; font-size: 0.88rem; min-height: 44px; }
 .btn-block { width: 100%; margin-top: 18px; }
@@ -556,7 +560,7 @@ body.nav-open { overflow: hidden; }
 /* ---------- Floating actions ---------- */
 .whatsapp-float {
   position: fixed; bottom: 24px; right: 24px; width: 58px; height: 58px; border-radius: 50%;
-  background: var(--whatsapp); color: #fff; display: flex; align-items: center; justify-content: center;
+  background: var(--whatsapp); color: var(--navy-950); display: flex; align-items: center; justify-content: center;
   box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 120; transition: transform 0.15s ease;
 }
 .whatsapp-float:hover { transform: scale(1.06); }

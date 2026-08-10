@@ -206,9 +206,11 @@ for (const p of pages) {
     noindex,
   });
   outDirs.forEach((d) => fs.writeFileSync(path.join(d, p.file), html, 'utf8'));
-  // Blog posts have a real publish date to use as <lastmod>; everything else
-  // falls back to today's build date, since we don't track per-page content history.
-  if (!noindex) generatedFiles.push({ file: p.file, lastmod: p.date || today });
+  // Blog posts have a real publish date to use as <lastmod>. Everything else
+  // has no tracked modification date — stamping today's build date on every
+  // page would tell search engines every page changed on every deploy, even
+  // for a one-line fix elsewhere. Omit <lastmod> rather than fake it.
+  if (!noindex) generatedFiles.push({ file: p.file, lastmod: p.date || null });
   console.log('Wrote', p.file, `(${(html.length / 1024).toFixed(1)} KB)`, noindex ? '[noindex]' : '');
 }
 
@@ -237,7 +239,8 @@ if (siteUrl) {
     // Extensionless — matches what Cloudflare actually serves (it redirects
     // *.html -> extensionless by default), same reasoning as canonical URLs.
     const loc = `${siteUrl}${internalHref(file)}`;
-    return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod></url>`;
+    const lastmodTag = lastmod ? `<lastmod>${lastmod}</lastmod>` : '';
+    return `  <url><loc>${loc}</loc>${lastmodTag}</url>`;
   }).join('\n');
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
   outDirs.forEach((d) => fs.writeFileSync(path.join(d, 'sitemap.xml'), sitemap, 'utf8'));

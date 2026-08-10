@@ -130,6 +130,7 @@ module.exports = {
   testimonials,
   privacyIntro: content.privacyIntro || '',
   privacySections: content.privacySections || [],
+  privacyLastReviewed: content.privacyLastReviewed || '',
   trustPoints: content.trustPoints,
   aboutText: content.aboutText,
   aboutFacts: content.aboutFacts,

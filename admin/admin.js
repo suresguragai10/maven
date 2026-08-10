@@ -937,6 +937,7 @@
     if (!Array.isArray(c.privacySections)) c.privacySections = [];
     var privBody = el('div');
     privBody.appendChild(textField('Intro Paragraph', function () { return c.privacyIntro; }, function (v) { c.privacyIntro = v; }, { multiline: true, rows: 3 }));
+    privBody.appendChild(textField('Last Reviewed (e.g. "August 2026")', function () { return c.privacyLastReviewed; }, function (v) { c.privacyLastReviewed = v; }, { hint: 'Shown at the bottom of the Privacy page. Update this only when you actually re-read and confirm the policy — it used to auto-show the current month on every deploy, which made it look reviewed even when it wasn\'t.' }));
     privBody.appendChild(titleTextListEditor(c.privacySections, 'Section'));
     area.appendChild(section('sec-privacy', 'Privacy Policy', 'The intro paragraph and each titled section shown on the Privacy Policy page.', privBody));
 

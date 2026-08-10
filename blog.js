@@ -1,9 +1,27 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const { marked } = require('marked');
+const { marked, Renderer } = require('marked');
+const { esc, safeUrl } = require('./escape');
 
 const BLOG_DIR = path.join(__dirname, 'content', 'blog');
+
+// Blog posts are markdown files in this repo, not a public submission form —
+// but marked (since v5) no longer sanitizes at all: raw HTML in the source
+// passes straight through, and its own link/image renderers don't check the
+// URL scheme (a "javascript:" link in markdown source would render as-is).
+// This renderer closes both gaps as defense-in-depth, in case a post is ever
+// drafted from a pasted/untrusted source. Attribute escaping otherwise stays
+// exactly as marked's default renderer does it — we only swap in a
+// scheme-checked href/src before delegating.
+const safeRenderer = new Renderer();
+safeRenderer.html = function (token) { return esc(token.text); };
+safeRenderer.link = function (token) {
+  return Renderer.prototype.link.call(this, { ...token, href: safeUrl(token.href) });
+};
+safeRenderer.image = function (token) {
+  return Renderer.prototype.image.call(this, { ...token, href: safeUrl(token.href) });
+};
 
 function slugFromFilename(filename) {
   return filename.replace(/\.md$/i, '').toLowerCase().trim()
@@ -44,7 +62,7 @@ function loadPosts() {
       date: meta.date || '',
       dateDisplay: meta.date ? formatDateLong(meta.date) : '',
       excerpt: meta.excerpt || '',
-      contentHtml: marked.parse(body || ''),
+      contentHtml: marked.parse(body || '', { renderer: safeRenderer }),
       file: `blog-${slug}.html`,
     };
   });

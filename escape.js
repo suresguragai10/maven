@@ -22,6 +22,22 @@ function esc(s) {
 }
 
 // ============================================================
+// safeUrl() — CMS fields that become href/src attributes (social links,
+// useful-links URLs, team photo paths) are admin-entered text, not code, but
+// they still land directly in an attribute. A value like "javascript:..."
+// would execute on click; this allows only the schemes those fields
+// legitimately need (http/https/mailto/tel) plus scheme-less values
+// (relative paths, protocol-relative "//", bare "#fragment"). Anything else
+// is neutralized to "#" rather than rendered as-is.
+// ============================================================
+function safeUrl(url) {
+  const s = (url == null ? '' : String(url)).trim();
+  if (!s) return '';
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) && !/^(https?:|mailto:|tel:)/i.test(s)) return '#';
+  return s;
+}
+
+// ============================================================
 // internalHref() — Cloudflare Workers' static-asset serving redirects any
 // *.html request to its extensionless equivalent by default (e.g.
 // /calculators.html -> 307 -> /calculators). That means every internal link
@@ -39,4 +55,4 @@ function internalHref(href) {
   return '/' + base + (hash ? '#' + hash : '');
 }
 
-module.exports = { esc, internalHref };
+module.exports = { esc, safeUrl, internalHref };

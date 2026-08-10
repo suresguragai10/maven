@@ -1,7 +1,7 @@
 const data = require('./data');
 const { icon, stampMark } = require('./icons');
 const { button, sectionHead, pageHero, ctaBand } = require('./ui');
-const { esc } = require('./escape');
+const { esc, safeUrl } = require('./escape');
 
 // Build initials (max 2) from a name for the avatar placeholder.
 function initials(name) {
@@ -15,7 +15,7 @@ function teamCard(m) {
   const loc = m.location ? `<p class="team-card-loc">${icon('mapPin')}<span>${esc(m.location)}</span></p>` : '';
   const bio = m.bio ? `<p class="team-card-bio">${esc(m.bio)}</p>` : '';
   const avatar = m.photo
-    ? `<div class="team-card-avatar"><img src="${esc(m.photo)}" alt="${esc(m.name)}" loading="lazy"></div>`
+    ? `<div class="team-card-avatar"><img src="${esc(safeUrl(m.photo))}" alt="${esc(m.name)}" loading="lazy"></div>`
     : `<div class="team-card-avatar" aria-hidden="true">${initials(m.name)}</div>`;
   return `<article class="team-card reveal">
     ${avatar}
@@ -104,7 +104,7 @@ function privacy() {
     <div class="container" style="max-width:760px">
       ${intro}
       ${sections}
-      <p class="tag-note" style="margin-top:28px">Last reviewed: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}.</p>
+      ${data.privacyLastReviewed ? `<p class="tag-note" style="margin-top:28px">Last reviewed: ${esc(data.privacyLastReviewed)}.</p>` : ''}
     </div>
   </section>
   ${ctaBand({

@@ -186,7 +186,7 @@
       ].join('\n');
     };
 
-    var showFallback = function (summary, hadFile) {
+    var showFallback = function (summary) {
       var cfg = window.MAVEN || {};
       var subject = encodeURIComponent('Website Inquiry');
       var body = encodeURIComponent(summary);
@@ -196,8 +196,6 @@
       if (waLink && cfg.whatsapp) waLink.href = 'https://wa.me/' + cfg.whatsapp + '?text=' + body;
       var summaryBox = document.getElementById('formSummaryText');
       if (summaryBox) summaryBox.textContent = summary;
-      var fileNote = document.getElementById('formFileNote');
-      if (fileNote) fileNote.hidden = !hadFile;
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
         resultBox.hidden = false;
@@ -205,16 +203,10 @@
       }
     };
 
-    // hadFile: Formspree's free plan doesn't accept file uploads, so any file
-    // chosen in the form is never actually sent — the success message must say
-    // so explicitly rather than let the user believe it went through.
-    var showSuccess = function (hadFile) {
+    var showSuccess = function () {
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
-        var fileNote = hadFile
-          ? ' <strong>Note: the file you attached was not included</strong> — please send it to us directly by email or WhatsApp so we have it.'
-          : '';
-        resultBox.innerHTML = '<h3>✓ Inquiry sent — thank you!</h3><p class="tag-note">We\'ve received your message and will get back to you within one business day. If it\'s urgent, feel free to call or WhatsApp us directly.' + fileNote + '</p>';
+        resultBox.innerHTML = '<h3>✓ Inquiry sent — thank you!</h3><p class="tag-note">We\'ve received your message and will get back to you within one business day. If it\'s urgent, feel free to call or WhatsApp us directly.</p>';
         resultBox.hidden = false;
         resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -226,12 +218,9 @@
       var fd = new FormData(form);
       var get = function (k) { return (fd.get(k) || '').toString().trim(); };
 
-      var fileInput = document.getElementById('f-file');
-      var hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
-
       // Honeypot: if this hidden field is filled, it's almost certainly a bot.
       // Pretend success and silently drop the submission.
-      if (get('company_website')) { showSuccess(hasFile); return; }
+      if (get('company_website')) { showSuccess(); return; }
 
       var name = get('name');
       var phone = get('phone');
@@ -261,8 +250,7 @@
       var summary = buildSummary(get);
       var cfg = window.MAVEN || {};
 
-      // If a Formspree form ID is configured, submit directly (attachments excluded —
-      // they aren't supported on Formspree's free plan; users can email files separately).
+      // If a Formspree form ID is configured, submit directly.
       if (cfg.formspree) {
         var submitBtn = form.querySelector('button[type="submit"]');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
@@ -285,16 +273,16 @@
           headers: { Accept: 'application/json' },
         }).then(function (res) {
           if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Send Inquiry'; }
-          if (res.ok) { showSuccess(hasFile); } else { showFallback(summary, hasFile); }
+          if (res.ok) { showSuccess(); } else { showFallback(summary); }
         }).catch(function () {
           if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Send Inquiry'; }
-          showFallback(summary, hasFile);
+          showFallback(summary);
         });
         return;
       }
 
       // No Formspree configured — fall back to email/WhatsApp handoff.
-      showFallback(summary, hasFile);
+      showFallback(summary);
     });
   }
 

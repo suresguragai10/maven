@@ -1,5 +1,5 @@
 const data = require('./data');
-const { esc, internalHref } = require('./escape');
+const { esc, safeUrl, internalHref } = require('./escape');
 const { icon } = require('./icons');
 const { button, sectionHead, pageHero, ctaBand } = require('./ui');
 
@@ -10,7 +10,7 @@ function usefulLinksCard(link) {
       <div><h3 style="margin-top:2px">${esc(link.name)}</h3></div>
     </div>
     <p class="service-tagline" style="flex:1">${esc(link.description)}</p>
-    <a class="btn btn-outline" href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">Visit Website ${icon('external')}</a>
+    <a class="btn btn-outline" href="${esc(safeUrl(link.url))}" target="_blank" rel="noopener noreferrer">Visit Website ${icon('external')}</a>
   </article>`;
 }
 

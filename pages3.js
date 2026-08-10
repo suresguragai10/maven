@@ -177,12 +177,8 @@ function contact() {
                 <label for="f-message">Message</label>
                 <textarea id="f-message" name="message" required placeholder="Briefly describe what you need help with..."></textarea>
               </div>
-              <div class="form-field full">
-                <label for="f-file">Upload Document <span class="optional">(optional)</span></label>
-                <input id="f-file" name="attachment" type="file">
-                <span class="form-hint">This form can't attach files yet — after sending, please email or WhatsApp the document to us directly so we receive it.</span>
-              </div>
             </div>
+            <p class="form-hint">For your security, please don't attach financial records, IDs, or other sensitive documents to this form. Once we've connected, we'll confirm a secure way to share them.</p>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">${icon('send')} Send Inquiry</button>
               <span class="form-hint">We typically respond within one business day.</span>
@@ -192,7 +188,6 @@ function contact() {
           <div id="formResult" class="form-result" hidden>
             <h3>Your inquiry is ready to send</h3>
             <p class="tag-note">We couldn't confirm your inquiry was delivered automatically. Please send it using one of the options below so we don't miss it.</p>
-            <p class="tag-note" id="formFileNote" hidden><strong>Remember to attach your file</strong> — it isn't included automatically in the email or WhatsApp draft.</p>
             <div class="form-result-summary" id="formSummaryText"></div>
             <div class="form-result-actions">
               <a id="sendEmailLink" class="btn btn-outline" href="#">${icon('mail')} Send via Email</a>

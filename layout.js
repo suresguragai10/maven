@@ -1,6 +1,6 @@
 const { icon } = require('./icons');
 const data = require('./data');
-const { esc, internalHref } = require('./escape');
+const { esc, safeUrl, internalHref } = require('./escape');
 
 function renderDesktopNav(activeKey) {
   const items = data.nav.map((item) => {
@@ -83,7 +83,7 @@ function renderFooter() {
   ].filter((s) => s.url && String(s.url).trim());
   const socialHtml = socialLinks.length
     ? `<div class="footer-social">
-          ${socialLinks.map((s) => `<a href="${s.url}" aria-label="${s.label}" target="_blank" rel="noopener noreferrer">${icon(s.key)}</a>`).join('')}
+          ${socialLinks.map((s) => `<a href="${esc(safeUrl(s.url))}" aria-label="${esc(s.label)}" target="_blank" rel="noopener noreferrer">${icon(s.key)}</a>`).join('')}
         </div>`
     : '';
   return `<footer class="site-footer">
@@ -171,7 +171,12 @@ function jsonLd() {
   };
   if (base) { obj.url = base + '/'; obj.image = base + '/images/og-image.png'; }
   if (sameAs.length) obj.sameAs = sameAs;
-  return `<script type="application/ld+json">${JSON.stringify(obj)}</script>`;
+  // Every value here ultimately traces back to admin-entered CMS text (brand
+  // name, address, social URLs). A value containing "</script>" would close
+  // this tag early and let anything after it run as HTML/script — escaping
+  // "<" as a JSON unicode escape (valid inside a JSON string, invisible to
+  // JSON.parse) neutralizes that without touching the visible content.
+  return `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`;
 }
 
 // Normalise the configured site URL (strip a trailing slash) so we can build
