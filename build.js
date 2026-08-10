@@ -7,7 +7,7 @@ const { internalHref } = require('./escape');
 const { renderPage } = require('./layout');
 const { home, about } = require('./pages1');
 const { services, outsourcedAccounting, globalOutsourcing, packages } = require('./pages2');
-const { nfrsIfrs, internationalAccounting, virtualCfo } = require('./pages7');
+const { nfrsIfrs, internationalAccounting, virtualCfo, resources } = require('./pages7');
 const { documentsNeeded, industries, faq, contact } = require('./pages3');
 const { usefulLinks, blogIndex, blogPost } = require('./pages4');
 const { calculators } = require('./pages5');
@@ -132,6 +132,11 @@ const pages = [
     file: 'industries.html', activeKey: 'industries', bodyHtml: industries(),
     title: 'Industries We Serve Across Nepal | Maven Consultancy',
     description: 'Maven supports startups, SMEs, traders, restaurants, service companies, construction, online businesses, freelancers, schools, NGOs, and more across Nepal.',
+  },
+  {
+    file: 'resources.html', activeKey: 'resources', bodyHtml: resources(),
+    title: 'Resources — Guides, Calculators & Reference Links | Maven Consultancy',
+    description: 'Documents checklists, financial calculators, useful government links, and FAQs for businesses in Nepal — curated by Maven Consultancy.',
   },
   {
     file: 'useful-links.html', activeKey: 'useful-links', bodyHtml: usefulLinks(),

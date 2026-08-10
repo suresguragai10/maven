@@ -723,6 +723,31 @@ virtualCfo:
         information, prepare agreed analysis and provide financial-management support. We do not
         provide investment advice or make decisions on behalf of the business.
   cta: Talk to Maven about Virtual CFO and management reporting support
+resourcesHub:
+  intro: >-
+    Practical tools and reference material to help you prepare, plan, and stay on top of compliance
+    — in one place.
+  tiles:
+    - title: Documents Checklist
+      text: General document checklists for company registration, PAN/VAT registration, monthly accounting, and tax clearance.
+      cta: View Documents Checklist
+      href: documents-needed.html
+      icon: upload
+    - title: Financial Calculators
+      text: Free calculators for salary income tax, VAT, TDS, and loan EMI, with a full slab-by-slab breakdown.
+      cta: Use Financial Calculators
+      href: calculators.html
+      icon: percent
+    - title: Useful Links
+      text: Official Nepal government portals for tax, company registration, social security, and banking.
+      cta: View Useful Links
+      href: useful-links.html
+      icon: globe
+    - title: FAQ
+      text: Straight answers about what Maven does — and does not — provide.
+      cta: Read FAQs
+      href: faq.html
+      icon: shield
 packages:
   - name: Startup Setup Package
     audience: For new entrepreneurs and newly registered businesses.
@@ -1146,7 +1171,7 @@ pages:
     href: global-outsourcing.html
     hidden: false
   - key: international-accounting
-    label: Outsourced Accounting & Bookkeeping (International)
+    label: Outsourced Accounting & Bookkeeping
     href: international-accounting.html
     hidden: false
   - key: virtual-cfo
@@ -1168,6 +1193,10 @@ pages:
   - key: industries
     label: Industries
     href: industries.html
+    hidden: false
+  - key: resources
+    label: Resources
+    href: resources.html
     hidden: false
   - key: useful-links
     label: Useful Links
@@ -1252,6 +1281,10 @@ pageHeaders:
     subtitle: >-
       Maven works with a wide range of businesses, from first-time registrations to established,
       growing companies.
+  resources:
+    eyebrow: Resources
+    title: Guides, Calculators & Reference Links
+    subtitle: Practical tools and reference material to help you prepare, plan, and stay on top of compliance.
   useful-links:
     eyebrow: Resources
     title: Useful Links

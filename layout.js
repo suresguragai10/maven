@@ -62,13 +62,24 @@ function renderHeader(activeKey) {
       </a>
       ${renderDesktopNav(activeKey)}
       <div class="header-cta">
-        <a class="btn btn-outline btn-sm" href="tel:${data.brand.mobile.replace(/[^+\d]/g, '')}">${icon('phone')} Call</a>
         <a class="btn btn-primary btn-sm" href="${internalHref('contact.html')}">Book Free Consultation</a>
       </div>
       <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">${icon('menu')}</button>
     </div>
   </header>
   ${renderMobileNav(activeKey)}`;
+}
+
+// Footer nav columns are hand-curated (not derived from navStructure) because
+// the footer intentionally exposes a different cut of the site than the
+// header — e.g. individual Services anchors and a dedicated Contact info
+// block that isn't part of the main nav at all. `hidden` pages (Testimonials,
+// Blog until each has real content) are left out via data.isVisible().
+function footerCol(title, links) {
+  return `<div class="footer-col">
+    <h4>${esc(title)}</h4>
+    <ul>${links.map((l) => `<li><a href="${internalHref(l.href)}">${esc(l.label)}</a></li>`).join('')}</ul>
+  </div>`;
 }
 
 function renderFooter() {
@@ -86,6 +97,37 @@ function renderFooter() {
           ${socialLinks.map((s) => `<a href="${esc(safeUrl(s.url))}" aria-label="${esc(s.label)}" target="_blank" rel="noopener noreferrer">${icon(s.key)}</a>`).join('')}
         </div>`
     : '';
+
+  const companyLinks = [
+    { href: 'about.html', label: 'About Maven' },
+    { href: 'team.html', label: 'Our Team' },
+    { href: 'industries.html', label: 'Industries' },
+    { href: 'contact.html', label: 'Contact' },
+    data.isVisible('testimonials') ? { href: 'testimonials.html', label: 'Testimonials' } : null,
+  ].filter(Boolean);
+  const servicesLinks = [
+    { href: 'services.html', label: 'All Services' },
+    { href: 'outsourced-accounting.html', label: 'Outsourced Accounting — Nepal' },
+    { href: 'services.html#tax', label: 'Tax & Compliance' },
+    { href: 'services.html#reporting', label: 'Financial Management & Reporting' },
+    { href: 'nfrs-ifrs.html', label: 'NFRS / IFRS Implementation' },
+    { href: 'packages.html', label: 'Packages' },
+  ];
+  const internationalLinks = [
+    { href: 'global-outsourcing.html', label: 'International Services' },
+    { href: 'international-accounting.html', label: 'International Accounting' },
+    { href: 'virtual-cfo.html', label: 'Virtual CFO / Management Reporting' },
+  ];
+  const resourceLinks = [
+    { href: 'resources.html', label: 'Resources' },
+    { href: 'documents-needed.html', label: 'Documents Checklist' },
+    { href: 'calculators.html', label: 'Financial Calculators' },
+    { href: 'useful-links.html', label: 'Useful Links' },
+    { href: 'faq.html', label: 'FAQ' },
+    data.isVisible('blog') ? { href: 'blog.html', label: 'Blog' } : null,
+    { href: 'privacy.html', label: 'Privacy Policy' },
+  ].filter(Boolean);
+
   return `<footer class="site-footer">
     <div class="container footer-grid">
       <div class="footer-brand">
@@ -95,33 +137,17 @@ function renderFooter() {
         </div>
         <p>${esc(b.legalName)}. A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
         ${socialHtml}
-      </div>
-      <div class="footer-col">
-        <h4>Quick Links</h4>
-        <ul>
-          ${data.footerQuickLinks.map((l) => `<li><a href="${l.href}">${l.label}</a></li>`).join('')}
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Services</h4>
-        <ul>
-          <li><a href="${internalHref('services.html#registration')}">Registration & Setup</a></li>
-          <li><a href="${internalHref('outsourced-accounting.html')}">Outsourced Accounting</a></li>
-          <li><a href="${internalHref('services.html#tax')}">Tax & Compliance</a></li>
-          <li><a href="${internalHref('services.html#payroll')}">Payroll Support</a></li>
-          <li><a href="${internalHref('services.html#reporting')}">Financial Management</a></li>
-          <li><a href="${internalHref('services.html#advisory')}">Business Advisory</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Contact</h4>
-        <address>
+        <address style="margin-top:18px">
           <span class="footer-addr-item">${icon('mapPin')}<span>${esc(b.addressLine)}</span></span>
           <span class="footer-addr-item">${icon('phone')}<span>${esc(b.mobile)}</span></span>
           <span class="footer-addr-item">${icon('mail')}<span>${esc(b.email)}</span></span>
           <span class="footer-addr-item">${icon('clock')}<span>${esc(b.hours)}</span></span>
         </address>
       </div>
+      ${footerCol('Company', companyLinks)}
+      ${footerCol('Services', servicesLinks)}
+      ${footerCol('International', internationalLinks)}
+      ${footerCol('Resources & Legal', resourceLinks)}
     </div>
     <div class="container footer-disclaimer">
       <p>${esc(data.footerDisclaimer)}</p>

@@ -210,16 +210,18 @@ section { position: relative; }
 .mobile-nav-cta { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; }
 body.nav-open { overflow: hidden; }
 
-/* 1340px, not 980px: the desktop nav's real content (brand + 8 nav items +
-   Call/Book buttons) measures ~1247px on one line — below ~1340px viewport
-   width there isn't room for that plus the header's own side padding, and it
-   was silently wrapping ("Global Outsourcing" breaking to 2 lines) rather
-   than switching to the mobile nav like it should have. */
-@media (max-width: 1340px) {
+/* 1050px, not 1340px: reworking the nav from 8 top-level items + 2 header
+   buttons down to 6 items + 1 "Book Free Consultation" button (see the
+   International/Resources restructuring) shrank the real one-line content
+   width from ~1247px to ~985px (measured directly in headless Chrome by
+   forcing the desktop nav on at decreasing widths and checking for wrap/
+   overflow, the same way the original 1340px figure was derived). 1050px
+   keeps the same proportional safety margin above that measured width. */
+@media (max-width: 1050px) {
   .main-nav, .header-cta .btn-outline, .header-cta .btn-primary { display: none; }
   .nav-toggle { display: inline-flex; }
 }
-@media (min-width: 1341px) { .mobile-nav { display: none !important; } }
+@media (min-width: 1051px) { .mobile-nav { display: none !important; } }
 
 /* ---------- Hero ---------- */
 /* Navy gradient layered OVER the desk photo (not replacing it) — keeps the
@@ -537,7 +539,7 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Footer ---------- */
 .site-footer { background: var(--navy-950); color: rgba(255,255,255,0.72); }
-.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 40px; padding: 64px 0 40px; }
+.footer-grid { display: grid; grid-template-columns: 1.3fr 0.9fr 1fr 1fr 1fr; gap: 40px; padding: 64px 0 40px; }
 .footer-brand p { color: rgba(255,255,255,0.62); font-size: 0.92rem; margin: 14px 0 18px; max-width: 300px; }
 .footer-social { display: flex; gap: 10px; }
 .footer-social a { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; }
@@ -545,16 +547,16 @@ body.nav-open { overflow: hidden; }
 .footer-social .ic { width: 17px; height: 17px; }
 .footer-col h4 { color: #fff; font-family: var(--font-body); font-size: 0.86rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
 .footer-col ul { display: flex; flex-direction: column; gap: 10px; }
-.footer-col a, .footer-col address { font-size: 0.92rem; color: rgba(255,255,255,0.68); font-style: normal; }
+.footer-col a, .footer-brand address, .footer-col address { font-size: 0.92rem; color: rgba(255,255,255,0.68); font-style: normal; }
 .footer-col a:hover { color: var(--gold-500); }
-.footer-col address { display: flex; flex-direction: column; gap: 10px; }
+.footer-brand address, .footer-col address { display: flex; flex-direction: column; gap: 10px; }
 .footer-addr-item { display: flex; gap: 9px; align-items: flex-start; }
 .footer-addr-item .ic { width: 15px; height: 15px; margin-top: 3px; color: var(--gold-500); flex-shrink: 0; }
 .footer-disclaimer { border-top: 1px solid rgba(255,255,255,0.12); padding: 22px 0; }
 .footer-disclaimer p { font-size: 0.8rem; color: rgba(255,255,255,0.52); max-width: 900px; margin: 0; }
 .footer-bottom { border-top: 1px solid rgba(255,255,255,0.12); padding: 20px 0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.82rem; color: rgba(255,255,255,0.5); }
 
-@media (max-width: 980px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 980px) { .footer-grid { grid-template-columns: 1fr 1fr 1fr; } }
 @media (max-width: 640px) { .footer-grid { grid-template-columns: 1fr; padding: 48px 0 30px; } }
 
 /* ---------- Floating actions ---------- */

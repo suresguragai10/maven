@@ -301,4 +301,52 @@ function virtualCfo() {
   `;
 }
 
-module.exports = { nfrsIfrs, internationalAccounting, virtualCfo };
+function resourceTile(tile) {
+  return `<article class="service-card reveal">
+    <div class="service-card-head">
+      <span class="service-icon">${icon(tile.icon)}</span>
+      <h3>${esc(tile.title)}</h3>
+    </div>
+    <p>${esc(tile.text)}</p>
+    <div style="margin-top:20px">${button(esc(tile.cta), tile.href, 'outline')}</div>
+  </article>`;
+}
+
+function resources() {
+  const h = data.pageHeader('resources');
+  const hub = data.resourcesHub || {};
+  const tiles = (hub.tiles || []).slice();
+  if (data.isVisible('blog')) {
+    tiles.push({
+      title: 'Blog', text: 'Practical notes on accounting, tax, and compliance for businesses in Nepal.',
+      cta: 'Read the Blog', href: 'blog.html', icon: 'send',
+    });
+  }
+
+  return `
+  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+
+  <section class="section-pad-sm">
+    <div class="container text-center" style="max-width:760px">
+      <p class="reveal">${esc(hub.intro)}</p>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <div class="container">
+      <div class="grid grid-2">
+        ${tiles.map(resourceTile).join('')}
+      </div>
+    </div>
+  </section>
+
+  ${ctaBand({
+    eyebrow: 'Need Something Specific?',
+    title: "Can't find what you're looking for?",
+    subtitle: 'Send us a message and we will point you in the right direction.',
+    buttons: [button('Contact Maven', 'contact.html', 'primary')],
+  })}
+  `;
+}
+
+module.exports = { nfrsIfrs, internationalAccounting, virtualCfo, resources };
