@@ -47,6 +47,7 @@ const navStructure = [
     children: [
       { key: 'services', label: 'All Services', href: 'services.html' },
       { key: 'outsourced-accounting', label: 'Outsourced Accounting', href: 'outsourced-accounting.html' },
+      { key: 'nfrs-ifrs', label: 'NFRS/IFRS Support', href: 'nfrs-ifrs.html' },
       { key: 'packages', label: 'Packages', href: 'packages.html' },
     ],
   },
@@ -92,7 +93,7 @@ function buildNav() {
 const nav = buildNav();
 
 const footerQuickOrder = [
-  'about', 'services', 'global-outsourcing', 'packages', 'documents-needed',
+  'about', 'services', 'global-outsourcing', 'nfrs-ifrs', 'packages', 'documents-needed',
   'useful-links', 'calculators', 'team', 'testimonials', 'blog', 'faq', 'privacy',
 ];
 const footerQuickLinks = footerQuickOrder
@@ -139,6 +140,7 @@ module.exports = {
   serviceCategories: content.serviceCategories,
   partnerNote: content.partnerNote,
   outsourced: content.outsourced,
+  nfrsIfrs: content.nfrsIfrs,
   globalOutsourcing: content.globalOutsourcing,
   packages: content.packages,
   packagesFeeNote: content.packagesFeeNote,

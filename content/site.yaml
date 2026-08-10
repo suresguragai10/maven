@@ -132,6 +132,7 @@ serviceCategories:
       - Monthly management summary reports
       - Cash-flow monitoring and forecasting
       - Financial statement preparation support
+      - NFRS / IFRS implementation and reporting support
       - Project report preparation
       - Bank loan report preparation
       - Projected financial statement preparation
@@ -166,6 +167,268 @@ outsourced:
     - Professional review process
     - Scalable support as business grows
   cta: Talk to us about monthly accounting support
+nfrsIfrs:
+  intro: >-
+    Financial reporting requirements can become more complex as a business grows, changes its
+    reporting framework, works with lenders or investors, or prepares financial statements for
+    different stakeholders. Maven Consultancy provides structured NFRS / IFRS implementation and
+    financial reporting support to help management and finance teams understand reporting
+    requirements, identify gaps, organize supporting schedules, prepare accounting adjustments, and
+    develop a more reliable financial reporting process.
+  introHeading: From Accounting Records to Better Financial Reporting
+  introBody: >-
+    NFRS / IFRS implementation is more than changing the format of financial statements. It may
+    require changes to accounting policies, recognition and measurement practices, supporting
+    schedules, documentation, disclosures, internal processes, and the way financial information is
+    collected throughout the year. Maven helps businesses approach this work in a structured and
+    practical way. Our role is to support management with implementation, accounting analysis,
+    documentation, financial statement preparation, and reporting readiness while keeping the process
+    understandable for the people responsible for maintaining the accounts.
+  supportAreas:
+    - title: NFRS / IFRS Applicability & Readiness Assessment
+      intro: >-
+        Before implementation begins, we help understand the current reporting environment and
+        identify areas that may require attention.
+      items:
+        - Understanding the current accounting and reporting framework
+        - Reviewing the existing chart of accounts and reporting structure
+        - Identifying significant accounting and disclosure areas
+        - Assessing the availability of supporting records and schedules
+        - Identifying differences between current accounting practices and applicable reporting requirements
+        - Preparing a practical implementation roadmap
+        - Prioritizing high-impact areas for management attention
+      output:
+        - Initial reporting-readiness assessment
+        - Key issue and gap summary
+        - Information requirement list
+        - Implementation action plan
+        - Responsibility and timeline tracker
+    - title: First-Time Implementation & Transition Support
+      intro: >-
+        Moving to a different financial reporting framework can affect opening balances, accounting
+        policies, financial statement classifications, disclosures, and supporting documentation.
+        Maven can assist your finance team in organizing the transition process.
+      items:
+        - Opening balance and transition schedule support
+        - Identification of required accounting adjustments
+        - Preparation of adjustment workings
+        - Supporting schedules and reconciliations
+        - Accounting policy documentation
+        - Comparative information support
+        - Financial statement mapping
+        - Implementation tracking and documentation
+      note: >-
+        Our objective is to create a clear trail between the underlying accounting records,
+        adjustments, supporting calculations, and final financial statements.
+    - title: Technical Accounting & Reporting Support
+      intro: >-
+        Some transactions require additional analysis before they can be reflected appropriately in
+        the financial statements. Depending on the nature of the entity and transaction, our
+        reporting support may cover areas such as:
+      items:
+        - Revenue recognition
+        - Property, plant and equipment
+        - Depreciation and asset accounting
+        - Leases
+        - Inventories
+        - Employee benefits
+        - Provisions and contingencies
+        - Financial instruments
+        - Expected credit loss calculations and supporting schedules
+        - Impairment considerations
+        - Related-party transactions and disclosures
+        - Foreign currency transactions
+        - Income tax accounting
+        - Consolidation and group reporting
+        - Changes in accounting estimates and policies
+        - Events occurring after the reporting period
+      note: >-
+        The exact scope is agreed after understanding your business, applicable reporting
+        requirements, available records, and reporting complexity.
+  statementPrep:
+    heading: More Than Preparing the Numbers
+    intro: >-
+      Financial statements need consistency between the accounting records, supporting schedules,
+      accounting policies, disclosures, and comparative information. Maven can assist with:
+    items:
+      - Statement of Financial Position preparation
+      - Statement of Profit or Loss and Other Comprehensive Income
+      - Statement of Changes in Equity
+      - Statement of Cash Flows
+      - Notes to the financial statements
+      - Accounting policy documentation
+      - Supporting schedules
+      - Lead schedules and account reconciliations
+      - Comparative information
+      - Financial statement mapping
+      - Disclosure checklist support
+      - Cross-referencing between statements and notes
+    note: >-
+      Where appropriate, we can also work with your existing accounting team to improve the year-end
+      financial reporting process so that reporting becomes more organized in future periods.
+  policies:
+    intro: >-
+      Good financial reporting depends on more than year-end adjustments. Businesses also need
+      consistent accounting practices throughout the year. Maven can assist management in
+      documenting areas such as:
+    items:
+      - Revenue accounting procedures
+      - Expense recognition
+      - Fixed asset capitalization
+      - Depreciation practices
+      - Inventory accounting
+      - Receivable and payable processes
+      - Provision calculations
+      - Foreign currency accounting
+      - Month-end closing procedures
+      - Supporting document requirements
+      - Financial statement preparation procedures
+    note: >-
+      The aim is to create practical documentation that the accounting team can actually use, rather
+      than policies that exist only on paper.
+  managementReporting:
+    intro: >-
+      NFRS / IFRS financial reporting and management reporting serve different purposes, but the
+      underlying accounting information should remain organized and reconcilable. Where required,
+      Maven can help connect statutory-style financial reporting with:
+    items:
+      - Monthly management reports
+      - Budget-versus-actual analysis
+      - Cash-flow monitoring
+      - Receivable and payable schedules
+      - Department or project reporting
+      - KPI reporting
+      - Management dashboards
+      - Forecasting
+    note: >-
+      This can help management use the accounting system for decision-making throughout the year
+      instead of looking at financial statements only at year-end.
+  auditPrep:
+    intro: >-
+      A well-organized accounting and reporting process can make year-end audit coordination
+      significantly easier. Maven can help prepare and organize:
+    items:
+      - Trial balance and general ledger
+      - Account reconciliations
+      - Supporting schedules
+      - Fixed asset schedules
+      - Receivable and payable schedules
+      - Bank reconciliations
+      - Tax-related schedules
+      - Accounting adjustment workings
+      - Financial statement support files
+      - Requested document trackers
+      - Responses and supporting documents for audit queries
+    note: >-
+      Where statutory audit, certification, assurance, legal opinion, valuation, actuarial work, or
+      another licensed professional service is required, the client must engage the appropriately
+      qualified independent professional. Maven can support the accounting team and coordinate
+      documentation, but Maven does not issue statutory audit opinions or represent itself as an
+      audit firm.
+  process:
+    - title: Understand
+      text: >-
+        We first understand your business, reporting requirements, accounting system, existing
+        financial statements, and current accounting practices.
+    - title: Assess
+      text: >-
+        We identify significant reporting areas, missing information, accounting differences,
+        documentation gaps, and implementation priorities.
+    - title: Plan
+      text: >-
+        A practical implementation plan is prepared showing the required information,
+        responsibilities, reporting areas, and expected sequence of work.
+    - title: Prepare
+      text: >-
+        We assist with calculations, schedules, reconciliations, accounting adjustments, policies,
+        disclosures, and supporting documentation.
+    - title: Report
+      text: >-
+        The information is organized into a structured financial reporting package with supporting
+        schedules and appropriate documentation.
+    - title: Handover & Improve
+      text: >-
+        We explain significant adjustments and reporting processes to management or the accounting
+        team and identify areas that can be improved for the next reporting period.
+  deliverables:
+    - NFRS / IFRS readiness assessment
+    - Gap analysis
+    - Implementation roadmap
+    - Opening balance and transition schedules
+    - Accounting adjustment register
+    - Supporting calculations and working papers
+    - Chart-of-accounts mapping
+    - Accounting policy documentation
+    - Disclosure checklist
+    - Financial statement preparation support
+    - Supporting schedules and reconciliations
+    - Reporting templates
+    - Management reporting templates
+    - Audit document tracker
+    - Staff implementation guidance
+  deliverablesNote: Deliverables are customized according to the agreed scope and reporting requirements of each client.
+  whoFor:
+    - Growing private companies
+    - Companies improving their financial reporting
+    - Businesses transitioning to a different reporting framework
+    - Companies preparing financial statements for lenders or investors
+    - Foreign-invested or group companies with reporting requirements
+    - Businesses requiring more structured year-end reporting
+    - Finance teams that need additional implementation capacity
+    - Businesses preparing for external audit
+    - Companies with complex accounting or disclosure requirements
+  whoForNote: >-
+    Applicability of a particular reporting framework depends on the entity and applicable
+    regulatory requirements and should be assessed for each engagement.
+  whyChoose:
+    - title: Practical Implementation
+      text: >-
+        We focus on turning reporting requirements into actual schedules, calculations, accounting
+        entries, documentation, and financial statements.
+    - title: Organized Working Papers
+      text: >-
+        Important calculations and adjustments should be understandable and traceable instead of
+        existing as unexplained year-end entries.
+    - title: Finance-Team Support
+      text: We can work alongside an existing accountant or finance department rather than replacing the internal team.
+    - title: Clear Communication
+      text: Significant accounting issues are explained in practical language so management understands what is changing and why.
+    - title: Connected Reporting
+      text: >-
+        Where appropriate, we help connect year-end financial reporting with better monthly
+        accounting, management reporting, cash-flow monitoring, and internal processes.
+    - title: Defined Professional Boundaries
+      text: >-
+        Where licensed audit, legal, actuarial, valuation, certification, or other specialist
+        professional services are required, we help organize the information and coordinate with
+        independent professionals rather than representing those services as our own.
+  faqs:
+    - q: Is NFRS implementation only about preparing financial statements?
+      a: >-
+        No. Depending on the circumstances, implementation can affect accounting policies, opening
+        balances, calculations, supporting schedules, disclosures, documentation, and ongoing
+        accounting procedures.
+    - q: Can Maven convert our existing accounts into an NFRS / IFRS reporting format?
+      a: >-
+        We can assist with assessing the existing accounting records, identifying reporting gaps,
+        preparing adjustment schedules and supporting the financial statement preparation process.
+        The exact work required depends on the quality of existing records and applicable reporting
+        requirements.
+    - q: Can Maven help if we already have an internal accountant?
+      a: Yes. This service can be provided as additional technical and reporting support to an existing finance or accounting team.
+    - q: Can you help prepare supporting schedules for our auditor?
+      a: Yes. We can help organize reconciliations, schedules, workings, financial statement support files, and requested documentation.
+    - q: Does Maven provide statutory audit or certification?
+      a: >-
+        No. Maven provides accounting, implementation, financial reporting and documentation
+        support. Statutory audit, assurance, certification, and other services requiring a licensed
+        independent professional must be performed by the appropriately authorized professional.
+    - q: Can you provide ongoing support after implementation?
+      a: >-
+        Yes. Depending on the agreed scope, support can continue through monthly accounting,
+        management reporting, year-end financial statement preparation, reporting schedules,
+        budgeting, forecasting, and accounting process improvement.
+  cta: Book a free consultation to discuss your NFRS / IFRS reporting needs
 globalOutsourcing:
   intro: >-
     Maven is expanding beyond Nepal to support international businesses and accounting firms with
@@ -621,6 +884,7 @@ serviceOptions:
   - Tax & Compliance Support
   - Payroll & Salary Support
   - Financial Management & Reporting
+  - NFRS / IFRS Implementation Support
   - Business Advisory
   - Global Outsourcing (International Clients)
   - Not sure / need guidance
@@ -651,6 +915,10 @@ pages:
   - key: global-outsourcing
     label: Global Outsourcing
     href: global-outsourcing.html
+    hidden: false
+  - key: nfrs-ifrs
+    label: NFRS/IFRS Support
+    href: nfrs-ifrs.html
     hidden: false
   - key: packages
     label: Packages
@@ -717,6 +985,12 @@ pageHeaders:
     subtitle: >-
       A Kathmandu-based team providing remote bookkeeping, reconciliation, and reporting support for
       businesses and accounting firms abroad.
+  nfrs-ifrs:
+    eyebrow: NFRS / IFRS Support
+    title: NFRS / IFRS Implementation & Financial Reporting Support
+    subtitle: >-
+      Practical support for businesses preparing, transitioning, and reporting under applicable
+      financial reporting standards.
   packages:
     eyebrow: Packages
     title: Accounting & Compliance Packages

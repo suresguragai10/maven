@@ -7,6 +7,7 @@ const { internalHref } = require('./escape');
 const { renderPage } = require('./layout');
 const { home, about } = require('./pages1');
 const { services, outsourcedAccounting, globalOutsourcing, packages } = require('./pages2');
+const { nfrsIfrs } = require('./pages7');
 const { documentsNeeded, industries, faq, contact } = require('./pages3');
 const { usefulLinks, blogIndex, blogPost } = require('./pages4');
 const { calculators } = require('./pages5');
@@ -101,6 +102,11 @@ const pages = [
     file: 'global-outsourcing.html', activeKey: 'global-outsourcing', bodyHtml: globalOutsourcing(),
     title: 'Global Outsourcing — Remote Bookkeeping for International Businesses | Maven Consultancy',
     description: 'Maven provides remote bookkeeping, reconciliation, and financial reporting support for businesses and accounting firms abroad, from a Kathmandu-based team.',
+  },
+  {
+    file: 'nfrs-ifrs.html', activeKey: 'nfrs-ifrs', bodyHtml: nfrsIfrs(),
+    title: 'NFRS / IFRS Implementation & Financial Reporting Support | Maven Consultancy',
+    description: 'Structured NFRS / IFRS implementation, financial statement preparation, and technical accounting support for businesses transitioning to or reporting under NFRS / IFRS in Nepal.',
   },
   {
     file: 'packages.html', activeKey: 'packages', bodyHtml: packages(),
