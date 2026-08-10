@@ -284,6 +284,25 @@
     return wrap;
   }
 
+  // International hub tiles: title/tagline/text/cta editable, icon/href locked (fixed pages)
+  function hubTilesEditor(arr) {
+    var wrap = el('div');
+    arr.forEach(function (tile) {
+      var card = el('div', 'sub-card');
+      var head = el('div', 'sub-head');
+      var strong = el('strong'); strong.textContent = 'Tile';
+      var lock = el('span', 'locked-tag'); lock.textContent = 'links to: ' + tile.href + ' (locked)';
+      head.appendChild(strong); head.appendChild(lock);
+      card.appendChild(head);
+      card.appendChild(textField('Title', function () { return tile.title; }, function (v) { tile.title = v; }));
+      card.appendChild(textField('Tagline', function () { return tile.tagline; }, function (v) { tile.tagline = v; }));
+      card.appendChild(textField('Text', function () { return tile.text; }, function (v) { tile.text = v; }, { multiline: true, rows: 2 }));
+      card.appendChild(textField('Call-to-Action Text', function () { return tile.cta; }, function (v) { tile.cta = v; }));
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
   // Document groups: title editable, items string list editable
   function documentGroupsEditor(arr) {
     var wrap = el('div');
@@ -867,31 +886,95 @@
     outBody.appendChild(benWrap);
     area.appendChild(section('sec-outsourced', 'Outsourced Accounting', '', outBody));
 
-    // Global Outsourcing
-    if (!c.globalOutsourcing || typeof c.globalOutsourcing !== 'object') c.globalOutsourcing = {};
-    var go = c.globalOutsourcing;
-    if (!Array.isArray(go.benefits)) go.benefits = [];
-    if (!Array.isArray(go.services)) go.services = [];
-    if (!Array.isArray(go.process)) go.process = [];
-    if (!Array.isArray(go.faqs)) go.faqs = [];
-    var goBody = el('div');
-    goBody.appendChild(textField('Intro Paragraph', function () { return go.intro; }, function (v) { go.intro = v; }, { multiline: true, rows: 3 }));
-    goBody.appendChild(textField('Call-to-Action Text', function () { return go.cta; }, function (v) { go.cta = v; }));
-    var goBenWrap = el('div', 'f-field'); var goBenL = el('label'); goBenL.textContent = 'Why Outsource To Maven (benefits)'; goBenWrap.appendChild(goBenL);
-    goBenWrap.appendChild(stringListEditor(go.benefits, 'benefit'));
-    goBody.appendChild(goBenWrap);
-    var goSvcWrap = el('div', 'f-field'); var goSvcL = el('label'); goSvcL.textContent = 'What We Support (services list)'; goSvcWrap.appendChild(goSvcL);
-    goSvcWrap.appendChild(stringListEditor(go.services, 'service'));
-    goBody.appendChild(goSvcWrap);
-    goBody.appendChild(textField('Scope Note (what Maven does NOT do — e.g. tax filing/audit)', function () { return go.scopeNote; }, function (v) { go.scopeNote = v; }, { multiline: true, rows: 2 }));
-    var goProcWrap = el('div', 'f-field'); var goProcL = el('label'); goProcL.textContent = 'How It Works (onboarding steps, in order)'; goProcWrap.appendChild(goProcL);
-    goProcWrap.appendChild(titleTextListEditor(go.process, 'Step'));
-    goBody.appendChild(goProcWrap);
-    goBody.appendChild(textField('Data Security & Confidentiality Note', function () { return go.securityNote; }, function (v) { go.securityNote = v; }, { multiline: true, rows: 2 }));
-    var goFaqWrap = el('div', 'f-field'); var goFaqL = el('label'); goFaqL.textContent = 'Page FAQs'; goFaqWrap.appendChild(goFaqL);
-    goFaqWrap.appendChild(faqListEditor(go.faqs));
-    goBody.appendChild(goFaqWrap);
-    area.appendChild(section('sec-global-outsourcing', 'Global Outsourcing', 'Content for the Global Outsourcing page, aimed at international clients.', goBody));
+    // NFRS / IFRS
+    if (!c.nfrsIfrs || typeof c.nfrsIfrs !== 'object') c.nfrsIfrs = {};
+    var nf = c.nfrsIfrs;
+    if (!Array.isArray(nf.deliverables)) nf.deliverables = [];
+    if (!Array.isArray(nf.whoFor)) nf.whoFor = [];
+    if (!Array.isArray(nf.whyChoose)) nf.whyChoose = [];
+    if (!Array.isArray(nf.faqs)) nf.faqs = [];
+    var nfBody = el('div');
+    nfBody.appendChild(textField('Intro Paragraph (top of page)', function () { return nf.intro; }, function (v) { nf.intro = v; }, { multiline: true, rows: 3 }));
+    nfBody.appendChild(textField('"From Accounting Records..." — Heading', function () { return nf.introHeading; }, function (v) { nf.introHeading = v; }));
+    nfBody.appendChild(textField('"From Accounting Records..." — Body', function () { return nf.introBody; }, function (v) { nf.introBody = v; }, { multiline: true, rows: 3 }));
+    var nfDelWrap = el('div', 'f-field'); var nfDelL = el('label'); nfDelL.textContent = 'Typical Deliverables'; nfDelWrap.appendChild(nfDelL);
+    nfDelWrap.appendChild(stringListEditor(nf.deliverables, 'deliverable'));
+    nfBody.appendChild(nfDelWrap);
+    nfBody.appendChild(textField('Deliverables Note', function () { return nf.deliverablesNote; }, function (v) { nf.deliverablesNote = v; }));
+    var nfWhoWrap = el('div', 'f-field'); var nfWhoL = el('label'); nfWhoL.textContent = 'Who This Service Is For'; nfWhoWrap.appendChild(nfWhoL);
+    nfWhoWrap.appendChild(stringListEditor(nf.whoFor, 'audience'));
+    nfBody.appendChild(nfWhoWrap);
+    nfBody.appendChild(textField('Who This Is For — Note', function () { return nf.whoForNote; }, function (v) { nf.whoForNote = v; }));
+    var nfWhyWrap = el('div', 'f-field'); var nfWhyL = el('label'); nfWhyL.textContent = 'Why Work With Maven'; nfWhyWrap.appendChild(nfWhyL);
+    nfWhyWrap.appendChild(titleTextListEditor(nf.whyChoose, 'Reason'));
+    nfBody.appendChild(nfWhyWrap);
+    var nfFaqWrap = el('div', 'f-field'); var nfFaqL = el('label'); nfFaqL.textContent = 'Page FAQs'; nfFaqWrap.appendChild(nfFaqL);
+    nfFaqWrap.appendChild(faqListEditor(nf.faqs));
+    nfBody.appendChild(nfFaqWrap);
+    nfBody.appendChild(textField('Call-to-Action Text', function () { return nf.cta; }, function (v) { nf.cta = v; }));
+    var nfNote = el('p', 'f-hint'); nfNote.textContent = 'The "How We Can Support You" accordion, "Financial Statements," "Accounting Policies," "Management Reporting," "Audit Preparation," and "Our Implementation Approach" sections aren\'t editable here yet — edit content/site.yaml directly (nfrsIfrs.supportAreas / .statementPrep / .policies / .managementReporting / .auditPrep / .process) if those need updates.';
+    nfBody.appendChild(nfNote);
+    area.appendChild(section('sec-nfrs-ifrs', 'NFRS / IFRS Support', 'Content for the NFRS / IFRS Implementation & Financial Reporting Support page.', nfBody));
+
+    // International — Overview (hub page linking to the two sub-pages below)
+    if (!c.internationalHub || typeof c.internationalHub !== 'object') c.internationalHub = {};
+    var ih = c.internationalHub;
+    if (!Array.isArray(ih.tiles)) ih.tiles = [];
+    var ihBody = el('div');
+    ihBody.appendChild(textField('Intro Paragraph', function () { return ih.intro; }, function (v) { ih.intro = v; }, { multiline: true, rows: 3 }));
+    ihBody.appendChild(textField('Call-to-Action Text', function () { return ih.cta; }, function (v) { ih.cta = v; }));
+    var ihTilesWrap = el('div', 'f-field'); var ihTilesL = el('label'); ihTilesL.textContent = 'Service Tiles (the two cards linking to the pages below)'; ihTilesWrap.appendChild(ihTilesL);
+    ihTilesWrap.appendChild(hubTilesEditor(ih.tiles));
+    ihBody.appendChild(ihTilesWrap);
+    area.appendChild(section('sec-international-hub', 'International — Overview', 'The landing page for international clients, linking to Outsourced Accounting and Virtual CFO below. Icon/link fields aren\'t offered here since they map to fixed pages.', ihBody));
+
+    // International — Outsourced Accounting & Bookkeeping
+    if (!c.internationalAccounting || typeof c.internationalAccounting !== 'object') c.internationalAccounting = {};
+    var ia = c.internationalAccounting;
+    if (!Array.isArray(ia.services)) ia.services = [];
+    if (!Array.isArray(ia.benefits)) ia.benefits = [];
+    if (!Array.isArray(ia.process)) ia.process = [];
+    if (!Array.isArray(ia.faqs)) ia.faqs = [];
+    var iaBody = el('div');
+    iaBody.appendChild(textField('Intro Paragraph', function () { return ia.intro; }, function (v) { ia.intro = v; }, { multiline: true, rows: 3 }));
+    var iaSvcWrap = el('div', 'f-field'); var iaSvcL = el('label'); iaSvcL.textContent = 'What We Support (services list)'; iaSvcWrap.appendChild(iaSvcL);
+    iaSvcWrap.appendChild(stringListEditor(ia.services, 'service'));
+    iaBody.appendChild(iaSvcWrap);
+    iaBody.appendChild(textField('Scope Note (shown under the services list)', function () { return ia.scopeNote; }, function (v) { ia.scopeNote = v; }, { multiline: true, rows: 2 }));
+    var iaBenWrap = el('div', 'f-field'); var iaBenL = el('label'); iaBenL.textContent = 'Why Businesses Outsource To Maven'; iaBenWrap.appendChild(iaBenL);
+    iaBenWrap.appendChild(titleTextListEditor(ia.benefits, 'Reason'));
+    iaBody.appendChild(iaBenWrap);
+    var iaProcWrap = el('div', 'f-field'); var iaProcL = el('label'); iaProcL.textContent = 'How Outsourced Accounting Works (steps, in order)'; iaProcWrap.appendChild(iaProcL);
+    iaProcWrap.appendChild(titleTextListEditor(ia.process, 'Step'));
+    iaBody.appendChild(iaProcWrap);
+    iaBody.appendChild(textField('Data Security & Confidentiality Note', function () { return ia.securityNote; }, function (v) { ia.securityNote = v; }, { multiline: true, rows: 3 }));
+    iaBody.appendChild(textField('Clear Professional Scope Note (what Maven does NOT do internationally)', function () { return ia.scopeBoundary; }, function (v) { ia.scopeBoundary = v; }, { multiline: true, rows: 3 }));
+    var iaFaqWrap = el('div', 'f-field'); var iaFaqL = el('label'); iaFaqL.textContent = 'Page FAQs'; iaFaqWrap.appendChild(iaFaqL);
+    iaFaqWrap.appendChild(faqListEditor(ia.faqs));
+    iaBody.appendChild(iaFaqWrap);
+    iaBody.appendChild(textField('Call-to-Action Text', function () { return ia.cta; }, function (v) { ia.cta = v; }));
+    var iaNote = el('p', 'f-hint'); iaNote.textContent = 'The "Support For Accounting Firms," "Tools & Working Environment," and "Start Small" sections on this page aren\'t editable here yet — edit content/site.yaml directly (internationalAccounting.firmSupport / .tools / .startSmall) if those need updates.';
+    iaBody.appendChild(iaNote);
+    area.appendChild(section('sec-international-accounting', 'International — Outsourced Accounting', 'Content for the International Outsourced Accounting & Bookkeeping page.', iaBody));
+
+    // International — Virtual CFO & Management Reporting
+    if (!c.virtualCfo || typeof c.virtualCfo !== 'object') c.virtualCfo = {};
+    var vc = c.virtualCfo;
+    if (!Array.isArray(vc.levels)) vc.levels = [];
+    if (!Array.isArray(vc.faqs)) vc.faqs = [];
+    var vcBody = el('div');
+    vcBody.appendChild(textField('Intro Paragraph', function () { return vc.intro; }, function (v) { vc.intro = v; }, { multiline: true, rows: 3 }));
+    var vcLvlWrap = el('div', 'f-field'); var vcLvlL = el('label'); vcLvlL.textContent = 'A Flexible Finance Model (levels, in order)'; vcLvlWrap.appendChild(vcLvlL);
+    vcLvlWrap.appendChild(titleTextListEditor(vc.levels, 'Level'));
+    vcBody.appendChild(vcLvlWrap);
+    vcBody.appendChild(textField('Levels Note', function () { return vc.levelsNote; }, function (v) { vc.levelsNote = v; }));
+    var vcFaqWrap = el('div', 'f-field'); var vcFaqL = el('label'); vcFaqL.textContent = 'Page FAQs'; vcFaqWrap.appendChild(vcFaqL);
+    vcFaqWrap.appendChild(faqListEditor(vc.faqs));
+    vcBody.appendChild(vcFaqWrap);
+    vcBody.appendChild(textField('Call-to-Action Text', function () { return vc.cta; }, function (v) { vc.cta = v; }));
+    var vcNote = el('p', 'f-hint'); vcNote.textContent = 'The "Virtual CFO Support Can Include" accordion (Monthly Management Reporting, Cash-Flow Forecasting, etc.) isn\'t editable here yet — edit content/site.yaml directly (virtualCfo.supportAreas) if those need updates.';
+    vcBody.appendChild(vcNote);
+    area.appendChild(section('sec-virtual-cfo', 'International — Virtual CFO', 'Content for the Virtual CFO & Management Reporting page.', vcBody));
 
     // Packages
     var pkgBody = el('div');

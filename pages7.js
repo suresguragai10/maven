@@ -3,7 +3,7 @@ const { icon } = require('./icons');
 const {
   button, sectionHead, pageHero, bulletList, whyCard, processStep, accordionItem, ctaBand,
 } = require('./ui');
-const { esc } = require('./escape');
+const { esc, internalHref } = require('./escape');
 
 function supportAreaAccordion(area, i) {
   const output = area.output && area.output.length
@@ -143,4 +143,162 @@ function nfrsIfrs() {
   `;
 }
 
-module.exports = { nfrsIfrs };
+function internationalAccounting() {
+  const h = data.pageHeader('international-accounting');
+  const a = data.internationalAccounting || {};
+
+  return `
+  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+
+  <section class="section-pad-sm">
+    <div class="container text-center" style="max-width:820px">
+      <p class="reveal">${esc(a.intro)}</p>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container" style="max-width:820px">
+      ${sectionHead({ eyebrow: 'What We Support', title: 'Bookkeeping, reconciliation, and reporting — done for you' })}
+      ${bulletList(a.services || [], 'stamp-list stamp-list--pkg')}
+      <div class="info-note reveal" style="margin-top:24px">${esc(a.scopeNote)}</div>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'Why Businesses Outsource To Maven', title: 'Built for reliable remote finance capacity' })}
+      <div class="grid grid-4">
+        ${(a.benefits || []).map(whyCard).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'How Outsourced Accounting Works', title: 'From discovery call to ongoing support' })}
+      <div class="process-list process-list--row">
+        ${(a.process || []).map((p, i, arr) => processStep({ step: i + 1, title: p.title, text: p.text }, i === arr.length - 1)).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <div class="container two-col">
+      <div class="reveal">
+        ${sectionHead({ eyebrow: 'Support For Accounting Firms', title: 'Back-office capacity for your practice', align: 'left' })}
+        <p>${esc((a.firmSupport || {}).intro)}</p>
+        ${bulletList((a.firmSupport || {}).items || [], 'stamp-list stamp-list--pkg')}
+        <p class="tag-note" style="margin-top:16px">${esc((a.firmSupport || {}).note)}</p>
+      </div>
+      <div class="reveal">
+        ${sectionHead({ eyebrow: 'Tools & Working Environment', title: 'We work inside the systems you already use', align: 'left' })}
+        <p>${esc((a.tools || {}).intro)}</p>
+        ${bulletList((a.tools || {}).items || [], 'stamp-list stamp-list--pkg')}
+        <p class="tag-note" style="margin-top:16px">${esc((a.tools || {}).note)}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container" style="max-width:820px">
+      <div class="partner-note reveal">
+        <h4>Data Security &amp; Confidentiality</h4>
+        <p>${esc(a.securityNote)}</p>
+      </div>
+      <div class="partner-note reveal" style="margin-top:24px">
+        <h4>Clear Professional Scope</h4>
+        <p>${esc(a.scopeBoundary)}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <div class="container" style="max-width:760px">
+      ${sectionHead({ eyebrow: 'Working With Maven', title: 'Start Small' })}
+      <p class="text-center reveal">${esc((a.startSmall || {}).intro)}</p>
+      ${bulletList((a.startSmall || {}).items || [], 'stamp-list stamp-list--pkg')}
+      <div class="info-note reveal" style="margin-top:24px">${esc((a.startSmall || {}).note)}</div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container" style="max-width:760px">
+      ${sectionHead({ eyebrow: 'Common Questions', title: 'About working with Maven internationally' })}
+      <div class="accordion">
+        ${(a.faqs || []).map((f, i) => accordionItem({
+          id: `intl-faq-${i}`,
+          headingHtml: esc(f.q),
+          bodyHtml: `<p>${esc(f.a)}</p>`,
+          open: i === 0,
+        })).join('')}
+      </div>
+    </div>
+  </section>
+
+  ${ctaBand({
+    eyebrow: 'International Outsourced Accounting',
+    title: 'Ready to hand off your bookkeeping?',
+    subtitle: a.cta,
+    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about outsourcing our bookkeeping.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+  })}
+  `;
+}
+
+function virtualCfo() {
+  const h = data.pageHeader('virtual-cfo');
+  const v = data.virtualCfo || {};
+
+  return `
+  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+
+  <section class="section-pad-sm">
+    <div class="container text-center" style="max-width:820px">
+      <p class="reveal">${esc(v.intro)}</p>
+      <div style="margin-top:24px">${button('Book a Free Discovery Call', 'contact.html', 'primary')}</div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container" style="max-width:820px">
+      ${sectionHead({ eyebrow: 'Virtual CFO Support Can Include', title: 'From monthly reports to scenario planning' })}
+      <div class="accordion">
+        ${(v.supportAreas || []).map(supportAreaAccordion).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'A Flexible Finance Model', title: 'Start at the level your business needs' })}
+      <div class="grid grid-4">
+        ${(v.levels || []).map((l) => `<div class="value-card reveal"><h3>${esc(l.title)}</h3><p>${esc(l.text)}</p></div>`).join('')}
+      </div>
+      <div class="info-note reveal" style="max-width:820px;margin:32px auto 0">${esc(v.levelsNote)}</div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container" style="max-width:760px">
+      ${sectionHead({ eyebrow: 'Common Questions', title: 'Virtual CFO & Management Reporting FAQ' })}
+      <div class="accordion">
+        ${(v.faqs || []).map((f, i) => accordionItem({
+          id: `cfo-faq-${i}`,
+          headingHtml: esc(f.q),
+          bodyHtml: `<p>${esc(f.a)}</p>`,
+          open: i === 0,
+        })).join('')}
+      </div>
+      <p class="text-center tag-note" style="margin-top:24px">Looking for day-to-day bookkeeping instead? See <a href="${internalHref('international-accounting.html')}" style="color:var(--gold-700);font-weight:700">International Outsourced Accounting</a>.</p>
+    </div>
+  </section>
+
+  ${ctaBand({
+    eyebrow: 'Virtual CFO & Management Reporting',
+    title: 'Build the right finance support for your business',
+    subtitle: v.cta,
+    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about Virtual CFO and management reporting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+  })}
+  `;
+}
+
+module.exports = { nfrsIfrs, internationalAccounting, virtualCfo };

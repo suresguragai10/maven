@@ -217,13 +217,13 @@ function home() {
   <section class="section-pad bg-navy skyline-section">
     <div class="container two-col">
       <div class="reveal">
-        <p class="eyebrow eyebrow--on-dark">Global Outsourcing</p>
+        <p class="eyebrow eyebrow--on-dark">International Services</p>
         <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
-        <p style="margin-top:14px">${esc(data.globalOutsourcing.intro)}</p>
-        <div style="margin-top:26px">${button(esc(data.globalOutsourcing.cta), 'global-outsourcing.html', 'primary')}</div>
+        <p style="margin-top:14px">${esc(data.internationalHub.intro)}</p>
+        <div style="margin-top:26px">${button(esc(data.internationalHub.cta), 'global-outsourcing.html', 'primary')}</div>
       </div>
       <ul class="stamp-list reveal">
-        ${data.globalOutsourcing.benefits.slice(0, 6).map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b)}</span></li>`).join('')}
+        ${data.internationalAccounting.benefits.slice(0, 6).map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b.title)}</span></li>`).join('')}
       </ul>
     </div>
     ${globalSkyline()}

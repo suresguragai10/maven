@@ -1,7 +1,7 @@
 const data = require('./data');
 const { icon, stampMark } = require('./icons');
 const {
-  button, sectionHead, pageHero, serviceCard, packageCard, ctaBand, bulletList, accordionItem,
+  button, sectionHead, pageHero, serviceCard, packageCard, ctaBand,
 } = require('./ui');
 const { esc, internalHref } = require('./escape');
 
@@ -79,73 +79,45 @@ function outsourcedAccounting() {
   `;
 }
 
+function internationalTile(tile) {
+  return `<article class="service-card reveal">
+    <div class="service-card-head">
+      <span class="service-icon">${icon(tile.icon)}</span>
+      <h3>${esc(tile.title)}</h3>
+    </div>
+    <p class="service-tagline">${esc(tile.tagline)}</p>
+    <p>${esc(tile.text)}</p>
+    <div style="margin-top:20px">${button(esc(tile.cta), tile.href, 'outline')}</div>
+  </article>`;
+}
+
 function globalOutsourcing() {
   const h = data.pageHeader('global-outsourcing');
-  const g = data.globalOutsourcing || {};
-  const processSteps = g.process || [];
-  const faqsHtml = (g.faqs || []).map((f, i) => accordionItem({
-    id: `go-faq-${i}`,
-    headingHtml: esc(f.q),
-    bodyHtml: `<p>${esc(f.a)}</p>`,
-    open: i === 0,
-  })).join('');
+  const hub = data.internationalHub || {};
 
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/global-outsourcing-hero-bg.jpg')}
 
-  <section class="section-pad">
-    <div class="container two-col">
-      <div class="reveal">
-        ${sectionHead({ eyebrow: 'Why Outsource To Maven', title: 'A remote team for the parts of your books that take too much time', align: 'left' })}
-        <p>${esc(g.intro)}</p>
-        <div style="margin-top:24px">${button(esc(g.cta), 'contact.html', 'primary')}</div>
-      </div>
-      <div class="reveal">
-        ${bulletList(g.benefits || [])}
-      </div>
-    </div>
-  </section>
-
-  <section class="section-pad bg-mist">
-    <div class="container">
-      ${sectionHead({ eyebrow: 'What We Support', title: 'Bookkeeping, reconciliation, and reporting — done for you' })}
-      <div class="container" style="max-width:820px">
-        ${bulletList(g.services || [], 'stamp-list stamp-list--pkg')}
-      </div>
-      <div class="info-note reveal" style="max-width:820px;margin:32px auto 0">${esc(g.scopeNote)}</div>
+  <section class="section-pad-sm">
+    <div class="container text-center" style="max-width:820px">
+      <p class="reveal">${esc(hub.intro)}</p>
     </div>
   </section>
 
   <section class="section-pad">
     <div class="container">
-      ${sectionHead({ eyebrow: 'How It Works', title: 'Getting started' })}
-      <div class="grid grid-4">
-        ${processSteps.map((p, i) => `<div class="value-card reveal"><h3>${i + 1}. ${esc(p.title)}</h3><p>${esc(p.text)}</p></div>`).join('')}
+      ${sectionHead({ eyebrow: 'Choose The Support You Need', title: 'Two ways to work with Maven internationally' })}
+      <div class="grid grid-2">
+        ${(hub.tiles || []).map(internationalTile).join('')}
       </div>
     </div>
   </section>
-
-  <section class="section-pad bg-mist">
-    <div class="container" style="max-width:820px">
-      <div class="partner-note reveal">
-        <h4>Data Security &amp; Confidentiality</h4>
-        <p>${esc(g.securityNote)}</p>
-      </div>
-    </div>
-  </section>
-
-  ${faqsHtml ? `<section class="section-pad">
-    <div class="container" style="max-width:760px">
-      ${sectionHead({ eyebrow: 'Common Questions', title: 'About working with Maven remotely' })}
-      <div class="accordion">${faqsHtml}</div>
-    </div>
-  </section>` : ''}
 
   ${ctaBand({
-    eyebrow: 'Global Outsourcing',
-    title: 'Ready to hand off your bookkeeping?',
-    subtitle: g.cta,
-    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about outsourcing our bookkeeping.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    eyebrow: 'International Services',
+    title: 'Ready to build the right finance support for your business?',
+    subtitle: hub.cta,
+    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about international accounting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

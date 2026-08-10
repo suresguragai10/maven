@@ -51,7 +51,14 @@ const navStructure = [
       { key: 'packages', label: 'Packages', href: 'packages.html' },
     ],
   },
-  { key: 'global-outsourcing', label: 'Global Outsourcing', href: 'global-outsourcing.html' },
+  {
+    key: 'global-outsourcing', label: 'International Services', href: 'global-outsourcing.html',
+    children: [
+      { key: 'global-outsourcing', label: 'Overview', href: 'global-outsourcing.html' },
+      { key: 'international-accounting', label: 'Outsourced Accounting & Bookkeeping', href: 'international-accounting.html' },
+      { key: 'virtual-cfo', label: 'Virtual CFO & Management Reporting', href: 'virtual-cfo.html' },
+    ],
+  },
   { key: 'industries', label: 'Industries', href: 'industries.html' },
   {
     key: 'resources', label: 'Resources', href: 'useful-links.html',
@@ -141,7 +148,9 @@ module.exports = {
   partnerNote: content.partnerNote,
   outsourced: content.outsourced,
   nfrsIfrs: content.nfrsIfrs,
-  globalOutsourcing: content.globalOutsourcing,
+  internationalHub: content.internationalHub,
+  internationalAccounting: content.internationalAccounting,
+  virtualCfo: content.virtualCfo,
   packages: content.packages,
   packagesFeeNote: content.packagesFeeNote,
   documentsTopNote: content.documentsTopNote,

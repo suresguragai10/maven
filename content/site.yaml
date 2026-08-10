@@ -429,71 +429,300 @@ nfrsIfrs:
         management reporting, year-end financial statement preparation, reporting schedules,
         budgeting, forecasting, and accounting process improvement.
   cta: Book a free consultation to discuss your NFRS / IFRS reporting needs
-globalOutsourcing:
+internationalHub:
   intro: >-
-    Maven is expanding beyond Nepal to support international businesses and accounting firms with
-    day-to-day bookkeeping and financial reporting work. If you're a small business, startup, or
-    accounting firm abroad looking for a reliable remote team to handle the repetitive,
-    time-consuming parts of your books, we can help — starting small and scaling as trust builds.
-  benefits:
-    - Meaningful cost savings compared to hiring locally
-    - Ethical outsourcing — fair pay and genuine respect for the team doing your work
-    - English-speaking team with clear written and verbal communication
-    - Comfortable working asynchronously across time zones
-    - Direct access to the person actually doing your work — no call-centre layers
-    - Flexible engagement — start with a trial period before committing long-term
-    - We work inside the software you already use, so there's no system migration
+    Maven Consultancy is a Kathmandu-based accounting and business support team working with
+    businesses that need reliable finance capacity without necessarily building a larger in-house
+    accounting department. Whether you need day-to-day bookkeeping support or more structured
+    management reporting and financial planning, we can build the engagement around the level of
+    support your business actually requires.
+  tiles:
+    - title: Outsourced Accounting & Bookkeeping
+      tagline: Reliable day-to-day accounting support for businesses and accounting firms that need additional finance capacity.
+      text: >-
+        Best suited for businesses that need help maintaining books, reconciliations, transaction
+        records, accounts payable and receivable, monthly reporting, or cleanup work.
+      cta: Explore Outsourced Accounting
+      href: international-accounting.html
+      icon: ledger
+    - title: Virtual CFO & Management Reporting
+      tagline: Financial visibility and management support beyond day-to-day bookkeeping.
+      text: >-
+        Best suited for owners and growing businesses that already have accounting records but need
+        better cash-flow visibility, budgets, forecasts, management reports and structured financial
+        discussions.
+      cta: Explore Virtual CFO Support
+      href: virtual-cfo.html
+      icon: barChart
+  cta: Book a Free Discovery Call
+internationalAccounting:
+  intro: >-
+    Maven supports international businesses and accounting firms with day-to-day bookkeeping and
+    financial reporting work. If you are a small business, startup, growing company, or accounting
+    firm looking for reliable remote support for repetitive and time-consuming accounting work, we
+    can start with a clearly defined scope and expand the engagement as the working relationship
+    develops. We work within your existing accounting process wherever practical, helping your team
+    increase capacity without creating unnecessary system changes.
   services:
     - Bookkeeping and transaction categorization
-    - Bank and credit card reconciliation
-    - Accounts payable / accounts receivable support
+    - Bank reconciliation
+    - Credit card reconciliation
+    - Accounts payable support
+    - Accounts receivable support
     - Monthly financial reporting and MIS
     - Payroll data processing support
     - Cleanup and catch-up bookkeeping
-    - Overflow capacity for accounting firms during busy season
+    - Supporting schedules and reconciliations
+    - Month-end accounting support
+    - Accounting file organization
+    - Excel and spreadsheet reporting
+    - Overflow capacity for accounting firms during busy periods
   scopeNote: >-
-    Maven supports bookkeeping, reconciliation, and reporting — we do not prepare or file tax
-    returns in any country, and we are not a licensed CPA, EA, or audit firm. Your own accountant or
-    tax preparer continues to handle filing and compliance in your jurisdiction.
+    The exact scope is agreed according to your accounting system, transaction volume, existing
+    team, reporting requirements and internal review process.
+  benefits:
+    - title: Direct Communication
+      text: You communicate with the people responsible for your work rather than working through unnecessary call-centre or account-management layers.
+    - title: Clear Written Communication
+      text: Our team works in English and is comfortable with structured written communication, task tracking and remote collaboration.
+    - title: Flexible Remote Support
+      text: Work can be organized asynchronously across time zones, with responsibilities and deadlines agreed in advance.
+    - title: Work Within Your Existing Systems
+      text: Where practical, we work inside the accounting and cloud tools your business already uses rather than requiring unnecessary migration.
+    - title: Start With a Defined Scope
+      text: New relationships can begin with a limited engagement or trial scope before expanding into ongoing support.
+    - title: Scalable Capacity
+      text: Support can grow from individual bookkeeping tasks to recurring monthly accounting and reporting as your requirements increase.
+    - title: Cost-Efficient Finance Capacity
+      text: Remote support can provide additional accounting capacity without the same fixed employment structure as building every finance function internally.
+    - title: Responsible Outsourcing
+      text: >-
+        We believe international outsourcing should create value for the client while maintaining
+        professional working conditions, fair treatment, and respect for the people delivering the
+        work.
   process:
-    - title: Discovery call
-      text: Tell us about your business, current tools, and bookkeeping setup.
-    - title: Trial engagement
+    - title: Discovery Call
       text: >-
-        We start with a defined trial period so you can see the quality of work before committing
-        long-term.
-    - title: Tool and access setup
+        Tell us about your business, existing finance team, accounting software, monthly volume,
+        reporting requirements and current accounting challenges.
+    - title: Scope or Trial Engagement
       text: >-
-        We work inside your existing software — QuickBooks, Xero, Excel, or Google Sheets — no need
-        to change systems.
-    - title: Ongoing monthly work
+        We define the responsibilities, expected outputs, access requirements and reporting
+        timeline. For a new relationship, the engagement may begin with a limited scope or trial
+        period so both teams can evaluate the working process.
+    - title: Tool & Access Setup
       text: >-
-        Regular reconciliation, reporting, and a monthly summary, with a direct line to the person
-        doing your books.
+        Where practical, we work inside your existing systems and follow your current accounting
+        processes — commonly used accounting platforms, spreadsheets, cloud storage, communication
+        tools, or task-management systems.
+    - title: Ongoing Accounting Work
+      text: Recurring work may include bookkeeping, reconciliations, account schedules, reporting and agreed month-end activities.
+    - title: Review & Communication
+      text: >-
+        Questions, exceptions, missing documents and completed work are communicated through the
+        agreed workflow so responsibilities remain clear.
+    - title: Scale When Needed
+      text: >-
+        Once the process is working reliably, the scope can expand into additional accounting
+        activities, management reporting or Virtual CFO support.
+  firmSupport:
+    intro: >-
+      Maven can also provide back-office capacity to accounting and bookkeeping practices that need
+      support with recurring processing work. Potential support includes:
+    items:
+      - Transaction processing
+      - Bank and credit card reconciliations
+      - Cleanup bookkeeping
+      - Accounts payable / receivable schedules
+      - Working-paper preparation
+      - Excel schedules
+      - Monthly reporting support
+      - Defined month-end tasks
+      - Busy-season overflow capacity
+    note: Your firm maintains the client relationship and professional responsibility while Maven works within the agreed back-office scope.
+  tools:
+    intro: >-
+      Where practical, Maven works within the systems already used by the client. Our team can work
+      with accounting and reporting workflows involving platforms and tools such as:
+    items:
+      - QuickBooks
+      - Xero
+      - Microsoft Excel
+      - Google Sheets
+      - Cloud-based document systems
+      - Client task-management and communication platforms
+    note: Software access and responsibilities are agreed before work begins. We do not require clients to migrate accounting systems simply to work with Maven.
   securityNote: >-
-    Client data is handled on a confidential basis, with access limited to the people directly
-    working on your account. We work inside the accounting or cloud tools you already use rather
-    than exporting your data elsewhere, and we're happy to sign a mutual confidentiality agreement
-    before onboarding.
+    Financial information requires careful handling. Client information is handled on a confidential
+    basis, with access limited to the people involved in the engagement. Where practical, Maven works
+    within the client's existing accounting and cloud systems rather than unnecessarily exporting
+    financial information into separate platforms. Access rights should be limited to the permissions
+    required for the agreed work, and credentials should not be shared through unsecured channels. We
+    are also open to appropriate confidentiality or non-disclosure arrangements before onboarding
+    where required. For clients with specific information-security, data-location, regulatory or
+    contractual requirements, those requirements should be discussed before the engagement begins so
+    the working process can be agreed appropriately.
+  scopeBoundary: >-
+    Maven provides outsourced accounting, bookkeeping, reconciliation, management reporting and
+    finance-support services. For international engagements, Maven does not represent itself as a
+    locally licensed CPA, tax agent, statutory auditor, attorney, investment adviser or regulated
+    professional in the client's jurisdiction. We do not independently provide jurisdiction-specific
+    statutory tax filing, legal opinions, statutory audit opinions, certifications or other regulated
+    professional services unless the engagement is legally permitted and appropriately qualified
+    professionals are involved. Your local accountant, tax adviser, auditor, attorney or other
+    licensed professional remains responsible for services that require authorization in your
+    jurisdiction. Maven can organize accounting information and supporting schedules to help those
+    professionals perform their work efficiently.
+  startSmall:
+    intro: >-
+      You do not have to outsource your entire accounting function from day one. A first engagement
+      can focus on a defined problem such as:
+    items:
+      - Bank reconciliation
+      - Bookkeeping cleanup
+      - One month of accounting
+      - Accounts receivable schedules
+      - Accounts payable schedules
+      - Monthly reporting
+      - Backlog processing
+    note: Once both teams are comfortable with the workflow, the scope can expand.
   faqs:
     - q: Do you prepare or file our tax returns?
       a: >-
-        No. We support bookkeeping, reconciliation, and reporting — your own accountant or tax
-        preparer continues to handle filing and compliance in your country. Maven is not a licensed
-        CPA, EA, or audit firm.
-    - q: What accounting software do you work with?
+        Our core international service focuses on accounting, bookkeeping, reconciliation and
+        reporting. Jurisdiction-specific tax filing and regulated tax services should continue to be
+        handled by the client's appropriately qualified local tax professional. We can organize
+        accounting records and supporting schedules for their use.
+    - q: What accounting software can you work with?
       a: >-
-        We're comfortable working in QuickBooks, Xero, Excel, or Google Sheets — whatever you
-        already use.
-    - q: What time zone do you work in?
+        We can work with commonly used accounting and spreadsheet-based workflows including
+        QuickBooks, Xero, Excel and Google Sheets, depending on the engagement. If you use another
+        system, we can discuss the workflow during the discovery call.
+    - q: Do we need to change our accounting software?
+      a: Normally, no. Where practical, we work within your existing system and process rather than requiring unnecessary migration.
+    - q: What time zone is Maven based in?
       a: >-
-        Nepal Standard Time (UTC+5:45), with flexible, asynchronous communication to overlap with US
-        and other international business hours.
-    - q: How do we pay for the work?
+        Our team is based in Kathmandu, Nepal. International engagements can use a combination of
+        agreed response times, asynchronous communication and scheduled meetings appropriate to the
+        client relationship.
+    - q: Can we start with a small project?
+      a: Yes. A defined initial engagement is often the best way for both teams to test communication, work quality and workflow before committing to a larger recurring scope.
+    - q: Do you work with accounting firms?
+      a: Yes. We can discuss defined back-office bookkeeping, reconciliation, reporting and overflow-support assignments for accounting and bookkeeping firms.
+  cta: Book a Free Discovery Call
+virtualCfo:
+  intro: >-
+    Good bookkeeping tells you what happened. Good financial management helps you understand why it
+    happened, what it means, and what may happen next. Maven's Virtual CFO & Management Reporting
+    support is designed for business owners and management teams that need better financial
+    visibility but may not require a full-time senior finance professional. The engagement builds on
+    reliable accounting information and turns it into structured reports, forecasts and management
+    discussions.
+  supportAreas:
+    - title: Monthly Management Reporting
+      intro: "Structured monthly reporting may include:"
+      items:
+        - Profit and loss summary
+        - Balance sheet summary
+        - Cash and bank position
+        - Receivable analysis
+        - Payable analysis
+        - Revenue trends
+        - Expense trends
+        - Selected business KPIs
+        - Significant movements and exceptions
+        - Management commentary
+      note: Reports are customized around the information that is useful for the business rather than creating unnecessary dashboards.
+    - title: Cash-Flow Forecasting
+      intro: >-
+        Understanding future cash requirements is often more important to a growing business than
+        looking only at historical profit. Support may include:
+      items:
+        - Short-term cash-flow forecasting
+        - Expected receipts and payments
+        - Receivable collection assumptions
+        - Supplier payment planning
+        - Payroll and recurring cost planning
+        - Tax and major payment visibility
+        - Cash shortfall identification
+        - Updating forecasts using actual results
+    - title: Budgeting & Forecasting
+      intro: >-
+        We can work with management to convert operating plans into practical financial estimates.
+        Support may include:
+      items:
+        - Annual budget preparation
+        - Revenue assumptions
+        - Expense budgets
+        - Payroll planning
+        - Capital expenditure planning
+        - Monthly forecast updates
+        - Rolling forecasts
+        - Budget-versus-actual analysis
+        - Variance explanations
+    - title: KPI & Performance Reporting
+      intro: >-
+        Not every number belongs on a management dashboard. We help identify a focused set of
+        financial indicators appropriate to the business. Depending on the business, reporting may
+        include:
+      items:
+        - Revenue growth
+        - Gross margin
+        - Operating expenses
+        - Receivable days
+        - Payable position
+        - Cash movement
+        - Working capital
+        - Customer or product performance
+        - Budget variance
+        - Other management-selected indicators
+    - title: Receivable, Payable & Working-Capital Visibility
+      intro: "Businesses can appear profitable while still experiencing significant cash pressure. We can help management monitor:"
+      items:
+        - Outstanding customer balances
+        - Aging receivables
+        - Supplier obligations
+        - Upcoming payment requirements
+        - Collection trends
+        - Working-capital movements
+        - Cash conversion issues
+    - title: Scenario & Decision Support
+      intro: "Where appropriate, financial models can be used to understand the possible impact of management decisions. Examples may include:"
+      items:
+        - Hiring plans
+        - Revenue growth assumptions
+        - New operating costs
+        - Pricing changes
+        - Expansion plans
+        - Capital expenditure
+        - Changes in customer payment periods
+        - Changes in supplier payment periods
+      note: >-
+        Scenario modelling is intended to support management's own decision-making and is not
+        investment, lending or regulated financial advice.
+  levels:
+    - title: "Level 1 — Bookkeeping Support"
+      text: Transactions, reconciliations and accounting records.
+    - title: "Level 2 — Monthly Accounting"
+      text: Month-end accounting, supporting schedules and monthly financial reports.
+    - title: "Level 3 — Management Reporting"
+      text: Management pack, KPIs, receivables, payables and cash-flow visibility.
+    - title: "Level 4 — Virtual CFO Support"
+      text: Budgets, forecasts, scenario modelling, management discussions and ongoing financial planning support.
+  levelsNote: You can begin at the level your business currently needs and expand only when additional support creates value.
+  faqs:
+    - q: Is Virtual CFO support the same as bookkeeping?
       a: >-
-        We invoice monthly and currently accept payment by bank wire transfer. Other payment methods
-        may be added as this service grows.
-  cta: Talk to us about outsourcing your bookkeeping
+        No. Bookkeeping focuses primarily on maintaining accurate accounting records. Virtual CFO and
+        management reporting support uses those records to help management understand cash flow,
+        budgets, forecasts, business performance and financial trends. Reliable bookkeeping is
+        therefore an important foundation for higher-level financial reporting.
+    - q: Does Maven make business or investment decisions for us?
+      a: >-
+        No. Management remains responsible for business decisions. Our role is to organize financial
+        information, prepare agreed analysis and provide financial-management support. We do not
+        provide investment advice or make decisions on behalf of the business.
+  cta: Talk to Maven about Virtual CFO and management reporting support
 packages:
   - name: Startup Setup Package
     audience: For new entrepreneurs and newly registered businesses.
@@ -913,8 +1142,16 @@ pages:
     href: outsourced-accounting.html
     hidden: false
   - key: global-outsourcing
-    label: Global Outsourcing
+    label: International Services
     href: global-outsourcing.html
+    hidden: false
+  - key: international-accounting
+    label: Outsourced Accounting & Bookkeeping (International)
+    href: international-accounting.html
+    hidden: false
+  - key: virtual-cfo
+    label: Virtual CFO & Management Reporting
+    href: virtual-cfo.html
     hidden: false
   - key: nfrs-ifrs
     label: NFRS/IFRS Support
@@ -980,11 +1217,19 @@ pageHeaders:
     title: Outsourced Accounting Services in Nepal
     subtitle: A dependable alternative to hiring a full-time in-house accountant.
   global-outsourcing:
-    eyebrow: Global Outsourcing
-    title: Outsourced Accounting Support for International Businesses
+    eyebrow: International Services
+    title: International Accounting & Finance Support
     subtitle: >-
-      A Kathmandu-based team providing remote bookkeeping, reconciliation, and reporting support for
-      businesses and accounting firms abroad.
+      A Kathmandu-based team providing remote bookkeeping, reconciliation, reporting, and Virtual
+      CFO support for businesses and accounting firms abroad.
+  international-accounting:
+    eyebrow: Outsourced Accounting
+    title: International Outsourced Accounting & Bookkeeping
+    subtitle: A remote team for the parts of your books that take too much time.
+  virtual-cfo:
+    eyebrow: Virtual CFO
+    title: Virtual CFO & Management Reporting
+    subtitle: Financial visibility and management support beyond day-to-day bookkeeping.
   nfrs-ifrs:
     eyebrow: NFRS / IFRS Support
     title: NFRS / IFRS Implementation & Financial Reporting Support

@@ -7,7 +7,7 @@ const { internalHref } = require('./escape');
 const { renderPage } = require('./layout');
 const { home, about } = require('./pages1');
 const { services, outsourcedAccounting, globalOutsourcing, packages } = require('./pages2');
-const { nfrsIfrs } = require('./pages7');
+const { nfrsIfrs, internationalAccounting, virtualCfo } = require('./pages7');
 const { documentsNeeded, industries, faq, contact } = require('./pages3');
 const { usefulLinks, blogIndex, blogPost } = require('./pages4');
 const { calculators } = require('./pages5');
@@ -100,8 +100,18 @@ const pages = [
   },
   {
     file: 'global-outsourcing.html', activeKey: 'global-outsourcing', bodyHtml: globalOutsourcing(),
-    title: 'Global Outsourcing — Remote Bookkeeping for International Businesses | Maven Consultancy',
-    description: 'Maven provides remote bookkeeping, reconciliation, and financial reporting support for businesses and accounting firms abroad, from a Kathmandu-based team.',
+    title: 'International Accounting & Finance Support | Maven Consultancy',
+    description: 'Outsourced accounting, bookkeeping, and Virtual CFO / management reporting support for international businesses and accounting firms, from a Kathmandu-based team.',
+  },
+  {
+    file: 'international-accounting.html', activeKey: 'international-accounting', bodyHtml: internationalAccounting(),
+    title: 'International Outsourced Accounting & Bookkeeping | Maven Consultancy',
+    description: 'Remote bookkeeping, reconciliation, accounts payable/receivable, and monthly financial reporting support for international businesses and accounting firms.',
+  },
+  {
+    file: 'virtual-cfo.html', activeKey: 'virtual-cfo', bodyHtml: virtualCfo(),
+    title: 'Virtual CFO & Management Reporting | Maven Consultancy',
+    description: 'Monthly management reporting, cash-flow forecasting, budgeting, KPI reporting, and scenario support for growing businesses — without a full-time senior finance hire.',
   },
   {
     file: 'nfrs-ifrs.html', activeKey: 'nfrs-ifrs', bodyHtml: nfrsIfrs(),
