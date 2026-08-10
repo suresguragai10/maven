@@ -371,7 +371,7 @@ body.nav-open { overflow: hidden; }
    every item and doesn't need the extra visual weight). Padding moves from
    the card itself to .service-card-body so the photo can bleed to the
    card's edges. */
-.service-card--photo { padding: 0; overflow: hidden; }
+.service-card--photo { display: block; padding: 0; overflow: hidden; }
 .service-card-photo {
   position: relative; aspect-ratio: 4 / 3; background-size: cover; background-position: center;
   background-color: var(--navy-950);

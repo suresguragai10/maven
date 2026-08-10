@@ -130,8 +130,12 @@ function docCardArt() {
 // so adding a 7th category needs only a new image file, no code change.
 // Dropped the old bullet-list preview: with a photo now providing visual
 // interest, repeating 3 of the category's items just crowded the card.
+// The whole card is the link (not just "See Full List" at the bottom) —
+// .service-card's hover lift/shadow applies to the full card area, so a
+// card that only *looked* fully clickable but wasn't would be the same
+// "looks clickable, does nothing" trap fixed earlier for industry badges.
 function homeServiceCard(cat) {
-  return `<article class="service-card service-card--photo reveal">
+  return `<a class="service-card service-card--photo reveal" href="${internalHref(`services.html#${cat.key}`)}">
     <div class="service-card-photo" style="background-image:url('/images/card-${esc(cat.key)}.jpg')">
       <span class="service-card-photo-badge">${icon(cat.icon)}</span>
     </div>
@@ -139,9 +143,9 @@ function homeServiceCard(cat) {
       <span class="service-letter">Category ${esc(cat.letter)}</span>
       <h3>${esc(cat.title)}</h3>
       <p class="service-tagline">${esc(cat.tagline)}</p>
-      <a class="service-card-link" href="${internalHref(`services.html#${cat.key}`)}">See Full List ${icon('arrowRight')}</a>
+      <span class="service-card-link">See Full List ${icon('arrowRight')}</span>
     </div>
-  </article>`;
+  </a>`;
 }
 
 function homePackageCard(pkg) {
@@ -201,7 +205,7 @@ function home() {
     <div class="container">
       ${sectionHead({ eyebrow: 'What We Do', title: 'Services built around what Nepali businesses actually need', subtitle: 'From first registration to monthly compliance, Maven supports each stage with clear, practical work.' })}
       <div class="grid grid-3">
-        ${data.serviceCategories.map(homeServiceCard).join('')}
+        ${data.serviceCategories.filter((c) => c.key !== 'nfrs-ifrs').map(homeServiceCard).join('')}
         <div class="service-cta-tile reveal">
           <div>
             <h3>Not sure which service fits?</h3>
@@ -210,7 +214,10 @@ function home() {
           ${button('Book a Free Initial Consultation', 'contact.html', 'primary')}
         </div>
       </div>
-      <div class="text-center" style="margin-top:36px">${button('View All Services', 'services.html', 'outline')}</div>
+      <div class="hero-actions" style="justify-content:center;margin-top:36px">
+        ${button('View All Services', 'services.html', 'outline')}
+        ${button('NFRS / IFRS Implementation Support', 'nfrs-ifrs.html', 'outline')}
+      </div>
     </div>
   </section>
 
@@ -245,25 +252,22 @@ function home() {
       <div class="grid grid-4">
         ${data.whyChoose.slice(0, 6).map(whyCard).join('')}
       </div>
-    </div>
-  </section>
-
-  <section class="section-pad">
-    <div class="container">
-      ${sectionHead({ eyebrow: 'How It Works', title: 'A clear, step-by-step process from inquiry to file closing' })}
-      <div class="process-list process-list--row">
-        ${(() => {
-          // Homepage teaser: the full 9-step breakdown lives only in this data
-          // (there's no separate process page), so we hand-pick steps that still
-          // span the whole arc — inquiry, scoping, requirements, delivery, closing —
-          // rather than truncating to the first N and cutting off before any work
-          // actually gets done.
-          const teaserSteps = data.process.filter((p) => [1, 2, 3, 6, 8, 9].includes(p.step));
-          // Renumber 1-5 for display so the badges read as a clean sequence
-          // instead of showing the underlying step's real number (which would
-          // jump 1, 3, 4, 6, 9 and look like steps are missing).
-          return teaserSteps.map((p, i) => processStep({ ...p, step: i + 1 }, i === teaserSteps.length - 1)).join('');
-        })()}
+      <div style="margin-top:56px">
+        ${sectionHead({ eyebrow: 'How It Works', title: 'A clear, step-by-step process from inquiry to file closing' })}
+        <div class="process-list process-list--row">
+          ${(() => {
+            // Homepage teaser: the full 9-step breakdown lives only in this data
+            // (there's no separate process page), so we hand-pick steps that still
+            // span the whole arc — inquiry, scoping, requirements, delivery, closing —
+            // rather than truncating to the first N and cutting off before any work
+            // actually gets done.
+            const teaserSteps = data.process.filter((p) => [1, 2, 3, 6, 8, 9].includes(p.step));
+            // Renumber 1-5 for display so the badges read as a clean sequence
+            // instead of showing the underlying step's real number (which would
+            // jump 1, 3, 4, 6, 9 and look like steps are missing).
+            return teaserSteps.map((p, i) => processStep({ ...p, step: i + 1 }, i === teaserSteps.length - 1)).join('');
+          })()}
+        </div>
       </div>
     </div>
   </section>
