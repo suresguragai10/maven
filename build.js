@@ -249,8 +249,8 @@ console.log('Wrote 404.html [noindex]');
 // --- robots.txt -------------------------------------------------------------
 const siteUrl = (data.brand.siteUrl || '').trim().replace(/\/+$/, '');
 const robots = siteUrl
-  ? `User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: ${siteUrl}/sitemap.xml\n`
-  : `User-agent: *\nAllow: /\nDisallow: /admin/\n`;
+  ? `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /staff/\n\nSitemap: ${siteUrl}/sitemap.xml\n`
+  : `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /staff/\n`;
 outDirs.forEach((d) => fs.writeFileSync(path.join(d, 'robots.txt'), robots, 'utf8'));
 console.log('Wrote robots.txt');
 
@@ -326,6 +326,20 @@ const adminCsp = [
   "form-action 'self'",
   "frame-ancestors 'self'",
 ].join('; ');
+// Staff work-portal CSP, same "different connect-src, no third-party CDN"
+// reasoning as adminCsp above. The Supabase project host here must match
+// SUPABASE_URL in staff/staff.js if that project ever changes.
+const staffCsp = [
+  "default-src 'self'",
+  "script-src 'self' https://static.cloudflareinsights.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self'",
+  "connect-src 'self' https://moqmgyniwytwmlcdthzy.supabase.co https://cloudflareinsights.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
 const headers = `/*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
@@ -343,6 +357,10 @@ const headers = `/*
 /admin/*
   ! Content-Security-Policy
   Content-Security-Policy: ${adminCsp}
+
+/staff/*
+  ! Content-Security-Policy
+  Content-Security-Policy: ${staffCsp}
 `;
 outDirs.forEach((d) => fs.writeFileSync(path.join(d, '_headers'), headers, 'utf8'));
 console.log('Wrote _headers');
@@ -407,5 +425,19 @@ fs.copyFileSync(
   path.join(adminDest, 'js-yaml.min.js'),
 );
 console.log('Copied admin panel (index.html, admin.js, js-yaml.min.js) to dist/admin/');
+
+// Copy the staff work portal into dist so Cloudflare Workers serves it at
+// /staff/ — same self-hosted-dependency reasoning as the admin panel above
+// (the CSP has no CDN allow-listed in script-src), so the Supabase client
+// library is copied from node_modules rather than loaded from a CDN.
+const staffDest = path.join(__dirname, 'dist', 'staff');
+fs.mkdirSync(staffDest, { recursive: true });
+fs.copyFileSync(path.join(__dirname, 'staff', 'index.html'), path.join(staffDest, 'index.html'));
+fs.copyFileSync(path.join(__dirname, 'staff', 'staff.js'), path.join(staffDest, 'staff.js'));
+fs.copyFileSync(
+  path.join(__dirname, 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js'),
+  path.join(staffDest, 'supabase.js'),
+);
+console.log('Copied staff portal (index.html, staff.js, supabase.js) to dist/staff/');
 
 console.log('\nDone. Files written to', outDirs.join(' and '));
