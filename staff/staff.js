@@ -1706,9 +1706,11 @@
     var note = el('div', 'card');
     var p = el('p', 'desc');
     p.style.margin = '0';
-    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). "Use This Template" fills in one work item at a time; "Generate Period Work" fills in a whole period at once from every client\'s Active Services. Neither runs automatically on a schedule yet — both are click-to-run.';
+    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). "Use This Template" fills in one work item at a time; "Generate Period Work" fills in a whole period at once from every client\'s Active Services.';
     note.appendChild(p);
     main.appendChild(note);
+
+    if (isAdmin()) await renderAutoGenerateCard(main);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
@@ -1736,6 +1738,37 @@
       main.appendChild(h2b);
       other.forEach(function (t) { main.appendChild(templateCard(t)); });
     }
+  }
+
+  // A daily scheduled job (pg_cron, set up directly in Supabase) sweeps
+  // every active client_service and generates any missing work for
+  // whatever period is set here — the period name always comes from a
+  // person, never computed, since this app has no BS-calendar conversion
+  // table to compute it safely. Update this whenever the real period
+  // rolls over and the next day's sweep picks it up automatically.
+  async function renderAutoGenerateCard(main) {
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.appendChild(icon('calendar')); h2.appendChild(document.createTextNode('Auto-Generate Period')); card.appendChild(h2);
+    var desc = el('p', 'desc');
+    desc.textContent = 'A daily check generates work for every active service for this period, automatically. Update it whenever the real period changes.';
+    card.appendChild(desc);
+
+    var res = await sb.from('app_settings').select('*').eq('key', 'auto_generate_period').single();
+    var current = (res.data && res.data.value) || '';
+
+    var row = el('div'); row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;';
+    var input = el('input'); input.type = 'text'; input.placeholder = 'e.g. Shrawan 2083 — leave blank to pause'; input.value = current; input.style.flex = '1';
+    var saveBtn = el('button', 'btn btn-outline btn-sm'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', async function () {
+      saveBtn.disabled = true;
+      var updRes = await sb.from('app_settings').update({ value: input.value.trim() || null }).eq('key', 'auto_generate_period');
+      saveBtn.disabled = false;
+      if (updRes.error) { toast('Could not save: ' + updRes.error.message, true); return; }
+      toast(input.value.trim() ? 'Auto-generate period set to "' + input.value.trim() + '".' : 'Auto-generation paused (no period set).');
+    });
+    row.appendChild(input); row.appendChild(saveBtn);
+    card.appendChild(row);
+    main.appendChild(card);
   }
 
   function templateCard(t) {
@@ -1848,15 +1881,15 @@
   }
 
   // Bulk-creates one work item per active client_service for a given
-  // period, using each service's template/assignee/reviewer — a manual,
-  // click-to-run version of "recurring generation." Existing work for the
-  // same client+service+period is skipped so it's safe to run more than
-  // once (e.g. if a new client_service was added after the first run).
-  // Due dates are intentionally left blank: computing them automatically
-  // would mean guessing at a period-to-calendar-date mapping (this firm
-  // works in the Nepali BS calendar, e.g. "Shrawan 2083"), which needs a
-  // real conversion table this app doesn't have — see the note about
-  // scheduled automation and reminders.
+  // period, using each service's template/assignee/reviewer — the manual,
+  // click-to-run twin of the scheduled version (see the "Auto-Generate
+  // Period" setting above the templates list). Both call the same
+  // `generate_period_work_for_period` SQL function so the generation logic
+  // only exists in one place. Existing work for the same client+service+
+  // period is skipped, so it's safe to run more than once. Due dates land
+  // blank on purpose: computing them would mean guessing a period-to-
+  // calendar mapping for the Nepali BS calendar this app has no
+  // conversion table for.
   async function openGeneratePeriodModal() {
     var wrap = el('div');
     var head = el('div', 'modal-head');
@@ -1868,12 +1901,9 @@
 
     var periodInput = el('input'); periodInput.type = 'text'; periodInput.placeholder = 'e.g. Shrawan 2083';
     wrap.appendChild(field('Period', periodInput));
-    var hint = el('p', 'desc'); hint.textContent = 'Creates one work item per active service below for this period. Anything already generated for this exact period is skipped automatically.';
-    wrap.appendChild(hint);
+    var previewWrap = el('p', 'desc'); previewWrap.textContent = 'Enter a period above to see what would be generated.';
+    wrap.appendChild(previewWrap);
 
-    var listWrap = el('div');
-    var loading = el('p', 'desc'); loading.textContent = 'Loading active services…'; listWrap.appendChild(loading);
-    wrap.appendChild(listWrap);
     var actions = el('div', 'modal-actions');
     var genBtn = el('button', 'btn'); genBtn.type = 'button'; genBtn.textContent = 'Generate';
     genBtn.disabled = true;
@@ -1881,82 +1911,41 @@
     wrap.appendChild(actions);
     openModal(wrap);
 
-    var svcRes = await sb.from('client_services').select('*, service_templates(*)').eq('is_active', true);
-    clear(listWrap);
-    if (svcRes.error) { toast('Could not load active services: ' + svcRes.error.message, true); return; }
-    var services = svcRes.data || [];
-    if (!services.length) {
-      var none = el('p', 'desc'); none.textContent = 'No active services set up yet — add some from a client\'s page first.'; listWrap.appendChild(none);
-      return;
-    }
-
-    var checkboxes = [];
-    async function refreshExisting() {
+    async function refreshPreview() {
       var period = periodInput.value.trim();
-      clear(listWrap);
       if (!period) {
-        var prompt = el('p', 'desc'); prompt.textContent = 'Enter a period above to see what would be generated.'; listWrap.appendChild(prompt);
+        previewWrap.textContent = 'Enter a period above to see what would be generated.';
         genBtn.disabled = true;
         return;
       }
+      var svcRes = await sb.from('client_services').select('client_id, service_template_id').eq('is_active', true);
       var existingRes = await sb.from('work_items').select('client_id, service_template_id').eq('period', period);
+      var services = svcRes.data || [];
       var existing = existingRes.data || [];
-      function alreadyExists(s) {
-        return existing.some(function (w) { return w.client_id === s.client_id && w.service_template_id === s.service_template_id; });
+      var remaining = services.filter(function (s) {
+        return !existing.some(function (w) { return w.client_id === s.client_id && w.service_template_id === s.service_template_id; });
+      }).length;
+      if (!services.length) {
+        previewWrap.textContent = 'No active services set up yet — add some from a client\'s page first.';
+      } else if (!remaining) {
+        previewWrap.textContent = 'All ' + services.length + ' active service' + (services.length === 1 ? '' : 's') + ' already ha' + (services.length === 1 ? 's' : 've') + ' work for "' + period + '".';
+      } else {
+        previewWrap.textContent = remaining + ' of ' + services.length + ' active service' + (services.length === 1 ? '' : 's') + ' still need' + (remaining === 1 ? 's' : '') + ' work generated for "' + period + '".';
       }
-      checkboxes = [];
-      services.forEach(function (s) {
-        var exists = alreadyExists(s);
-        var row = el('label', 'service-row' + (exists ? ' is-inactive' : ''));
-        var cb = el('input'); cb.type = 'checkbox'; cb.checked = !exists; cb.disabled = exists;
-        row.appendChild(cb);
-        var body = el('div', 'body');
-        var title = el('div', 'title'); title.textContent = clientName(s.client_id) + ' — ' + (s.service_templates ? s.service_templates.title : 'Unknown service');
-        var meta = el('div', 'meta'); meta.textContent = exists ? 'Already generated for ' + period : (s.assignee_id ? 'Assignee: ' + profileName(s.assignee_id) : 'No assignee set');
-        body.appendChild(title); body.appendChild(meta);
-        row.appendChild(body);
-        listWrap.appendChild(row);
-        if (!exists) checkboxes.push({ cb: cb, service: s });
-      });
-      genBtn.disabled = checkboxes.length === 0;
+      genBtn.disabled = remaining === 0;
     }
-    periodInput.addEventListener('input', refreshExisting);
-    await refreshExisting();
+    periodInput.addEventListener('input', refreshPreview);
+    await refreshPreview();
 
     genBtn.addEventListener('click', async function () {
       var period = periodInput.value.trim();
-      var toCreate = checkboxes.filter(function (c) { return c.cb.checked; }).map(function (c) { return c.service; });
-      if (!toCreate.length) { toast('Nothing selected.', true); return; }
       genBtn.disabled = true;
-      var created = 0;
-      var failed = 0;
-      for (var i = 0; i < toCreate.length; i++) {
-        var s = toCreate[i];
-        var tmpl = s.service_templates;
-        var res = await sb.from('work_items').insert({
-          client_id: s.client_id,
-          service_template_id: s.service_template_id,
-          title: tmpl ? tmpl.title : 'Work',
-          period: period,
-          assignee_id: s.assignee_id || state.user.id,
-          reviewer_id: s.reviewer_id || null,
-          priority: 'normal',
-          created_by: state.user.id,
-        }).select().single();
-        if (res.error) { failed++; continue; }
-        created++;
-        if (tmpl) {
-          var itemsRes = await sb.from('service_template_items').select('*').eq('template_id', tmpl.id);
-          var items = itemsRes.data || [];
-          if (items.length) {
-            var rows = items.map(function (it) { return { work_item_id: res.data.id, stage: it.stage, title: it.title, sort_order: it.sort_order }; });
-            await sb.from('work_checklist_items').insert(rows);
-          }
-        }
-      }
+      var res = await sb.rpc('generate_period_work_for_period', { p_period: period });
       genBtn.disabled = false;
+      if (res.error) { toast('Could not generate: ' + res.error.message, true); return; }
+      var created = res.data || 0;
       closeModal();
-      toast(created + ' work item' + (created === 1 ? '' : 's') + ' created' + (failed ? ', ' + failed + ' failed' : '') + '. Set due dates on each before assigning out.', failed > 0);
+      toast(created + ' work item' + (created === 1 ? '' : 's') + ' created. Set due dates on each before assigning out.');
     });
   }
 
