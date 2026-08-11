@@ -342,7 +342,7 @@
     if (isReviewerOrAdmin()) {
       var addBtn = el('button', 'btn btn-sm');
       addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Task'));
-      addBtn.addEventListener('click', openNewTaskModal);
+      addBtn.addEventListener('click', function () { openNewTaskModal(); });
       head.appendChild(addBtn);
     }
     main.appendChild(head);
@@ -352,6 +352,8 @@
 
     var tasks = await loadTasks(mode);
     main.removeChild(loading);
+
+    if (mode === 'all') renderWorkloadSummary(main, tasks);
 
     if (mode === 'mine') {
       renderGroupedTasks(main, tasks);
@@ -389,6 +391,44 @@
       var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No tasks assigned to you yet.'));
       main.appendChild(empty);
     }
+  }
+
+  // "Who's overloaded this week" — the one thing a flat task list can't
+  // answer at a glance. Counts open (non-completed) work per assignee,
+  // sorted busiest-first, with overdue count called out separately since
+  // that's the number that actually matters day to day.
+  function renderWorkloadSummary(main, tasks) {
+    var open = tasks.filter(function (t) { return t.status !== 'completed'; });
+    if (!open.length) return;
+    var byAssignee = {};
+    open.forEach(function (t) {
+      var key = t.assignee_id || 'unassigned';
+      if (!byAssignee[key]) byAssignee[key] = { open: 0, overdue: 0 };
+      byAssignee[key].open++;
+      if (isOverdue(t)) byAssignee[key].overdue++;
+    });
+    var rows = Object.keys(byAssignee).map(function (id) {
+      return { id: id, name: id === 'unassigned' ? 'Unassigned' : profileName(id), open: byAssignee[id].open, overdue: byAssignee[id].overdue };
+    }).sort(function (a, b) { return b.open - a.open; });
+
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.appendChild(icon('users')); h2.appendChild(document.createTextNode('Team Workload')); card.appendChild(h2);
+    var wrap = el('div'); wrap.style.display = 'flex'; wrap.style.flexWrap = 'wrap'; wrap.style.gap = '10px'; wrap.style.marginTop = '12px';
+    rows.forEach(function (r) {
+      var chip = el('div');
+      chip.style.cssText = 'display:flex;align-items:center;gap:9px;background:var(--mist);border:1px solid var(--border);border-radius:10px;padding:9px 14px;';
+      if (r.id !== 'unassigned') chip.appendChild(avatar(r.name, 'avatar-sm'));
+      var text = el('div');
+      var nameEl = el('div'); nameEl.style.cssText = 'font-size:.85rem;font-weight:700;color:var(--navy-950);'; nameEl.textContent = r.name;
+      var countEl = el('div'); countEl.style.cssText = 'font-size:.78rem;color:var(--ink-soft);';
+      countEl.textContent = r.open + ' open' + (r.overdue ? ' · ' + r.overdue + ' overdue' : '');
+      if (r.overdue) countEl.style.color = 'var(--red)';
+      text.appendChild(nameEl); text.appendChild(countEl);
+      chip.appendChild(text);
+      wrap.appendChild(chip);
+    });
+    card.appendChild(wrap);
+    main.appendChild(card);
   }
 
   function renderFlatTaskList(main, tasks) {
@@ -429,7 +469,12 @@
   // ============================================================
   // New task modal
   // ============================================================
-  function openNewTaskModal() {
+  // prefill (optional): { title, description, assigneeId, reviewerId,
+  // templateId, checklistItems } — used by "Use This Template" on the Task
+  // Templates page so recurring compliance work (VAT, TDS, monthly close)
+  // doesn't have to be retyped by hand every time.
+  function openNewTaskModal(prefill) {
+    prefill = prefill || {};
     var wrap = el('div');
     var head = el('div', 'modal-head');
     var h2 = el('h2'); h2.textContent = 'New Task';
@@ -438,7 +483,7 @@
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
 
-    var titleInput = el('input'); titleInput.type = 'text';
+    var titleInput = el('input'); titleInput.type = 'text'; titleInput.value = prefill.title || '';
     wrap.appendChild(field('Title', titleInput));
 
     var clientSel = el('select');
@@ -452,18 +497,20 @@
     clientSel.addEventListener('change', function () {
       clear(engSel);
       engSel.appendChild(new Option('— No engagement —', ''));
-      state.engagements.filter(function (e) { return e.client_id === clientSel.value && e.is_active; })
+      state.engagements.filter(function (e) { return e.client_id === clientSel.value && e.status !== 'completed'; })
         .forEach(function (e) { engSel.appendChild(new Option(e.title, e.id)); });
     });
 
     var assigneeSel = el('select');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    if (prefill.assigneeId) assigneeSel.value = prefill.assigneeId;
     wrap.appendChild(field('Assignee', assigneeSel));
 
     var reviewerSel = el('select');
     reviewerSel.appendChild(new Option('— No reviewer —', ''));
     state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); })
       .forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    if (prefill.reviewerId) reviewerSel.value = prefill.reviewerId;
     wrap.appendChild(field('Reviewer', reviewerSel));
 
     var dueInput = el('input'); dueInput.type = 'date';
@@ -474,18 +521,20 @@
     prioritySel.value = 'normal';
     wrap.appendChild(field('Priority', prioritySel));
 
-    var descInput = el('textarea'); descInput.rows = 3;
+    var descInput = el('textarea'); descInput.rows = 3; descInput.value = prefill.description || '';
     wrap.appendChild(field('Description / Instructions', descInput));
 
     var actions = el('div', 'modal-actions');
     var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Task';
     createBtn.addEventListener('click', async function () {
       if (!titleInput.value.trim()) { toast('Give the task a title.', true); return; }
+      if (!assigneeSel.value) { toast('No active staff available to assign — activate someone under Staff first.', true); return; }
       createBtn.disabled = true;
       var res = await sb.from('tasks').insert({
         title: titleInput.value.trim(),
         client_id: clientSel.value || null,
         engagement_id: engSel.value || null,
+        template_id: prefill.templateId || null,
         assignee_id: assigneeSel.value,
         reviewer_id: reviewerSel.value || null,
         due_date: dueInput.value || null,
@@ -493,8 +542,13 @@
         description: descInput.value.trim() || null,
         created_by: state.user.id,
       }).select().single();
+      if (res.error) { createBtn.disabled = false; toast('Could not create task: ' + res.error.message, true); return; }
+      if (prefill.checklistItems && prefill.checklistItems.length) {
+        var rows = prefill.checklistItems.map(function (title, i) { return { task_id: res.data.id, title: title, sort_order: i }; });
+        var clRes = await sb.from('task_checklist_items').insert(rows);
+        if (clRes.error) toast('Task created, but checklist items failed: ' + clRes.error.message, true);
+      }
       createBtn.disabled = false;
-      if (res.error) { toast('Could not create task: ' + res.error.message, true); return; }
       closeModal();
       toast('Task created.');
       gotoTask(res.data.id);
@@ -802,25 +856,28 @@
     var card = el('div', 'card');
     var table = el('table');
     var thead = el('thead'); var trh = el('tr');
-    ['Title', 'Client', 'Status', ''].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    ['Title', 'Client', 'Status'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
     thead.appendChild(trh); table.appendChild(thead);
     var tbody = el('tbody');
+    var ENGAGEMENT_STATUSES = ['active', 'on_hold', 'completed'];
+    var ENGAGEMENT_STATUS_LABELS = { active: 'Active', on_hold: 'On Hold', completed: 'Completed' };
     state.engagements.forEach(function (e) {
-      var tr = el('tr', e.is_active ? '' : 'inactive-row');
+      var tr = el('tr', e.status === 'completed' ? 'inactive-row' : '');
       var tdTitle = el('td'); tdTitle.textContent = e.title;
       var tdClient = el('td'); tdClient.textContent = clientName(e.client_id);
-      var tdStatus = el('td'); tdStatus.textContent = e.is_active ? 'Active' : 'Inactive';
-      var tdAction = el('td');
-      var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
-      toggleBtn.textContent = e.is_active ? 'Deactivate' : 'Reactivate';
-      toggleBtn.addEventListener('click', async function () {
-        var res = await sb.from('engagements').update({ is_active: !e.is_active }).eq('id', e.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-        await loadEngagements();
-        render();
+      var tdStatus = el('td');
+      var statusSel = el('select', 'role-select');
+      ENGAGEMENT_STATUSES.forEach(function (s) { statusSel.appendChild(new Option(ENGAGEMENT_STATUS_LABELS[s], s)); });
+      statusSel.value = e.status || 'active';
+      statusSel.addEventListener('change', async function () {
+        var res = await sb.from('engagements').update({ status: statusSel.value }).eq('id', e.id);
+        if (res.error) { toast('Could not update: ' + res.error.message, true); statusSel.value = e.status; return; }
+        e.status = statusSel.value;
+        toast(e.title + ' is now ' + ENGAGEMENT_STATUS_LABELS[e.status] + '.');
+        tr.className = e.status === 'completed' ? 'inactive-row' : '';
       });
-      tdAction.appendChild(toggleBtn);
-      tr.appendChild(tdTitle); tr.appendChild(tdClient); tr.appendChild(tdStatus); tr.appendChild(tdAction);
+      tdStatus.appendChild(statusSel);
+      tr.appendChild(tdTitle); tr.appendChild(tdClient); tr.appendChild(tdStatus);
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -880,7 +937,7 @@
     var note = el('div', 'card');
     var p = el('p', 'desc');
     p.style.margin = '0';
-    p.textContent = 'Templates describe recurring work (e.g. "Monthly Bookkeeping Close"). Creating tasks from a template on a schedule isn\'t automated yet — for now, use a template as a reference when creating a task manually.';
+    p.textContent = 'Templates describe recurring work (e.g. "Monthly Bookkeeping Close"). Generating tasks automatically on a schedule isn\'t built yet — "Use This Template" fills in a new task and its checklist for you, one client at a time.';
     note.appendChild(p);
     main.appendChild(note);
 
@@ -911,6 +968,22 @@
         });
         card.appendChild(ul);
       }
+      var useBtn = el('button', 'btn btn-outline btn-sm');
+      useBtn.type = 'button';
+      useBtn.style.marginTop = '14px';
+      useBtn.appendChild(icon('plus'));
+      useBtn.appendChild(document.createTextNode('Use This Template'));
+      useBtn.addEventListener('click', function () {
+        openNewTaskModal({
+          title: t.title,
+          description: t.description,
+          assigneeId: t.default_assignee_id,
+          reviewerId: t.default_reviewer_id,
+          templateId: t.id,
+          checklistItems: items.sort(function (a, b) { return a.sort_order - b.sort_order; }).map(function (it) { return it.title; }),
+        });
+      });
+      card.appendChild(useBtn);
       main.appendChild(card);
     });
   }
@@ -1002,10 +1075,15 @@
       toggleBtn.textContent = p2.is_active ? 'Deactivate' : 'Reactivate';
       toggleBtn.disabled = isSelf;
       toggleBtn.addEventListener('click', async function () {
-        var res = await sb.from('profiles').update({ is_active: !p2.is_active }).eq('id', p2.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-        await loadProfiles();
-        render();
+        if (!p2.is_active) {
+          // Reactivating needs no extra care — just flip it back on.
+          var reactivateRes = await sb.from('profiles').update({ is_active: true }).eq('id', p2.id);
+          if (reactivateRes.error) { toast('Could not update: ' + reactivateRes.error.message, true); return; }
+          await loadProfiles();
+          render();
+          return;
+        }
+        await confirmDeactivateStaff(p2);
       });
       tdStatus.appendChild(toggleBtn);
       var tdBlank = el('td');
@@ -1016,6 +1094,66 @@
     table.appendChild(tbody);
     card.appendChild(table);
     main.appendChild(card);
+  }
+
+  // Deactivating someone who still has open work would silently strand
+  // those tasks: the person can no longer log in (enterApp() checks
+  // is_active), but the tasks stay assigned to them, invisible in anyone's
+  // "My Tasks" except an admin/reviewer's firm-wide views. This checks for
+  // open tasks first and, if there are any, makes reassignment part of the
+  // deactivation instead of an afterthought someone has to remember later.
+  async function confirmDeactivateStaff(p2) {
+    var res = await sb.from('tasks').select('*').eq('assignee_id', p2.id).neq('status', 'completed');
+    if (res.error) { toast('Could not check their open tasks: ' + res.error.message, true); return; }
+    var openTasks = res.data || [];
+    if (!openTasks.length) {
+      var directRes = await sb.from('profiles').update({ is_active: false }).eq('id', p2.id);
+      if (directRes.error) { toast('Could not update: ' + directRes.error.message, true); return; }
+      await loadProfiles();
+      render();
+      return;
+    }
+
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Reassign Before Deactivating';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Cancel';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var p = el('p', 'desc');
+    p.textContent = p2.full_name + ' has ' + openTasks.length + ' open task' + (openTasks.length === 1 ? '' : 's') + '. Once deactivated they can\'t log in, so those tasks need a new assignee first.';
+    wrap.appendChild(p);
+
+    var list = el('ul'); list.style.paddingLeft = '18px'; list.style.listStyle = 'disc'; list.style.marginBottom = '14px';
+    openTasks.forEach(function (t) { var li = el('li'); li.textContent = t.title; list.appendChild(li); });
+    wrap.appendChild(list);
+
+    var reassignSel = el('select');
+    state.profiles.filter(function (p3) { return p3.is_active && p3.id !== p2.id; })
+      .forEach(function (p3) { reassignSel.appendChild(new Option(p3.full_name, p3.id)); });
+    wrap.appendChild(field('Reassign all of the above to', reassignSel));
+
+    var actions = el('div', 'modal-actions');
+    var confirmBtn = el('button', 'btn'); confirmBtn.type = 'button';
+    confirmBtn.textContent = 'Reassign & Deactivate';
+    confirmBtn.addEventListener('click', async function () {
+      if (!reassignSel.value) { toast('No other active staff to reassign to.', true); return; }
+      confirmBtn.disabled = true;
+      var reassignRes = await sb.from('tasks').update({ assignee_id: reassignSel.value }).eq('assignee_id', p2.id).neq('status', 'completed');
+      if (reassignRes.error) { confirmBtn.disabled = false; toast('Could not reassign tasks: ' + reassignRes.error.message, true); return; }
+      var deactivateRes = await sb.from('profiles').update({ is_active: false }).eq('id', p2.id);
+      confirmBtn.disabled = false;
+      if (deactivateRes.error) { toast('Tasks reassigned, but deactivation failed: ' + deactivateRes.error.message, true); return; }
+      closeModal();
+      toast(openTasks.length + ' task' + (openTasks.length === 1 ? '' : 's') + ' reassigned; ' + p2.full_name + ' deactivated.');
+      await loadProfiles();
+      render();
+    });
+    actions.appendChild(confirmBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
   }
 
   // ============================================================
