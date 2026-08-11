@@ -306,7 +306,7 @@
       renderClientDetail(state.clientDetailId);
       return;
     }
-    var known = ['today', 'my-work', 'review', 'all-work', 'todo', 'clients', 'templates', 'staff'];
+    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'todo', 'clients', 'templates', 'staff'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -337,6 +337,8 @@
       item('review', 'Review', 'check');
       item('all-work', 'All Work', 'folder');
     }
+    item('deadlines', 'Deadlines', 'calendar');
+    if (isReviewerOrAdmin()) item('manager', 'Manager Dashboard', 'users');
     item('todo', 'My To-Do List', 'list');
     if (isAdmin()) {
       var group2 = el('div', 'sidebar-group'); group2.textContent = 'Clients';
@@ -357,6 +359,8 @@
     if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
     if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
     if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
+    if (state.view === 'deadlines') return renderDeadlinesPage(main);
+    if (state.view === 'manager') return renderManagerDashboard(main);
     if (state.view === 'todo') return renderTodoPage(main);
     if (state.view === 'clients') return renderClients(main);
     if (state.view === 'templates') return renderTemplates(main);
@@ -614,6 +618,159 @@
   }
 
   // ============================================================
+  // Deadlines — a flat, date-grouped list (deliberately not a calendar
+  // widget). Defaults to "My Deadlines"; reviewers/admins can switch to
+  // "Team" and narrow by client or service.
+  // ============================================================
+  async function renderDeadlinesPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Deadlines'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;';
+    var scopeSel = el('select'); scopeSel.style.width = 'auto';
+    scopeSel.appendChild(new Option('My Deadlines', 'mine'));
+    if (isReviewerOrAdmin()) scopeSel.appendChild(new Option('Team', 'all'));
+    filterRow.appendChild(scopeSel);
+    var clientSel = el('select'); clientSel.style.width = 'auto';
+    clientSel.appendChild(new Option('All Clients', ''));
+    state.clients.forEach(function (c) { clientSel.appendChild(new Option(c.name, c.id)); });
+    filterRow.appendChild(clientSel);
+    var serviceSel = el('select'); serviceSel.style.width = 'auto';
+    serviceSel.appendChild(new Option('All Services', ''));
+    state.templates.forEach(function (t) { serviceSel.appendChild(new Option(t.title, t.id)); });
+    filterRow.appendChild(serviceSel);
+    main.appendChild(filterRow);
+
+    var resultsWrap = el('div');
+    main.appendChild(resultsWrap);
+
+    async function refresh() {
+      clear(resultsWrap);
+      var loading = el('div', 'empty-note'); loading.textContent = 'Loading…'; resultsWrap.appendChild(loading);
+      var items = await loadWork(scopeSel.value === 'all' ? 'all' : 'mine');
+      clear(resultsWrap);
+      items = items.filter(function (w) { return w.status !== 'completed' && effectiveDue(w); });
+      if (clientSel.value) items = items.filter(function (w) { return w.client_id === clientSel.value; });
+      if (serviceSel.value) items = items.filter(function (w) { return w.service_template_id === serviceSel.value; });
+      items.sort(function (a, b) { return (effectiveDue(a) || '').localeCompare(effectiveDue(b) || ''); });
+
+      var todayStr = new Date().toISOString().slice(0, 10);
+      var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
+      var weekStr = weekOut.toISOString().slice(0, 10);
+      var groups = [
+        { key: 'overdue', label: 'Overdue', filter: function (w) { return isOverdue(w); } },
+        { key: 'today', label: 'Today', filter: function (w) { return !isOverdue(w) && effectiveDue(w) === todayStr; } },
+        { key: 'week', label: 'This Week', filter: function (w) { return !isOverdue(w) && effectiveDue(w) > todayStr && effectiveDue(w) <= weekStr; } },
+        { key: 'later', label: 'Later', filter: function (w) { return !isOverdue(w) && effectiveDue(w) > weekStr; } },
+      ];
+      var shown = 0;
+      groups.forEach(function (g) {
+        var rows = items.filter(g.filter);
+        if (!rows.length) return;
+        shown += rows.length;
+        var wrap = el('div', 'task-group');
+        var h3 = el('h3');
+        h3.appendChild(document.createTextNode(g.label + ' '));
+        var count = el('span', 'count'); count.textContent = String(rows.length);
+        h3.appendChild(count);
+        wrap.appendChild(h3);
+        rows.forEach(function (w) { wrap.appendChild(workRow(w)); });
+        resultsWrap.appendChild(wrap);
+      });
+      if (!shown) {
+        var empty = el('div', 'empty-note'); empty.appendChild(icon('calendar')); empty.appendChild(document.createTextNode('Nothing due.'));
+        resultsWrap.appendChild(empty);
+      }
+    }
+    scopeSel.addEventListener('change', refresh);
+    clientSel.addEventListener('change', refresh);
+    serviceSel.addEventListener('change', refresh);
+    await refresh();
+  }
+
+  // ============================================================
+  // Manager Dashboard — per-staff workload matrix plus a short list of
+  // what needs a manager's attention. Deliberately no charts.
+  // ============================================================
+  async function renderManagerDashboard(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Manager Dashboard'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
+    main.appendChild(loading);
+    var items = await loadWork('all');
+    main.removeChild(loading);
+
+    var open = items.filter(function (w) { return w.status !== 'completed'; });
+    var todayStr = new Date().toISOString().slice(0, 10);
+    var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
+    var weekStr = weekOut.toISOString().slice(0, 10);
+
+    // ---- Team Workload matrix ----
+    var matrixCard = el('div', 'card');
+    var mH2 = el('h2'); mH2.appendChild(icon('users')); mH2.appendChild(document.createTextNode('Team Workload')); matrixCard.appendChild(mH2);
+    var table = el('table');
+    var thead = el('thead'); var trh = el('tr');
+    ['Staff', 'Overdue', 'Due 7d', 'Review', 'Waiting'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
+    var tbody = el('tbody');
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) {
+      var mine = open.filter(function (w) { return w.assignee_id === p.id; });
+      var tr = el('tr');
+      var tdName = el('td'); tdName.textContent = p.full_name; tr.appendChild(tdName);
+      var overdueN = mine.filter(isOverdue).length;
+      var due7 = mine.filter(function (w) { return !isOverdue(w) && effectiveDue(w) && effectiveDue(w) <= weekStr; }).length;
+      var reviewN = mine.filter(function (w) { return w.status === 'ready_for_review'; }).length;
+      var waitingN = mine.filter(function (w) { return w.status === 'waiting_for_client'; }).length;
+      [overdueN, due7, reviewN, waitingN].forEach(function (n, i) {
+        var td = el('td'); td.textContent = String(n);
+        if (i === 0 && n) td.style.cssText = 'color:var(--red);font-weight:700;';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    matrixCard.appendChild(table);
+    main.appendChild(matrixCard);
+
+    // ---- Needs Manager Attention ----
+    var overdueCount = open.filter(isOverdue).length;
+    var staleReviews = open.filter(function (w) {
+      if (w.status !== 'ready_for_review' || !w.ready_for_review_at) return false;
+      var ageDays = (Date.now() - new Date(w.ready_for_review_at).getTime()) / 86400000;
+      return ageDays > 2;
+    }).length;
+    var waitingClientIds = {};
+    open.filter(function (w) { return w.status === 'waiting_for_client'; }).forEach(function (w) { waitingClientIds[w.client_id] = true; });
+    var waitingClientCount = Object.keys(waitingClientIds).length;
+
+    var attnCard = el('div', 'card');
+    var aH2 = el('h2'); aH2.appendChild(icon('alert')); aH2.appendChild(document.createTextNode('Needs Manager Attention')); attnCard.appendChild(aH2);
+    var lines = [];
+    if (overdueCount) lines.push({ text: overdueCount + ' overdue work item' + (overdueCount === 1 ? '' : 's'), view: 'all-work' });
+    if (staleReviews) lines.push({ text: staleReviews + ' review' + (staleReviews === 1 ? '' : 's') + ' older than 2 days', view: 'review' });
+    if (waitingClientCount) lines.push({ text: waitingClientCount + ' client' + (waitingClientCount === 1 ? '' : 's') + ' waiting on documents', view: null });
+    if (!lines.length) {
+      var okLine = el('p', 'desc'); okLine.textContent = 'Nothing needs attention right now.'; attnCard.appendChild(okLine);
+    } else {
+      lines.forEach(function (l) {
+        var p = el('p');
+        p.style.cssText = 'font-size:.92rem;margin:6px 0;';
+        if (l.view) {
+          var a = el('a'); a.href = '#' + l.view; a.textContent = l.text;
+          p.appendChild(a);
+        } else {
+          p.textContent = l.text;
+        }
+        attnCard.appendChild(p);
+      });
+    }
+    main.appendChild(attnCard);
+  }
+
+  // ============================================================
   // New Work modal
   // ============================================================
   // prefill (optional): { templateId, clientId, assigneeId, reviewerId } —
@@ -842,6 +999,10 @@
         }
         var patch = { status: newStatus };
         if (newStatus !== 'waiting_for_client') { patch.waiting_reason = null; patch.waiting_since = null; patch.follow_up_date = null; }
+        // Tracks how long something has actually sat in the review queue —
+        // separate from updated_at, which any field change would bump —
+        // so the Manager Dashboard can flag reviews that are going stale.
+        patch.ready_for_review_at = newStatus === 'ready_for_review' ? new Date().toISOString() : null;
         applyStatusChange(newStatus, patch);
       });
       async function applyStatusChange(newStatus, patch) {
@@ -997,6 +1158,7 @@
         waiting_reason: reasonInput.value.trim() || null,
         waiting_since: new Date().toISOString().slice(0, 10),
         follow_up_date: followUpInput.value || null,
+        ready_for_review_at: null,
       });
     });
     actions.appendChild(saveBtn);
