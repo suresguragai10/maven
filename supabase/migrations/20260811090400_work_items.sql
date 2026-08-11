@@ -1,0 +1,106 @@
+-- Maven Work Desk — work_items (the core object)
+--
+-- A work item connects client → service template → period → assignee/
+-- reviewer → deadlines → status workflow. Two due dates are tracked
+-- deliberately: internal_due_date (when Maven expects the work finished)
+-- and external_due_date (the actual statutory/client deadline) — the
+-- internal one wins for urgency display since it's meant to land before
+-- the real deadline (see effectiveDue() in staff.js).
+
+create table if not exists public.work_items (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients(id),
+  service_template_id uuid references public.service_templates(id),
+  title text not null,
+  period text,
+  assignee_id uuid not null references public.profiles(id),
+  reviewer_id uuid references public.profiles(id),
+  internal_due_date date,
+  external_due_date date,
+  status text not null default 'to_do' check (status in (
+    'to_do', 'in_progress', 'waiting_for_client', 'ready_for_review',
+    'changes_required', 'approved', 'ready_to_submit', 'completed'
+  )),
+  priority text not null default 'normal' check (priority in ('low', 'normal', 'high')),
+  -- Legacy: superseded by the work_waiting_items checklist (see
+  -- 20260811090500_work_item_children.sql). Kept because it's already a
+  -- live column; the app no longer reads or writes it.
+  waiting_reason text,
+  waiting_since date,
+  follow_up_date date,
+  waiting_requested_by uuid references public.profiles(id),
+  -- Set when status transitions to ready_for_review, cleared on any other
+  -- transition — used by the Manager Dashboard to flag reviews sitting
+  -- longer than 2 days. Deliberately separate from updated_at, which any
+  -- field edit would bump and so can't answer "how long in review."
+  ready_for_review_at timestamptz,
+  description text,
+  -- Reserved for a future submission-tracking UI; not yet surfaced by the
+  -- frontend, but already part of the live schema.
+  submission_reference text,
+  completed_at timestamptz,
+  submitted_at timestamptz,
+  created_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists work_items_assignee_id_idx on public.work_items (assignee_id);
+create index if not exists work_items_client_id_idx on public.work_items (client_id);
+create index if not exists work_items_status_idx on public.work_items (status);
+create index if not exists work_items_internal_due_date_idx on public.work_items (internal_due_date);
+-- Speeds up the "has this client+service already been generated for this
+-- period?" check that both the manual and scheduled generation paths run
+-- for every active client_service.
+create index if not exists work_items_period_lookup_idx
+  on public.work_items (client_id, service_template_id, period);
+
+alter table public.work_items enable row level security;
+
+-- Every authenticated staff member can read and insert work items (an
+-- employee creating their own work is a deliberate feature, not a hole —
+-- see the guard trigger below for what actually constrains updates).
+create policy "work_items_read" on public.work_items
+  for select using (auth.role() = 'authenticated');
+create policy "work_items_insert" on public.work_items
+  for insert with check (auth.role() = 'authenticated');
+create policy "work_items_update" on public.work_items
+  for update using (auth.role() = 'authenticated');
+create policy "work_items_delete" on public.work_items
+  for delete using (public.current_user_role() = 'admin');
+
+-- The real business rules live here, not in RLS: an employee may only
+-- touch their own assigned work item, can't reassign or rescope it
+-- (change assignee/reviewer/client/service), and can't self-set a
+-- reviewer-gated status (approved/changes_required/ready_to_submit/
+-- completed). Reviewers and admins bypass all of this.
+create or replace function public.guard_work_item_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  role text;
+begin
+  role := public.current_user_role();
+  if role in ('admin', 'reviewer') then
+    return new;
+  end if;
+  if old.assignee_id <> auth.uid() then
+    raise exception 'You can only update work assigned to you.';
+  end if;
+  if new.assignee_id <> old.assignee_id or new.reviewer_id is distinct from old.reviewer_id
+     or new.client_id <> old.client_id or new.service_template_id is distinct from old.service_template_id then
+    raise exception 'Only a reviewer or admin can reassign or rescope work.';
+  end if;
+  if new.status in ('approved', 'changes_required', 'ready_to_submit', 'completed') and new.status <> old.status then
+    raise exception 'Only a reviewer or admin can set that status.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger work_items_guard
+  before update on public.work_items
+  for each row execute function public.guard_work_item_update();
