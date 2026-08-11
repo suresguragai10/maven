@@ -305,7 +305,16 @@
   async function loadWork(mode) {
     var q = sb.from('work_items').select('*').order('internal_due_date', { ascending: true, nullsFirst: false });
     if (mode === 'mine') q = q.eq('assignee_id', state.user.id);
-    if (mode === 'review') q = q.eq('status', 'ready_for_review');
+    if (mode === 'review') {
+      q = q.eq('status', 'ready_for_review');
+      // A plain reviewer only sees work where they're the assigned
+      // reviewer; admins see the whole review queue. This mirrors the
+      // work_items_read RLS policy (see supabase/migrations) — the
+      // filter here is for a tidy query, not the actual security
+      // boundary, since RLS enforces the same rule even if this line
+      // were removed or bypassed.
+      if (!isAdmin()) q = q.eq('reviewer_id', state.user.id);
+    }
     var res = await q;
     if (res.error) { toast('Could not load work: ' + res.error.message, true); return []; }
     return res.data || [];

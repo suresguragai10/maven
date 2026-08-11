@@ -57,11 +57,21 @@ create index if not exists work_items_period_lookup_idx
 
 alter table public.work_items enable row level security;
 
--- Every authenticated staff member can read and insert work items (an
--- employee creating their own work is a deliberate feature, not a hole —
--- see the guard trigger below for what actually constrains updates).
+-- Read access is scoped, not blanket-authenticated: everyone can see any
+-- work item that ISN'T sitting in the review queue (unchanged from
+-- before), can always see their own assigned work regardless of status,
+-- and can see anything they're the designated reviewer for. The one thing
+-- this withholds is *other people's* ready_for_review items where the
+-- caller is neither assignee nor reviewer — e.g. Reviewer B cannot see
+-- Reviewer A's pending review queue via All Work, Manager Dashboard, or
+-- any other query, not just the Review page. Admins bypass all of this.
 create policy "work_items_read" on public.work_items
-  for select using (auth.role() = 'authenticated');
+  for select using (
+    public.current_user_role() = 'admin'
+    or assignee_id = auth.uid()
+    or reviewer_id = auth.uid()
+    or status <> 'ready_for_review'
+  );
 create policy "work_items_insert" on public.work_items
   for insert with check (auth.role() = 'authenticated');
 create policy "work_items_update" on public.work_items
