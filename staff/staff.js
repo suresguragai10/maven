@@ -339,12 +339,13 @@
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = title;
     head.appendChild(h1);
-    if (isReviewerOrAdmin()) {
-      var addBtn = el('button', 'btn btn-sm');
-      addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Task'));
-      addBtn.addEventListener('click', function () { openNewTaskModal(); });
-      head.appendChild(addBtn);
-    }
+    // Everyone can log their own work now, not just reviewers/admins —
+    // openNewTaskModal() locks the assignee to "self" for employees (see
+    // there), so this doesn't let anyone hand work to someone else.
+    var addBtn = el('button', 'btn btn-sm');
+    addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Task'));
+    addBtn.addEventListener('click', function () { openNewTaskModal(); });
+    head.appendChild(addBtn);
     main.appendChild(head);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
@@ -504,7 +505,16 @@
     var assigneeSel = el('select');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
     if (prefill.assigneeId) assigneeSel.value = prefill.assigneeId;
-    wrap.appendChild(field('Assignee', assigneeSel));
+    var assigneeField = field('Assignee', assigneeSel);
+    if (!isReviewerOrAdmin()) {
+      // Employees can create tasks for themselves, not hand work to
+      // colleagues — that stays a reviewer/admin action.
+      assigneeSel.value = state.user.id;
+      assigneeSel.disabled = true;
+      var lockedHint = el('span', 'f-hint'); lockedHint.textContent = 'Tasks you create are assigned to you.';
+      assigneeField.appendChild(lockedHint);
+    }
+    wrap.appendChild(assigneeField);
 
     var reviewerSel = el('select');
     reviewerSel.appendChild(new Option('— No reviewer —', ''));
@@ -768,6 +778,13 @@
       }
 
       var actions = el('div', 'actions');
+      if (isReviewerOrAdmin()) {
+        var credBtn = el('button', 'btn btn-outline btn-sm'); credBtn.type = 'button';
+        credBtn.appendChild(icon('idcard'));
+        credBtn.appendChild(document.createTextNode('Credentials'));
+        credBtn.addEventListener('click', function () { openClientCredentialsModal(c); });
+        actions.appendChild(credBtn);
+      }
       var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
       toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
       toggleBtn.addEventListener('click', async function () {
@@ -781,6 +798,117 @@
       grid.appendChild(card);
     });
     main.appendChild(grid);
+  }
+
+  // Passwords are fetched decrypted from the get_client_credentials RPC
+  // (which itself checks the caller is admin/reviewer before decrypting —
+  // see the SQL) but stay masked on screen until explicitly revealed, same
+  // convention as a real password manager, so a shoulder-surf or screen
+  // share doesn't expose them by default.
+  async function openClientCredentialsModal(c) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = c.name + ' — Credentials';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var p = el('p', 'desc');
+    p.textContent = 'Portal logins for this client (IRD, OCR, banking, etc.) — visible only to admins and reviewers.';
+    wrap.appendChild(p);
+
+    var listWrap = el('div');
+    wrap.appendChild(listWrap);
+
+    async function refreshList() {
+      clear(listWrap);
+      var loading = el('p', 'desc'); loading.textContent = 'Loading…'; listWrap.appendChild(loading);
+      var res = await sb.rpc('get_client_credentials', { p_client_id: c.id });
+      clear(listWrap);
+      if (res.error) { toast('Could not load credentials: ' + res.error.message, true); return; }
+      var creds = res.data || [];
+      if (!creds.length) {
+        var empty = el('p', 'desc'); empty.textContent = 'No credentials stored yet.'; listWrap.appendChild(empty);
+      }
+      creds.forEach(function (cred) {
+        var row = el('div', 'cred-row');
+        var rHead = el('div', 'cred-head');
+        var label = el('span', 'cred-label'); label.textContent = cred.label;
+        var delBtn = el('button', 'btn btn-outline btn-sm'); delBtn.type = 'button'; delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', async function () {
+          if (!window.confirm('Delete the "' + cred.label + '" credential? This can\'t be undone.')) return;
+          var delRes = await sb.rpc('delete_client_credential', { p_id: cred.id });
+          if (delRes.error) { toast('Could not delete: ' + delRes.error.message, true); return; }
+          toast('Credential deleted.');
+          refreshList();
+        });
+        rHead.appendChild(label); rHead.appendChild(delBtn);
+        row.appendChild(rHead);
+
+        if (cred.username) {
+          var uField = el('div', 'cred-field');
+          uField.appendChild(icon('user'));
+          var uCode = el('code'); uCode.textContent = cred.username;
+          uField.appendChild(document.createTextNode('Username: ')); uField.appendChild(uCode);
+          row.appendChild(uField);
+        }
+
+        var pField = el('div', 'cred-field');
+        pField.appendChild(icon('idcard'));
+        var pCode = el('code'); pCode.textContent = '••••••••';
+        var revealBtn = el('button', 'btn btn-outline btn-sm'); revealBtn.type = 'button'; revealBtn.textContent = 'Show';
+        revealBtn.style.padding = '3px 10px'; revealBtn.style.fontSize = '.76rem';
+        var revealed = false;
+        revealBtn.addEventListener('click', function () {
+          revealed = !revealed;
+          pCode.textContent = revealed ? cred.password : '••••••••';
+          revealBtn.textContent = revealed ? 'Hide' : 'Show';
+        });
+        pField.appendChild(document.createTextNode('Password: ')); pField.appendChild(pCode); pField.appendChild(revealBtn);
+        row.appendChild(pField);
+
+        if (cred.notes) { var notesEl = el('div', 'cred-notes'); notesEl.textContent = cred.notes; row.appendChild(notesEl); }
+        listWrap.appendChild(row);
+      });
+    }
+    await refreshList();
+
+    var addHead = el('label', 'block-label'); addHead.style.cssText = 'display:block;font-weight:700;font-size:.95rem;color:var(--navy-900);margin:18px 0 6px;';
+    addHead.textContent = 'Add a credential';
+    wrap.appendChild(addHead);
+
+    var labelInput = el('input'); labelInput.type = 'text'; labelInput.placeholder = 'e.g. IRD Portal, OCR Portal, Bank Login';
+    wrap.appendChild(field('Label', labelInput));
+    var userInput = el('input'); userInput.type = 'text';
+    wrap.appendChild(field('Username (optional)', userInput));
+    var passInput = el('input'); passInput.type = 'text'; passInput.placeholder = 'Stored encrypted';
+    wrap.appendChild(field('Password', passInput));
+    var notesInput = el('textarea'); notesInput.rows = 2;
+    wrap.appendChild(field('Notes (optional)', notesInput));
+
+    var actions = el('div', 'modal-actions');
+    var addBtn = el('button', 'btn'); addBtn.type = 'button'; addBtn.textContent = 'Add Credential';
+    addBtn.addEventListener('click', async function () {
+      if (!labelInput.value.trim() || !passInput.value) { toast('Label and password are both required.', true); return; }
+      addBtn.disabled = true;
+      var res = await sb.rpc('add_client_credential', {
+        p_client_id: c.id,
+        p_label: labelInput.value.trim(),
+        p_username: userInput.value.trim() || null,
+        p_password: passInput.value,
+        p_notes: notesInput.value.trim() || null,
+      });
+      addBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      labelInput.value = ''; userInput.value = ''; passInput.value = ''; notesInput.value = '';
+      toast('Credential saved.');
+      refreshList();
+    });
+    actions.appendChild(addBtn);
+    wrap.appendChild(actions);
+
+    openModal(wrap);
   }
 
   function openNewClientModal() {

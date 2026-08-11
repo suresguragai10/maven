@@ -144,7 +144,15 @@
   .client-card .pan-vat{font-size:.78rem;color:var(--ink-soft);font-family:ui-monospace,Consolas,monospace;}
   .client-card .contact-row{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--ink-soft);margin-top:9px;}
   .client-card .contact-row .ic{width:14px;height:14px;color:var(--ink-soft);}
-  .client-card .actions{margin-top:14px;display:flex;gap:8px;}
+  .client-card .actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;}
+
+  /* ---- Client credentials (admin/reviewer only) ---- */
+  .cred-row{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--mist);}
+  .cred-row .cred-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .cred-row .cred-label{font-weight:700;font-size:.9rem;color:var(--navy-950);}
+  .cred-row .cred-field{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--ink-soft);margin-top:3px;}
+  .cred-row .cred-field code{font-family:ui-monospace,Consolas,monospace;background:#fff;border:1px solid var(--border);border-radius:5px;padding:1px 7px;color:var(--navy-900);}
+  .cred-row .cred-notes{font-size:.8rem;color:var(--ink-soft);margin-top:6px;}
 
   #toast{position:fixed;bottom:24px;right:24px;max-width:360px;background:var(--navy-950);color:#fff;padding:16px 20px;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.3);z-index:50;font-size:.9rem;}
   #toast.error{background:var(--red);}
