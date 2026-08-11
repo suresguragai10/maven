@@ -300,12 +300,19 @@
       renderWorkDetail(state.workId);
       return;
     }
+    if (hash.indexOf('client/') === 0) {
+      state.view = 'client-detail';
+      state.clientDetailId = hash.slice(7);
+      renderClientDetail(state.clientDetailId);
+      return;
+    }
     var known = ['today', 'my-work', 'review', 'all-work', 'todo', 'clients', 'templates', 'staff'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
   function goto(view) { location.hash = view; }
   function gotoWork(id) { location.hash = 'work/' + id; }
+  function gotoClient(id) { location.hash = 'client/' + id; }
 
   // ============================================================
   // Sidebar
@@ -318,7 +325,7 @@
       b.type = 'button';
       b.appendChild(icon(iconName));
       b.appendChild(document.createTextNode(label));
-      b.classList.toggle('is-active', state.view === view || (state.view === 'work-detail' && view === 'today'));
+      b.classList.toggle('is-active', state.view === view || (state.view === 'work-detail' && view === 'today') || (state.view === 'client-detail' && view === 'clients'));
       b.addEventListener('click', function () { goto(view); });
       nav.appendChild(b);
     }
@@ -609,8 +616,9 @@
   // ============================================================
   // New Work modal
   // ============================================================
-  // prefill (optional): { templateId, clientId } — used by "Use This
-  // Template" on the Templates page so recurring compliance work (VAT,
+  // prefill (optional): { templateId, clientId, assigneeId, reviewerId } —
+  // used by "Use This Template" (Templates page) and "Create This Period's
+  // Work" (a client's Active Services) so recurring compliance work (VAT,
   // TDS, monthly close) doesn't have to be retyped by hand every time.
   function openNewWorkModal(prefill) {
     prefill = prefill || {};
@@ -682,6 +690,10 @@
     titleInput.addEventListener('input', function () { titleInput.dataset.auto = '0'; });
     templateSel.addEventListener('change', function () { applyTemplate(templateSel.value); });
     if (prefill.templateId) { templateSel.value = prefill.templateId; applyTemplate(prefill.templateId); }
+    // An explicit assignee/reviewer (e.g. from a client's Active Services
+    // row) wins over whatever the template's own defaults set above.
+    if (prefill.assigneeId && isReviewerOrAdmin()) assigneeSel.value = prefill.assigneeId;
+    if (prefill.reviewerId) reviewerSel.value = prefill.reviewerId;
 
     var actions = el('div', 'modal-actions');
     var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Work';
@@ -1016,7 +1028,7 @@
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Clients'; head.appendChild(h1);
     var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Client'));
-    addBtn.addEventListener('click', openNewClientModal);
+    addBtn.addEventListener('click', function () { openClientFormModal(); });
     head.appendChild(addBtn);
     main.appendChild(head);
 
@@ -1033,7 +1045,11 @@
       var card = el('div', 'client-card' + (c.is_active ? '' : ' inactive-row'));
       var headRow = el('div', 'client-card-head');
       var nameWrap = el('div');
-      var h3 = el('h3'); h3.textContent = c.name; nameWrap.appendChild(h3);
+      var h3 = el('h3');
+      var nameBtn = el('button', 'client-name-link'); nameBtn.type = 'button'; nameBtn.textContent = c.name;
+      nameBtn.addEventListener('click', function () { gotoClient(c.id); });
+      h3.appendChild(nameBtn);
+      nameWrap.appendChild(h3);
       if (c.pan_vat) { var pv = el('div', 'pan-vat'); pv.textContent = 'PAN/VAT: ' + c.pan_vat; nameWrap.appendChild(pv); }
       headRow.appendChild(nameWrap);
       if (c.business_type) { var typeBadge = el('span', 'badge badge-type'); typeBadge.textContent = c.business_type; headRow.appendChild(typeBadge); }
@@ -1077,6 +1093,206 @@
       grid.appendChild(card);
     });
     main.appendChild(grid);
+  }
+
+  // ============================================================
+  // Client Detail — the single internal view of the client: what's open,
+  // what's expected recurring, what we're waiting on them for, and notes.
+  // ============================================================
+  async function renderClientDetail(id) {
+    var main = qs('#main');
+    clear(main);
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
+    main.appendChild(loading);
+
+    var c = state.clients.find(function (x) { return x.id === id; });
+    var workRes = await sb.from('work_items').select('*').eq('client_id', id).order('internal_due_date', { ascending: true, nullsFirst: false });
+    var servicesRes = await sb.from('client_services').select('*, service_templates(*)').eq('client_id', id).order('created_at');
+    clear(main);
+
+    if (!c) {
+      var empty = el('div', 'empty-note'); empty.textContent = "That client doesn't exist, or you don't have access to it.";
+      main.appendChild(empty);
+      var back = el('button', 'btn btn-outline btn-sm'); back.type = 'button'; back.textContent = '← Back to Clients';
+      back.addEventListener('click', function () { goto('clients'); });
+      main.appendChild(back);
+      return;
+    }
+    var work = workRes.data || [];
+    var services = servicesRes.data || [];
+    if (workRes.error) toast('Could not load work: ' + workRes.error.message, true);
+    if (servicesRes.error) toast('Could not load active services: ' + servicesRes.error.message, true);
+
+    // ---- Header ----
+    var card = el('div', 'card');
+    var head = el('div', 'detail-head');
+    var titleWrap = el('div');
+    var h1 = el('h1'); h1.style.fontSize = '1.25rem'; h1.textContent = c.name;
+    var sub = el('div'); sub.style.cssText = 'color:var(--ink-soft);font-size:.88rem;margin-top:2px;';
+    sub.textContent = (c.pan_vat ? 'PAN/VAT ' + c.pan_vat : 'No PAN/VAT on file') + (c.contact_person ? ' · ' + c.contact_person : '');
+    titleWrap.appendChild(h1); titleWrap.appendChild(sub);
+    head.appendChild(titleWrap);
+    if (c.business_type) { var typeBadge = el('span', 'badge badge-type'); typeBadge.textContent = c.business_type; head.appendChild(typeBadge); }
+    card.appendChild(head);
+    var backLink = el('a'); backLink.href = '#clients'; backLink.textContent = '← Back'; backLink.style.fontSize = '.85rem';
+    card.appendChild(backLink);
+
+    if (c.phone || c.email) {
+      var contactRow = el('div'); contactRow.style.cssText = 'margin-top:14px;display:flex;gap:18px;flex-wrap:wrap;';
+      if (c.phone) { var ph = el('div', 'contact-row'); ph.appendChild(icon('phone')); ph.appendChild(document.createTextNode(c.phone)); contactRow.appendChild(ph); }
+      if (c.email) { var em = el('div', 'contact-row'); em.appendChild(icon('mail')); em.appendChild(document.createTextNode(c.email)); contactRow.appendChild(em); }
+      card.appendChild(contactRow);
+    }
+
+    var headActions = el('div', 'actions'); headActions.style.marginTop = '16px';
+    var editBtn = el('button', 'btn btn-outline btn-sm'); editBtn.type = 'button'; editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', function () { openClientFormModal(c); });
+    headActions.appendChild(editBtn);
+    if (isReviewerOrAdmin()) {
+      var credBtn = el('button', 'btn btn-outline btn-sm'); credBtn.type = 'button';
+      credBtn.appendChild(icon('idcard')); credBtn.appendChild(document.createTextNode('Credentials'));
+      credBtn.addEventListener('click', function () { openClientCredentialsModal(c); });
+      headActions.appendChild(credBtn);
+    }
+    var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
+    toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
+    toggleBtn.addEventListener('click', async function () {
+      var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
+      if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+      await loadClients();
+      renderClientDetail(id);
+    });
+    headActions.appendChild(toggleBtn);
+    card.appendChild(headActions);
+    main.appendChild(card);
+
+    // ---- Active Work ----
+    var workCard = el('div', 'card');
+    var workHead = el('div', 'page-head'); workHead.style.marginBottom = '10px';
+    var workH2 = el('h2'); workH2.appendChild(icon('clipboard')); workH2.appendChild(document.createTextNode('Active Work')); workHead.appendChild(workH2);
+    var newWorkBtn = el('button', 'btn btn-outline btn-sm'); newWorkBtn.type = 'button'; newWorkBtn.appendChild(icon('plus')); newWorkBtn.appendChild(document.createTextNode('New Work'));
+    newWorkBtn.addEventListener('click', function () { openNewWorkModal({ clientId: id }); });
+    workHead.appendChild(newWorkBtn);
+    workCard.appendChild(workHead);
+
+    var openWork = work.filter(function (w) { return w.status !== 'completed'; });
+    var completedWork = work.filter(function (w) { return w.status === 'completed'; }).slice(0, 15);
+    if (!openWork.length) {
+      var noOpen = el('p', 'desc'); noOpen.textContent = 'No open work for this client.'; workCard.appendChild(noOpen);
+    } else {
+      openWork.forEach(function (w) { workCard.appendChild(workRow(w)); });
+    }
+    if (completedWork.length) {
+      var histLabel = el('div', 'checklist-stage'); histLabel.textContent = 'Recently Completed'; workCard.appendChild(histLabel);
+      completedWork.forEach(function (w) { workCard.appendChild(workRow(w)); });
+    }
+    main.appendChild(workCard);
+
+    // ---- Outstanding (what we're waiting on this client for) ----
+    var waiting = openWork.filter(function (w) { return w.status === 'waiting_for_client'; });
+    if (waiting.length) {
+      var outCard = el('div', 'card');
+      var outH2 = el('h2'); outH2.appendChild(icon('alert')); outH2.appendChild(document.createTextNode('Outstanding')); outCard.appendChild(outH2);
+      waiting.forEach(function (w) {
+        var row = el('div', 'attention-row reason-waiting outstanding-row');
+        row.addEventListener('click', function () { gotoWork(w.id); });
+        var body = el('div', 'body');
+        var svc = el('div', 'svc'); svc.style.color = 'var(--navy-950)'; svc.style.fontWeight = '700';
+        var tmpl = templateById(w.service_template_id);
+        svc.textContent = (tmpl ? tmpl.title : w.title) + (w.period ? ' · ' + w.period : '');
+        var reasonEl = el('div', 'reason');
+        reasonEl.textContent = (w.waiting_reason ? 'Waiting for ' + w.waiting_reason : 'Waiting for client') + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '');
+        body.appendChild(svc); body.appendChild(reasonEl);
+        row.appendChild(body);
+        var action = el('div', 'action'); action.textContent = 'Follow up →';
+        row.appendChild(action);
+        outCard.appendChild(row);
+      });
+      main.appendChild(outCard);
+    }
+
+    // ---- Active Services (recurring subscriptions — "Create This Period's
+    // Work" is a manual one-click bridge, not automatic generation) ----
+    var svcCard = el('div', 'card');
+    var svcH2 = el('h2'); svcH2.appendChild(icon('flag')); svcH2.appendChild(document.createTextNode('Active Services')); svcCard.appendChild(svcH2);
+    if (!services.length) {
+      var noSvc = el('p', 'desc'); noSvc.textContent = 'No services set up for this client yet.'; svcCard.appendChild(noSvc);
+    }
+    services.forEach(function (s) {
+      var tmpl = s.service_templates;
+      var row = el('div', 'service-row' + (s.is_active ? '' : ' is-inactive'));
+      var cb = el('input'); cb.type = 'checkbox'; cb.checked = s.is_active;
+      cb.addEventListener('change', async function () {
+        var res = await sb.from('client_services').update({ is_active: cb.checked }).eq('id', s.id);
+        if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
+        row.classList.toggle('is-inactive', !cb.checked);
+      });
+      row.appendChild(cb);
+      var body = el('div', 'body');
+      var title = el('div', 'title'); title.textContent = tmpl ? tmpl.title : 'Unknown service';
+      var meta = el('div', 'meta');
+      meta.textContent = (tmpl ? tmpl.category : '') +
+        (s.assignee_id ? ' · Assignee: ' + profileName(s.assignee_id) : '') +
+        (s.reviewer_id ? ' · Reviewer: ' + profileName(s.reviewer_id) : '');
+      body.appendChild(title); body.appendChild(meta);
+      row.appendChild(body);
+      var createBtn = el('button', 'btn btn-outline btn-sm'); createBtn.type = 'button'; createBtn.textContent = 'Create This Period’s Work';
+      createBtn.addEventListener('click', function () {
+        openNewWorkModal({ clientId: id, templateId: s.service_template_id, assigneeId: s.assignee_id, reviewerId: s.reviewer_id });
+      });
+      row.appendChild(createBtn);
+      svcCard.appendChild(row);
+    });
+
+    var addSvcRow = el('div'); addSvcRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:flex-end;';
+    var svcTemplateSel = el('select'); svcTemplateSel.style.flex = '1'; svcTemplateSel.style.minWidth = '160px';
+    state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+      .forEach(function (t) { svcTemplateSel.appendChild(new Option(t.title, t.id)); });
+    var svcAssigneeSel = el('select'); svcAssigneeSel.style.width = 'auto';
+    svcAssigneeSel.appendChild(new Option('— Assignee —', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { svcAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    var svcReviewerSel = el('select'); svcReviewerSel.style.width = 'auto';
+    svcReviewerSel.appendChild(new Option('— Reviewer —', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { svcReviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    var addSvcBtn = el('button', 'btn btn-outline btn-sm'); addSvcBtn.type = 'button'; addSvcBtn.textContent = 'Add Service';
+    addSvcBtn.addEventListener('click', async function () {
+      if (!svcTemplateSel.value) { toast('Create a template first under Templates.', true); return; }
+      addSvcBtn.disabled = true;
+      var res = await sb.from('client_services').insert({
+        client_id: id,
+        service_template_id: svcTemplateSel.value,
+        assignee_id: svcAssigneeSel.value || null,
+        reviewer_id: svcReviewerSel.value || null,
+      });
+      addSvcBtn.disabled = false;
+      if (res.error) { toast('Could not add service: ' + res.error.message, true); return; }
+      toast('Service added.');
+      renderClientDetail(id);
+    });
+    if (!state.templates.length) {
+      var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create a service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
+    } else {
+      addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel); addSvcRow.appendChild(addSvcBtn);
+      svcCard.appendChild(addSvcRow);
+    }
+    main.appendChild(svcCard);
+
+    // ---- Notes ----
+    var notesCard = el('div', 'card');
+    var notesH2 = el('h2'); notesH2.textContent = 'Notes'; notesCard.appendChild(notesH2);
+    var notesInput = el('textarea'); notesInput.rows = 3; notesInput.value = c.notes || '';
+    notesCard.appendChild(notesInput);
+    var saveNotesBtn = el('button', 'btn btn-outline btn-sm'); saveNotesBtn.type = 'button'; saveNotesBtn.textContent = 'Save Notes'; saveNotesBtn.style.marginTop = '10px';
+    saveNotesBtn.addEventListener('click', async function () {
+      saveNotesBtn.disabled = true;
+      var res = await sb.from('clients').update({ notes: notesInput.value.trim() || null }).eq('id', c.id);
+      saveNotesBtn.disabled = false;
+      if (res.error) { toast('Could not save notes: ' + res.error.message, true); return; }
+      c.notes = notesInput.value.trim() || null;
+      toast('Notes saved.');
+    });
+    notesCard.appendChild(saveNotesBtn);
+    main.appendChild(notesCard);
   }
 
   // Passwords are fetched decrypted from the get_client_credentials RPC
@@ -1190,16 +1406,19 @@
     openModal(wrap);
   }
 
-  function openNewClientModal() {
+  // existing (optional): a client row to edit in place instead of creating
+  // a new one — used by the "Edit" button on the Client Detail screen.
+  function openClientFormModal(existing) {
+    var isEdit = !!existing;
     var wrap = el('div');
     var head = el('div', 'modal-head');
-    var h2 = el('h2'); h2.textContent = 'New Client';
+    var h2 = el('h2'); h2.textContent = isEdit ? 'Edit Client' : 'New Client';
     var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
     closeBtn.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
 
-    var nameInput = el('input'); nameInput.type = 'text';
+    var nameInput = el('input'); nameInput.type = 'text'; nameInput.value = isEdit ? existing.name : '';
     wrap.appendChild(field('Client / Business Name', nameInput));
 
     var typeSel = el('select');
@@ -1208,43 +1427,49 @@
     // it came from an inquiry or was entered here directly.
     ['Not yet registered', 'Sole Proprietorship (Firm)', 'Partnership', 'Private Limited Company', 'NGO / Non-profit', 'Other']
       .forEach(function (t) { typeSel.appendChild(new Option(t, t)); });
+    if (isEdit && existing.business_type) typeSel.value = existing.business_type;
     wrap.appendChild(field('Business Type', typeSel));
 
-    var panInput = el('input'); panInput.type = 'text'; panInput.placeholder = 'e.g. 609876543';
+    var panInput = el('input'); panInput.type = 'text'; panInput.placeholder = 'e.g. 609876543'; panInput.value = isEdit ? (existing.pan_vat || '') : '';
     wrap.appendChild(field('PAN / VAT Number (optional)', panInput));
 
-    var contactInput = el('input'); contactInput.type = 'text';
+    var contactInput = el('input'); contactInput.type = 'text'; contactInput.value = isEdit ? (existing.contact_person || '') : '';
     wrap.appendChild(field('Contact Person (optional)', contactInput));
 
-    var phoneInput = el('input'); phoneInput.type = 'tel';
+    var phoneInput = el('input'); phoneInput.type = 'tel'; phoneInput.value = isEdit ? (existing.phone || '') : '';
     wrap.appendChild(field('Phone (optional)', phoneInput));
 
-    var emailInput = el('input'); emailInput.type = 'email';
+    var emailInput = el('input'); emailInput.type = 'email'; emailInput.value = isEdit ? (existing.email || '') : '';
     wrap.appendChild(field('Email (optional)', emailInput));
 
-    var notesInput = el('textarea'); notesInput.rows = 2;
-    wrap.appendChild(field('Notes (optional)', notesInput));
-
     var actions = el('div', 'modal-actions');
-    var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Client';
-    createBtn.addEventListener('click', async function () {
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Client';
+    saveBtn.addEventListener('click', async function () {
       if (!nameInput.value.trim()) { toast('Give the client a name.', true); return; }
-      var res = await sb.from('clients').insert({
+      var patch = {
         name: nameInput.value.trim(),
         business_type: typeSel.value,
         pan_vat: panInput.value.trim() || null,
         contact_person: contactInput.value.trim() || null,
         phone: phoneInput.value.trim() || null,
         email: emailInput.value.trim() || null,
-        notes: notesInput.value.trim() || null,
-      });
-      if (res.error) { toast('Could not create client: ' + res.error.message, true); return; }
+      };
+      saveBtn.disabled = true;
+      var res = isEdit
+        ? await sb.from('clients').update(patch).eq('id', existing.id)
+        : await sb.from('clients').insert(patch).select().single();
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save client: ' + res.error.message, true); return; }
       closeModal();
-      toast('Client created.');
+      toast(isEdit ? 'Client updated.' : 'Client created.');
       await loadClients();
-      render();
+      var targetId = isEdit ? existing.id : res.data.id;
+      // If we're already sitting on this client's detail page, changing the
+      // hash to the same value wouldn't fire hashchange — re-render directly.
+      if (location.hash.replace(/^#/, '') === 'client/' + targetId) { renderClientDetail(targetId); }
+      else { gotoClient(targetId); }
     });
-    actions.appendChild(createBtn);
+    actions.appendChild(saveBtn);
     wrap.appendChild(actions);
     openModal(wrap);
   }

@@ -161,7 +161,7 @@
   .comment .when{font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;}
   .comment p{margin:5px 0 0;font-size:.92rem;white-space:pre-wrap;}
 
-  /* ---- Tables (engagements/staff) ---- */
+  /* ---- Tables (staff) ---- */
   table{width:100%;border-collapse:collapse;font-size:.9rem;}
   th{text-align:left;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);padding:8px 10px;border-bottom:2px solid var(--border);}
   td{padding:10px;border-bottom:1px solid var(--border);}
@@ -179,6 +179,17 @@
   .client-card .contact-row{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--ink-soft);margin-top:9px;}
   .client-card .contact-row .ic{width:14px;height:14px;color:var(--ink-soft);}
   .client-card .actions{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;}
+  .client-name-link{background:none;border:none;padding:0;font:inherit;font-size:1.02rem;font-weight:700;color:var(--navy-950);text-align:left;cursor:pointer;}
+  .client-name-link:hover{color:var(--gold-700);text-decoration:underline;}
+
+  /* ---- Client detail (Active Work / Active Services / Outstanding) ---- */
+  .service-row{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:8px;background:#fff;}
+  .service-row.is-inactive{opacity:.5;}
+  .service-row input[type=checkbox]{width:18px;height:18px;flex:0 0 auto;accent-color:var(--gold-600);}
+  .service-row .body{flex:1;min-width:0;}
+  .service-row .title{font-weight:700;font-size:.92rem;color:var(--navy-950);}
+  .service-row .meta{font-size:.78rem;color:var(--ink-soft);margin-top:1px;}
+  .outstanding-row{border-left:4px solid var(--amber);}
 
   /* ---- Client credentials (admin/reviewer only) ---- */
   .cred-row{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--mist);}
