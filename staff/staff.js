@@ -40,6 +40,47 @@
   function qs(sel) { return document.querySelector(sel); }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+  // Small inline icon set (stroke-based, 24x24 viewBox) — self-contained so
+  // the portal has no icon-font/CDN dependency, consistent with how the rest
+  // of this codebase hand-rolls its SVG icons.
+  var ICON_PATHS = {
+    building: '<rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="8" x2="8" y2="8"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="16" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="8" y2="12"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="16" y1="12" x2="16" y2="12"/><rect x="9" y="16" width="6" height="5"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    users: '<circle cx="9" cy="10" r="3"/><circle cx="16" cy="10" r="3"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6"/><path d="M12 20c0-3 2.5-5 4.5-5s4.5 2 4.5 5" opacity="0.55"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="3" x2="7" y2="7"/><line x1="17" y1="3" x2="17" y2="7"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+    alert: '<path d="M12 3l9 16H3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 6l9 7 9-7"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2C10 21 3 14 3 6a2 2 0 0 1 2-2z"/>',
+    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    chevronRight: '<path d="M9 18l6-6-6-6"/>',
+    clipboard: '<rect x="6" y="4" width="12" height="17" rx="1"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/>',
+    folder: '<path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+    flag: '<line x1="5" y1="3" x2="5" y2="21"/><path d="M5 4h11l-2.5 4L16 12H5z"/>',
+    message: '<path d="M4 4h16v12H8l-4 4z"/>',
+    idcard: '<rect x="2" y="5" width="20" height="14" rx="1"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="19" y2="10"/><line x1="13" y1="14" x2="18" y2="14"/>',
+  };
+  function icon(name, cls) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'ic' + (cls ? ' ' + cls : ''));
+    svg.innerHTML = ICON_PATHS[name] || '';
+    return svg;
+  }
+
+  function initials(name) {
+    var parts = (name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  function avatar(name, cls) {
+    var a = el('span', 'avatar' + (cls ? ' ' + cls : ''));
+    a.textContent = initials(name);
+    a.title = name || '';
+    return a;
+  }
+
   var toastTimer = null;
   function toast(msg, isError) {
     var t = qs('#toast');
@@ -252,28 +293,29 @@
   function renderSidebar() {
     var nav = qs('#sidebar');
     clear(nav);
-    function item(view, label) {
+    function item(view, label, iconName) {
       var b = el('button');
       b.type = 'button';
-      b.textContent = label;
+      b.appendChild(icon(iconName));
+      b.appendChild(document.createTextNode(label));
       b.classList.toggle('is-active', state.view === view || (state.view === 'task-detail' && view === 'my-tasks'));
       b.addEventListener('click', function () { goto(view); });
       nav.appendChild(b);
     }
     var group1 = el('div', 'sidebar-group'); group1.textContent = 'Work';
     nav.appendChild(group1);
-    item('my-tasks', 'My Tasks');
+    item('my-tasks', 'My Tasks', 'clipboard');
     if (isReviewerOrAdmin()) {
-      item('review-queue', 'Review Queue');
-      item('all-tasks', 'All Tasks');
+      item('review-queue', 'Review Queue', 'check');
+      item('all-tasks', 'All Tasks', 'folder');
     }
     if (isAdmin()) {
       var group2 = el('div', 'sidebar-group'); group2.textContent = 'Manage';
       nav.appendChild(group2);
-      item('clients', 'Clients');
-      item('engagements', 'Engagements');
-      item('templates', 'Task Templates');
-      item('staff', 'Staff');
+      item('clients', 'Clients', 'building');
+      item('engagements', 'Engagements', 'idcard');
+      item('templates', 'Task Templates', 'flag');
+      item('staff', 'Staff', 'users');
     }
   }
 
@@ -299,7 +341,7 @@
     head.appendChild(h1);
     if (isReviewerOrAdmin()) {
       var addBtn = el('button', 'btn btn-sm');
-      addBtn.type = 'button'; addBtn.textContent = '+ New Task';
+      addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Task'));
       addBtn.addEventListener('click', openNewTaskModal);
       head.appendChild(addBtn);
     }
@@ -344,14 +386,14 @@
       main.appendChild(wrap);
     });
     if (!shown) {
-      var empty = el('div', 'empty-note'); empty.textContent = 'No tasks assigned to you yet.';
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No tasks assigned to you yet.'));
       main.appendChild(empty);
     }
   }
 
   function renderFlatTaskList(main, tasks) {
     if (!tasks.length) {
-      var empty = el('div', 'empty-note'); empty.textContent = 'No tasks here yet.';
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No tasks here yet.'));
       main.appendChild(empty);
       return;
     }
@@ -363,13 +405,20 @@
   function taskRow(t) {
     var row = el('div', 'task-row');
     row.addEventListener('click', function () { gotoTask(t.id); });
+    row.appendChild(avatar(profileName(t.assignee_id)));
+    var dot = el('span', 'priority-dot priority-dot-' + t.priority);
+    dot.title = t.priority.charAt(0).toUpperCase() + t.priority.slice(1) + ' priority';
+    row.appendChild(dot);
     var title = el('div', 'title');
     var strong = el('strong'); strong.textContent = t.title;
-    var span = el('span'); span.textContent = clientName(t.client_id) + (t.engagement_id ? ' · ' + engagementTitle(t.engagement_id) : '') + ' · ' + profileName(t.assignee_id);
+    var span = el('span');
+    span.appendChild(icon('building'));
+    span.appendChild(document.createTextNode(clientName(t.client_id) + (t.engagement_id ? ' · ' + engagementTitle(t.engagement_id) : '')));
     title.appendChild(strong); title.appendChild(span);
     row.appendChild(title);
     var due = el('span', 'due' + (isOverdue(t) ? ' overdue' : ''));
-    due.textContent = t.due_date ? fmtDate(t.due_date) : 'No due date';
+    due.appendChild(icon('calendar'));
+    due.appendChild(document.createTextNode(t.due_date ? fmtDate(t.due_date) : 'No due date'));
     row.appendChild(due);
     var badge = el('span', 'badge badge-' + t.status);
     badge.textContent = STATUS_LABELS[t.status] || t.status;
@@ -496,12 +545,12 @@
     card.appendChild(backLink);
 
     var metaGrid = el('div', 'meta-grid');
-    metaGrid.appendChild(metaItem('Client', clientName(task.client_id)));
-    metaGrid.appendChild(metaItem('Engagement', engagementTitle(task.engagement_id)));
-    metaGrid.appendChild(metaItem('Assignee', profileName(task.assignee_id)));
-    metaGrid.appendChild(metaItem('Reviewer', task.reviewer_id ? profileName(task.reviewer_id) : '—'));
-    metaGrid.appendChild(metaItem('Due Date', fmtDate(task.due_date)));
-    metaGrid.appendChild(metaItem('Priority', task.priority.charAt(0).toUpperCase() + task.priority.slice(1)));
+    metaGrid.appendChild(metaItem('Client', clientName(task.client_id), 'building'));
+    metaGrid.appendChild(metaItem('Engagement', engagementTitle(task.engagement_id), 'idcard'));
+    metaGrid.appendChild(metaItem('Assignee', profileName(task.assignee_id), 'user', true));
+    metaGrid.appendChild(metaItem('Reviewer', task.reviewer_id ? profileName(task.reviewer_id) : '—', 'user', !!task.reviewer_id));
+    metaGrid.appendChild(metaItem('Due Date', fmtDate(task.due_date), 'calendar'));
+    metaGrid.appendChild(metaItem('Priority', task.priority.charAt(0).toUpperCase() + task.priority.slice(1), 'flag'));
     card.appendChild(metaGrid);
 
     // Status control — employees on their own task get a restricted set of
@@ -538,7 +587,7 @@
 
     // Checklist
     var checklistCard = el('div', 'card');
-    var clH2 = el('h2'); clH2.textContent = 'Checklist'; checklistCard.appendChild(clH2);
+    var clH2 = el('h2'); clH2.appendChild(icon('check')); clH2.appendChild(document.createTextNode('Checklist')); checklistCard.appendChild(clH2);
     if (!checklist.length) {
       var noItems = el('p', 'desc'); noItems.textContent = 'No checklist items yet.';
       checklistCard.appendChild(noItems);
@@ -574,7 +623,7 @@
 
     // Comments
     var commentsCard = el('div', 'card');
-    var coH2 = el('h2'); coH2.textContent = 'Comments'; commentsCard.appendChild(coH2);
+    var coH2 = el('h2'); coH2.appendChild(icon('message')); coH2.appendChild(document.createTextNode('Comments')); commentsCard.appendChild(coH2);
     if (!comments.length) {
       var noComments = el('p', 'desc'); noComments.textContent = 'No comments yet.';
       commentsCard.appendChild(noComments);
@@ -604,11 +653,16 @@
     main.appendChild(commentsCard);
   }
 
-  function metaItem(label, value) {
+  function metaItem(label, value, iconName, showAvatar) {
     var wrap = el('div', 'meta-item');
+    wrap.appendChild(icon(iconName, 'ic-lg'));
+    var body = el('div');
     var l = el('label'); l.textContent = label;
-    var v = el('div'); v.textContent = value;
-    wrap.appendChild(l); wrap.appendChild(v);
+    var v = el('div', 'value');
+    if (showAvatar && value !== '—') v.appendChild(avatar(value, 'avatar-sm'));
+    v.appendChild(document.createTextNode(value));
+    body.appendChild(l); body.appendChild(v);
+    wrap.appendChild(body);
     return wrap;
   }
 
@@ -618,42 +672,61 @@
   function renderClients(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Clients'; head.appendChild(h1);
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.textContent = '+ New Client';
+    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Client'));
     addBtn.addEventListener('click', openNewClientModal);
     head.appendChild(addBtn);
     main.appendChild(head);
 
-    var card = el('div', 'card');
-    var table = el('table');
-    var thead = el('thead');
-    var trh = el('tr');
-    ['Name', 'Notes', 'Status', ''].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
-    thead.appendChild(trh); table.appendChild(thead);
-    var tbody = el('tbody');
+    if (!state.clients.length) {
+      var empty = el('div', 'empty-note');
+      empty.appendChild(icon('building'));
+      empty.appendChild(document.createTextNode('No clients yet. Add your first one to get started.'));
+      main.appendChild(empty);
+      return;
+    }
+
+    var grid = el('div', 'client-grid');
     state.clients.forEach(function (c) {
-      var tr = el('tr', c.is_active ? '' : 'inactive-row');
-      var tdName = el('td'); tdName.textContent = c.name;
-      var tdNotes = el('td'); tdNotes.textContent = c.notes || '—';
-      var tdStatus = el('td'); tdStatus.textContent = c.is_active ? 'Active' : 'Inactive';
-      var tdAction = el('td');
+      var card = el('div', 'client-card' + (c.is_active ? '' : ' inactive-row'));
+      var headRow = el('div', 'client-card-head');
+      var nameWrap = el('div');
+      var h3 = el('h3'); h3.textContent = c.name; nameWrap.appendChild(h3);
+      if (c.pan_vat) { var pv = el('div', 'pan-vat'); pv.textContent = 'PAN/VAT: ' + c.pan_vat; nameWrap.appendChild(pv); }
+      headRow.appendChild(nameWrap);
+      if (c.business_type) { var typeBadge = el('span', 'badge badge-type'); typeBadge.textContent = c.business_type; headRow.appendChild(typeBadge); }
+      card.appendChild(headRow);
+
+      if (c.contact_person) {
+        var cp = el('div', 'contact-row'); cp.appendChild(icon('user')); cp.appendChild(document.createTextNode(c.contact_person));
+        card.appendChild(cp);
+      }
+      if (c.phone) {
+        var ph = el('div', 'contact-row'); ph.appendChild(icon('phone')); ph.appendChild(document.createTextNode(c.phone));
+        card.appendChild(ph);
+      }
+      if (c.email) {
+        var em = el('div', 'contact-row'); em.appendChild(icon('mail')); em.appendChild(document.createTextNode(c.email));
+        card.appendChild(em);
+      }
+      if (c.notes) {
+        var notesP = el('p'); notesP.style.fontSize = '.85rem'; notesP.style.color = 'var(--ink-soft)'; notesP.style.marginTop = '10px'; notesP.textContent = c.notes;
+        card.appendChild(notesP);
+      }
+
+      var actions = el('div', 'actions');
       var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
       toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
       toggleBtn.addEventListener('click', async function () {
         var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
         await loadClients();
-        renderClients(main);
+        render();
       });
-      tdAction.appendChild(toggleBtn);
-      tr.appendChild(tdName); tr.appendChild(tdNotes); tr.appendChild(tdStatus); tr.appendChild(tdAction);
-      tbody.appendChild(tr);
+      actions.appendChild(toggleBtn);
+      card.appendChild(actions);
+      grid.appendChild(card);
     });
-    table.appendChild(tbody);
-    card.appendChild(table);
-    if (!state.clients.length) {
-      var empty = el('p', 'desc'); empty.textContent = 'No clients yet.'; card.appendChild(empty);
-    }
-    main.appendChild(card);
+    main.appendChild(grid);
   }
 
   function openNewClientModal() {
@@ -666,7 +739,28 @@
     wrap.appendChild(head);
 
     var nameInput = el('input'); nameInput.type = 'text';
-    wrap.appendChild(field('Client Name', nameInput));
+    wrap.appendChild(field('Client / Business Name', nameInput));
+
+    var typeSel = el('select');
+    // Same categories as the public site's contact form (content/site.yaml
+    // businessTypeOptions) so a client's type reads the same way whether
+    // it came from an inquiry or was entered here directly.
+    ['Not yet registered', 'Sole Proprietorship (Firm)', 'Partnership', 'Private Limited Company', 'NGO / Non-profit', 'Other']
+      .forEach(function (t) { typeSel.appendChild(new Option(t, t)); });
+    wrap.appendChild(field('Business Type', typeSel));
+
+    var panInput = el('input'); panInput.type = 'text'; panInput.placeholder = 'e.g. 609876543';
+    wrap.appendChild(field('PAN / VAT Number (optional)', panInput));
+
+    var contactInput = el('input'); contactInput.type = 'text';
+    wrap.appendChild(field('Contact Person (optional)', contactInput));
+
+    var phoneInput = el('input'); phoneInput.type = 'tel';
+    wrap.appendChild(field('Phone (optional)', phoneInput));
+
+    var emailInput = el('input'); emailInput.type = 'email';
+    wrap.appendChild(field('Email (optional)', emailInput));
+
     var notesInput = el('textarea'); notesInput.rows = 2;
     wrap.appendChild(field('Notes (optional)', notesInput));
 
@@ -674,7 +768,15 @@
     var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Client';
     createBtn.addEventListener('click', async function () {
       if (!nameInput.value.trim()) { toast('Give the client a name.', true); return; }
-      var res = await sb.from('clients').insert({ name: nameInput.value.trim(), notes: notesInput.value.trim() || null });
+      var res = await sb.from('clients').insert({
+        name: nameInput.value.trim(),
+        business_type: typeSel.value,
+        pan_vat: panInput.value.trim() || null,
+        contact_person: contactInput.value.trim() || null,
+        phone: phoneInput.value.trim() || null,
+        email: emailInput.value.trim() || null,
+        notes: notesInput.value.trim() || null,
+      });
       if (res.error) { toast('Could not create client: ' + res.error.message, true); return; }
       closeModal();
       toast('Client created.');
@@ -692,7 +794,7 @@
   function renderEngagements(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Engagements'; head.appendChild(h1);
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.textContent = '+ New Engagement';
+    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Engagement'));
     addBtn.addEventListener('click', openNewEngagementModal);
     head.appendChild(addBtn);
     main.appendChild(head);
@@ -715,7 +817,7 @@
         var res = await sb.from('engagements').update({ is_active: !e.is_active }).eq('id', e.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
         await loadEngagements();
-        renderEngagements(main);
+        render();
       });
       tdAction.appendChild(toggleBtn);
       tr.appendChild(tdTitle); tr.appendChild(tdClient); tr.appendChild(tdStatus); tr.appendChild(tdAction);
@@ -770,7 +872,7 @@
   async function renderTemplates(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Task Templates'; head.appendChild(h1);
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.textContent = '+ New Template';
+    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Template'));
     addBtn.addEventListener('click', openNewTemplateModal);
     head.appendChild(addBtn);
     main.appendChild(head);
@@ -789,7 +891,7 @@
     if (res.error) { toast('Could not load templates: ' + res.error.message, true); return; }
     var templates = res.data || [];
     if (!templates.length) {
-      var empty = el('div', 'empty-note'); empty.textContent = 'No templates yet.';
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('flag')); empty.appendChild(document.createTextNode('No templates yet.'));
       main.appendChild(empty);
       return;
     }
@@ -903,7 +1005,7 @@
         var res = await sb.from('profiles').update({ is_active: !p2.is_active }).eq('id', p2.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
         await loadProfiles();
-        renderStaff(main);
+        render();
       });
       tdStatus.appendChild(toggleBtn);
       var tdBlank = el('td');
