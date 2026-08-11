@@ -771,13 +771,20 @@
     thead.appendChild(trh); table.appendChild(thead);
     var tbody = el('tbody');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) {
-      var mine = open.filter(function (w) { return w.assignee_id === p.id; });
+      // Preparation/open workload (Overdue, Due 7d, Waiting) is the work
+      // this person is doing, so it's assignee-based. Review is work
+      // waiting on THEM to check someone else's, so it has to be counted
+      // against reviewer_id -- otherwise a reviewer's own submissions
+      // (awaiting someone else's review) would inflate their own Review
+      // column instead of showing up under whoever is actually reviewing.
+      var assigned = open.filter(function (w) { return w.assignee_id === p.id; });
+      var reviewing = open.filter(function (w) { return w.reviewer_id === p.id && w.status === 'ready_for_review'; });
       var tr = el('tr');
       var tdName = el('td'); tdName.textContent = p.full_name; tr.appendChild(tdName);
-      var overdueN = mine.filter(isOverdue).length;
-      var due7 = mine.filter(function (w) { return !isOverdue(w) && effectiveDue(w) && effectiveDue(w) <= weekStr; }).length;
-      var reviewN = mine.filter(function (w) { return w.status === 'ready_for_review'; }).length;
-      var waitingN = mine.filter(function (w) { return w.status === 'waiting_for_client'; }).length;
+      var overdueN = assigned.filter(isOverdue).length;
+      var due7 = assigned.filter(function (w) { return !isOverdue(w) && effectiveDue(w) && effectiveDue(w) <= weekStr; }).length;
+      var reviewN = reviewing.length;
+      var waitingN = assigned.filter(function (w) { return w.status === 'waiting_for_client'; }).length;
       [overdueN, due7, reviewN, waitingN].forEach(function (n, i) {
         var td = el('td'); td.textContent = String(n);
         if (i === 0 && n) td.style.cssText = 'color:var(--red);font-weight:700;';
