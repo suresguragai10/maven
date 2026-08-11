@@ -1643,7 +1643,10 @@
     async function refreshList() {
       clear(listWrap);
       var loading = el('p', 'desc'); loading.textContent = 'Loading…'; listWrap.appendChild(loading);
-      var res = await sb.rpc('get_client_credentials', { p_client_id: c.id });
+      // Metadata only — no decrypted password. The password for a given
+      // credential is fetched separately, only when Show is clicked (see
+      // the reveal button below).
+      var res = await sb.rpc('list_client_credentials', { p_client_id: c.id });
       clear(listWrap);
       if (res.error) { toast('Could not load credentials: ' + res.error.message, true); return; }
       var creds = res.data || [];
@@ -1679,10 +1682,24 @@
         var revealBtn = el('button', 'btn btn-outline btn-sm'); revealBtn.type = 'button'; revealBtn.textContent = 'Show';
         revealBtn.style.padding = '3px 10px'; revealBtn.style.fontSize = '.76rem';
         var revealed = false;
-        revealBtn.addEventListener('click', function () {
-          revealed = !revealed;
-          pCode.textContent = revealed ? cred.password : '••••••••';
-          revealBtn.textContent = revealed ? 'Hide' : 'Show';
+        var fetchedPassword = null;
+        revealBtn.addEventListener('click', async function () {
+          if (revealed) {
+            revealed = false;
+            pCode.textContent = '••••••••';
+            revealBtn.textContent = 'Show';
+            return;
+          }
+          if (fetchedPassword === null) {
+            revealBtn.disabled = true;
+            var revealRes = await sb.rpc('reveal_client_credential', { p_id: cred.id });
+            revealBtn.disabled = false;
+            if (revealRes.error) { toast('Could not reveal password: ' + revealRes.error.message, true); return; }
+            fetchedPassword = revealRes.data;
+          }
+          revealed = true;
+          pCode.textContent = fetchedPassword;
+          revealBtn.textContent = 'Hide';
         });
         pField.appendChild(document.createTextNode('Password: ')); pField.appendChild(pCode); pField.appendChild(revealBtn);
         row.appendChild(pField);
@@ -1701,7 +1718,7 @@
     wrap.appendChild(field('Label', labelInput));
     var userInput = el('input'); userInput.type = 'text';
     wrap.appendChild(field('Username (optional)', userInput));
-    var passInput = el('input'); passInput.type = 'text'; passInput.placeholder = 'Stored encrypted';
+    var passInput = el('input'); passInput.type = 'password'; passInput.placeholder = 'Stored encrypted';
     wrap.appendChild(field('Password', passInput));
     var notesInput = el('textarea'); notesInput.rows = 2;
     wrap.appendChild(field('Notes (optional)', notesInput));
