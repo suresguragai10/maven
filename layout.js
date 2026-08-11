@@ -18,14 +18,27 @@ function renderDesktopNav(activeKey) {
   return `<nav class="main-nav" aria-label="Primary"><ul>${items}</ul></nav>`;
 }
 
+// Each dropdown gets its own expand/collapse button (not just a parent link
+// doing double duty) so a keyboard/screen-reader user gets a real toggle
+// with aria-expanded/aria-controls — and so the menu doesn't dump every
+// child of every dropdown into one long flat scroll on open. Submenus start
+// collapsed; the parent link itself still navigates to that section's
+// overview page as before.
 function renderMobileNav(activeKey) {
   const items = data.nav.map((item) => {
     const isActive = item.key === activeKey || (item.children && item.children.some((c) => c.key === activeKey));
-    let sub = '';
     if (item.children) {
-      sub = `<div class="mobile-sub">${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}</div>`;
+      const subId = `mobile-sub-${item.key}`;
+      const sub = `<div class="mobile-sub" id="${subId}" style="max-height:0">${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}</div>`;
+      return `<li>
+        <div class="mobile-nav-row">
+          <a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>
+          <button type="button" class="mobile-sub-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="Show ${esc(item.label)} submenu">${icon('chevronDown', 'ic-chevron')}</button>
+        </div>
+        ${sub}
+      </li>`;
     }
-    return `<li><a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>${sub}</li>`;
+    return `<li><a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a></li>`;
   }).join('');
   return `<div class="mobile-nav" id="mobileNav">
     <div class="mobile-nav-top">

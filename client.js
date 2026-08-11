@@ -14,12 +14,20 @@
     mobileNav.classList.remove('is-open');
     if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('nav-open');
+    // Return focus to whatever opened the menu — without this, a keyboard
+    // user closing the menu (Escape, or the close button) lands nowhere,
+    // effectively losing their place on the page.
+    if (navToggle) navToggle.focus();
   }
   function openMobileNav() {
     if (!mobileNav) return;
     mobileNav.classList.add('is-open');
     if (navToggle) navToggle.setAttribute('aria-expanded', 'true');
     document.body.classList.add('nav-open');
+    // Move focus into the panel on open — the overlay covers the whole
+    // viewport so background content can't be clicked, but without this a
+    // keyboard user's focus would stay stranded on the (now hidden) toggle.
+    if (mobileClose) mobileClose.focus();
   }
   if (navToggle && mobileNav) {
     navToggle.addEventListener('click', openMobileNav);
@@ -29,9 +37,39 @@
     mobileNav.querySelectorAll('a').forEach(function (a) {
       a.addEventListener('click', closeMobileNav);
     });
+    // Per-submenu expand/collapse — same aria-expanded/aria-controls +
+    // max-height technique as the accordion below, kept collapsed by
+    // default so opening the menu doesn't dump every dropdown's children
+    // into one long flat list at once.
+    mobileNav.querySelectorAll('.mobile-sub-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var sub = document.getElementById(btn.getAttribute('aria-controls'));
+        if (!sub) return;
+        var isOpen = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        sub.style.maxHeight = !isOpen ? sub.scrollHeight + 'px' : '0px';
+      });
+    });
   }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && mobileNav && mobileNav.classList.contains('is-open')) closeMobileNav();
+    if (!mobileNav || !mobileNav.classList.contains('is-open')) return;
+    if (e.key === 'Escape') { closeMobileNav(); return; }
+    // Trap Tab focus inside the open menu — without this, tabbing past the
+    // last link would leave the visible panel and land on inert content
+    // sitting behind the (fixed, full-viewport) overlay.
+    if (e.key === 'Tab') {
+      var focusable = Array.prototype.slice.call(mobileNav.querySelectorAll('a[href], button:not([disabled])'));
+      if (!focusable.length) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   });
 
   // ---- Header scroll shadow ----
