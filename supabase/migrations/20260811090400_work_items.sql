@@ -55,6 +55,20 @@ create index if not exists work_items_internal_due_date_idx on public.work_items
 create index if not exists work_items_period_lookup_idx
   on public.work_items (client_id, service_template_id, period);
 
+-- A work item can't be sitting in the review queue with nobody assigned
+-- to review it — added NOT VALID since this table already has live data
+-- and we can't guarantee no existing row already violates it; NOT VALID
+-- still fully enforces the rule for every new insert/update starting
+-- now, it just skips checking historical rows at creation time. Run
+-- `select id, title from work_items where status = 'ready_for_review'
+-- and reviewer_id is null;` first if you want to confirm there's nothing
+-- to clean up, then optionally `alter table work_items validate
+-- constraint work_items_review_needs_reviewer;` (purely cosmetic —
+-- enforcement is identical either way).
+alter table public.work_items
+  add constraint work_items_review_needs_reviewer
+  check (status <> 'ready_for_review' or reviewer_id is not null) not valid;
+
 alter table public.work_items enable row level security;
 
 -- Read access is scoped, not blanket-authenticated: everyone can see any
@@ -93,6 +107,15 @@ as $$
 declare
   role text;
 begin
+  -- Applies to everyone, admins included: sending work to Ready for
+  -- Review with no reviewer assigned is a data-integrity problem, not a
+  -- role-escalation risk, so it isn't part of the admin/reviewer bypass
+  -- below (see also the work_items_review_needs_reviewer check
+  -- constraint above, which catches the same thing on INSERT too).
+  if new.status = 'ready_for_review' and new.reviewer_id is null then
+    raise exception 'Assign a reviewer before sending this work for review.';
+  end if;
+
   role := public.current_user_role();
   if role in ('admin', 'reviewer') then
     return new;

@@ -1072,6 +1072,17 @@
       var prevStatus = work.status;
       statusSel.addEventListener('change', async function () {
         var newStatus = statusSel.value;
+        // Fast, friendly client-side check — the real enforcement is the
+        // work_items_review_needs_reviewer DB constraint and the guard
+        // trigger's own check (both apply regardless of role, admins
+        // included), so this can't actually be bypassed even if this
+        // check were removed; it just avoids a round trip for the common
+        // case of someone forgetting to set a reviewer.
+        if (newStatus === 'ready_for_review' && !work.reviewer_id) {
+          toast('Assign a reviewer before sending this work for review.', true);
+          statusSel.value = prevStatus;
+          return;
+        }
         if (newStatus === 'waiting_for_client' && prevStatus !== 'waiting_for_client') {
           openWaitingModal(work, function (waitingFields, waitingItems) {
             applyStatusChange(newStatus, waitingFields, waitingItems);
