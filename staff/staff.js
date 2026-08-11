@@ -393,10 +393,16 @@
     item('deadlines', 'Deadlines', 'calendar');
     if (isReviewerOrAdmin()) item('manager', 'Manager Dashboard', 'users');
     item('todo', 'My To-Do List', 'list');
+    // Every active staff member can look clients up (name, contact info,
+    // active work/services) — that's just read access the app already
+    // grants via RLS for the New Work modal's client picker. Only admin
+    // gets the write actions (New Client, Edit, Deactivate) — those are
+    // gated individually inside renderClients/renderClientDetail, not by
+    // hiding the whole page.
+    var group2 = el('div', 'sidebar-group'); group2.textContent = 'Clients';
+    nav.appendChild(group2);
+    item('clients', 'Clients', 'building');
     if (isAdmin()) {
-      var group2 = el('div', 'sidebar-group'); group2.textContent = 'Clients';
-      nav.appendChild(group2);
-      item('clients', 'Clients', 'building');
       var group3 = el('div', 'sidebar-group'); group3.textContent = 'Manage';
       nav.appendChild(group3);
       item('templates', 'Templates', 'flag');
@@ -1365,9 +1371,11 @@
   function renderClients(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Clients'; head.appendChild(h1);
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Client'));
-    addBtn.addEventListener('click', function () { openClientFormModal(); });
-    head.appendChild(addBtn);
+    if (isAdmin()) {
+      var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Client'));
+      addBtn.addEventListener('click', function () { openClientFormModal(); });
+      head.appendChild(addBtn);
+    }
     main.appendChild(head);
 
     if (!state.clients.length) {
@@ -1418,15 +1426,17 @@
         credBtn.addEventListener('click', function () { openClientCredentialsModal(c); });
         actions.appendChild(credBtn);
       }
-      var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
-      toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
-      toggleBtn.addEventListener('click', async function () {
-        var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-        await loadClients();
-        render();
-      });
-      actions.appendChild(toggleBtn);
+      if (isAdmin()) {
+        var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
+        toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
+        toggleBtn.addEventListener('click', async function () {
+          var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
+          if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+          await loadClients();
+          render();
+        });
+        actions.appendChild(toggleBtn);
+      }
       card.appendChild(actions);
       grid.appendChild(card);
     });
@@ -1483,24 +1493,28 @@
     }
 
     var headActions = el('div', 'actions'); headActions.style.marginTop = '16px';
-    var editBtn = el('button', 'btn btn-outline btn-sm'); editBtn.type = 'button'; editBtn.textContent = 'Edit';
-    editBtn.addEventListener('click', function () { openClientFormModal(c); });
-    headActions.appendChild(editBtn);
+    if (isAdmin()) {
+      var editBtn = el('button', 'btn btn-outline btn-sm'); editBtn.type = 'button'; editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', function () { openClientFormModal(c); });
+      headActions.appendChild(editBtn);
+    }
     if (isReviewerOrAdmin()) {
       var credBtn = el('button', 'btn btn-outline btn-sm'); credBtn.type = 'button';
       credBtn.appendChild(icon('idcard')); credBtn.appendChild(document.createTextNode('Credentials'));
       credBtn.addEventListener('click', function () { openClientCredentialsModal(c); });
       headActions.appendChild(credBtn);
     }
-    var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
-    toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
-    toggleBtn.addEventListener('click', async function () {
-      var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
-      if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-      await loadClients();
-      renderClientDetail(id);
-    });
-    headActions.appendChild(toggleBtn);
+    if (isAdmin()) {
+      var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
+      toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
+      toggleBtn.addEventListener('click', async function () {
+        var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
+        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+        await loadClients();
+        renderClientDetail(id);
+      });
+      headActions.appendChild(toggleBtn);
+    }
     card.appendChild(headActions);
     main.appendChild(card);
 
@@ -1558,15 +1572,22 @@
     if (!services.length) {
       var noSvc = el('p', 'desc'); noSvc.textContent = 'No services set up for this client yet.'; svcCard.appendChild(noSvc);
     }
+    // Active/inactive is a service-management action (client_services RLS
+    // is admin/reviewer write) — staff can see the list but not toggle it.
+    var canManageServices = isReviewerOrAdmin();
     services.forEach(function (s) {
       var tmpl = s.service_templates;
       var row = el('div', 'service-row' + (s.is_active ? '' : ' is-inactive'));
       var cb = el('input'); cb.type = 'checkbox'; cb.checked = s.is_active;
-      cb.addEventListener('change', async function () {
-        var res = await sb.from('client_services').update({ is_active: cb.checked }).eq('id', s.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
-        row.classList.toggle('is-inactive', !cb.checked);
-      });
+      if (canManageServices) {
+        cb.addEventListener('change', async function () {
+          var res = await sb.from('client_services').update({ is_active: cb.checked }).eq('id', s.id);
+          if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
+          row.classList.toggle('is-inactive', !cb.checked);
+        });
+      } else {
+        cb.disabled = true;
+      }
       row.appendChild(cb);
       var body = el('div', 'body');
       var title = el('div', 'title'); title.textContent = tmpl ? tmpl.title : 'Unknown service';
@@ -1576,6 +1597,10 @@
         (s.reviewer_id ? ' · Reviewer: ' + profileName(s.reviewer_id) : '');
       body.appendChild(title); body.appendChild(meta);
       row.appendChild(body);
+      // Creating this period's work is ordinary work-creation, not a
+      // service-management action — openNewWorkModal already locks the
+      // assignee to self for non-reviewer/admin callers, so this stays
+      // available to everyone.
       var createBtn = el('button', 'btn btn-outline btn-sm'); createBtn.type = 'button'; createBtn.textContent = 'Create This Period’s Work';
       createBtn.addEventListener('click', function () {
         openNewWorkModal({ clientId: id, templateId: s.service_template_id, assigneeId: s.assignee_id, reviewerId: s.reviewer_id });
@@ -1584,54 +1609,61 @@
       svcCard.appendChild(row);
     });
 
-    var addSvcRow = el('div'); addSvcRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:flex-end;';
-    var svcTemplateSel = el('select'); svcTemplateSel.style.flex = '1'; svcTemplateSel.style.minWidth = '160px';
-    state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
-      .forEach(function (t) { svcTemplateSel.appendChild(new Option(t.title, t.id)); });
-    var svcAssigneeSel = el('select'); svcAssigneeSel.style.width = 'auto';
-    svcAssigneeSel.appendChild(new Option('— Assignee —', ''));
-    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { svcAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
-    var svcReviewerSel = el('select'); svcReviewerSel.style.width = 'auto';
-    svcReviewerSel.appendChild(new Option('— Reviewer —', ''));
-    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { svcReviewerSel.appendChild(new Option(p.full_name, p.id)); });
-    var addSvcBtn = el('button', 'btn btn-outline btn-sm'); addSvcBtn.type = 'button'; addSvcBtn.textContent = 'Add Service';
-    addSvcBtn.addEventListener('click', async function () {
-      if (!svcTemplateSel.value) { toast('Create a template first under Templates.', true); return; }
-      addSvcBtn.disabled = true;
-      var res = await sb.from('client_services').insert({
-        client_id: id,
-        service_template_id: svcTemplateSel.value,
-        assignee_id: svcAssigneeSel.value || null,
-        reviewer_id: svcReviewerSel.value || null,
+    if (canManageServices) {
+      var addSvcRow = el('div'); addSvcRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:flex-end;';
+      var svcTemplateSel = el('select'); svcTemplateSel.style.flex = '1'; svcTemplateSel.style.minWidth = '160px';
+      state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+        .forEach(function (t) { svcTemplateSel.appendChild(new Option(t.title, t.id)); });
+      var svcAssigneeSel = el('select'); svcAssigneeSel.style.width = 'auto';
+      svcAssigneeSel.appendChild(new Option('— Assignee —', ''));
+      state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { svcAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
+      var svcReviewerSel = el('select'); svcReviewerSel.style.width = 'auto';
+      svcReviewerSel.appendChild(new Option('— Reviewer —', ''));
+      state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { svcReviewerSel.appendChild(new Option(p.full_name, p.id)); });
+      var addSvcBtn = el('button', 'btn btn-outline btn-sm'); addSvcBtn.type = 'button'; addSvcBtn.textContent = 'Add Service';
+      addSvcBtn.addEventListener('click', async function () {
+        if (!svcTemplateSel.value) { toast('Create a template first under Templates.', true); return; }
+        addSvcBtn.disabled = true;
+        var res = await sb.from('client_services').insert({
+          client_id: id,
+          service_template_id: svcTemplateSel.value,
+          assignee_id: svcAssigneeSel.value || null,
+          reviewer_id: svcReviewerSel.value || null,
+        });
+        addSvcBtn.disabled = false;
+        if (res.error) { toast('Could not add service: ' + res.error.message, true); return; }
+        toast('Service added.');
+        renderClientDetail(id);
       });
-      addSvcBtn.disabled = false;
-      if (res.error) { toast('Could not add service: ' + res.error.message, true); return; }
-      toast('Service added.');
-      renderClientDetail(id);
-    });
-    if (!state.templates.length) {
-      var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create a service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
-    } else {
-      addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel); addSvcRow.appendChild(addSvcBtn);
-      svcCard.appendChild(addSvcRow);
+      if (!state.templates.length) {
+        var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create a service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
+      } else {
+        addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel); addSvcRow.appendChild(addSvcBtn);
+        svcCard.appendChild(addSvcRow);
+      }
     }
     main.appendChild(svcCard);
 
-    // ---- Notes ----
+    // ---- Notes ---- (client-info edit stays admin-only, same as the
+    // Edit button above; staff see notes but can't change them)
     var notesCard = el('div', 'card');
     var notesH2 = el('h2'); notesH2.textContent = 'Notes'; notesCard.appendChild(notesH2);
-    var notesInput = el('textarea'); notesInput.rows = 3; notesInput.value = c.notes || '';
-    notesCard.appendChild(notesInput);
-    var saveNotesBtn = el('button', 'btn btn-outline btn-sm'); saveNotesBtn.type = 'button'; saveNotesBtn.textContent = 'Save Notes'; saveNotesBtn.style.marginTop = '10px';
-    saveNotesBtn.addEventListener('click', async function () {
-      saveNotesBtn.disabled = true;
-      var res = await sb.from('clients').update({ notes: notesInput.value.trim() || null }).eq('id', c.id);
-      saveNotesBtn.disabled = false;
-      if (res.error) { toast('Could not save notes: ' + res.error.message, true); return; }
-      c.notes = notesInput.value.trim() || null;
-      toast('Notes saved.');
-    });
-    notesCard.appendChild(saveNotesBtn);
+    if (isAdmin()) {
+      var notesInput = el('textarea'); notesInput.rows = 3; notesInput.value = c.notes || '';
+      notesCard.appendChild(notesInput);
+      var saveNotesBtn = el('button', 'btn btn-outline btn-sm'); saveNotesBtn.type = 'button'; saveNotesBtn.textContent = 'Save Notes'; saveNotesBtn.style.marginTop = '10px';
+      saveNotesBtn.addEventListener('click', async function () {
+        saveNotesBtn.disabled = true;
+        var res = await sb.from('clients').update({ notes: notesInput.value.trim() || null }).eq('id', c.id);
+        saveNotesBtn.disabled = false;
+        if (res.error) { toast('Could not save notes: ' + res.error.message, true); return; }
+        c.notes = notesInput.value.trim() || null;
+        toast('Notes saved.');
+      });
+      notesCard.appendChild(saveNotesBtn);
+    } else {
+      var notesP = el('p', 'desc'); notesP.textContent = c.notes || 'No notes.'; notesCard.appendChild(notesP);
+    }
     main.appendChild(notesCard);
   }
 
