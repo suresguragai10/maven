@@ -50,6 +50,16 @@
     toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 4000);
   }
 
+  // Catches anything the try/catch in enterApp() doesn't — an error thrown
+  // inside an async view render (e.g. render(), renderTaskDetail()) becomes
+  // an unhandled promise rejection, not a thrown exception, so it wouldn't
+  // hit a normal try/catch around the call site. This is a blanket safety
+  // net so "the page just went blank with no explanation" can't happen
+  // silently while this is still a new, not-fully-battle-tested app.
+  window.addEventListener('unhandledrejection', function (e) {
+    toast('Something went wrong: ' + (e.reason && e.reason.message ? e.reason.message : 'unknown error'), true);
+  });
+
   function openModal(contentEl) {
     var card = qs('#modalCard');
     clear(card);
@@ -169,9 +179,21 @@
     qs('#whoName').textContent = state.profile.full_name || state.user.email;
     qs('#whoRole').textContent = state.profile.role.charAt(0).toUpperCase() + state.profile.role.slice(1);
 
-    await Promise.all([loadProfiles(), loadClients(), loadEngagements()]);
-    renderSidebar();
-    routeFromHash();
+    // Once the shell is visible, a thrown error anywhere below would
+    // otherwise fail silently (the header renders, then nothing) — this
+    // surfaces it instead of leaving a blank page with no clue why.
+    try {
+      await Promise.all([loadProfiles(), loadClients(), loadEngagements()]);
+      renderSidebar();
+      routeFromHash();
+    } catch (err) {
+      toast('Something went wrong loading the portal: ' + err.message, true);
+      var main = qs('#main');
+      clear(main);
+      var errBox = el('div', 'card');
+      errBox.textContent = 'The page hit an error and couldn\'t finish loading. Try refreshing — if it keeps happening, tell your admin what you were doing when it happened.';
+      main.appendChild(errBox);
+    }
   }
 
   // ============================================================
@@ -228,7 +250,7 @@
   // Sidebar
   // ============================================================
   function renderSidebar() {
-    var nav = qs('#sidebarNav');
+    var nav = qs('#sidebar');
     clear(nav);
     function item(view, label) {
       var b = el('button');
