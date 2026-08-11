@@ -111,6 +111,30 @@
     toast('Something went wrong: ' + (e.reason && e.reason.message ? e.reason.message : 'unknown error'), true);
   });
 
+  // Records a work item's Activity-tab entry. Deliberately not called for
+  // creation (redundant with the created_at already shown) or comments
+  // (already visible on Overview) — this is "what changed," not
+  // everything that ever happened.
+  function logActivity(workItemId, action, detail) {
+    sb.from('work_activity').insert({ work_item_id: workItemId, actor_id: state.user.id, action: action, detail: detail || null });
+  }
+  // Checklist/waiting-item checkboxes deliberately skip a full page
+  // re-render for snappy toggling — so unlike every other mutating action
+  // here, the Activity tab (if already open) needs its DOM updated by
+  // hand instead of picking up the change on next render.
+  function prependActivityRow(pane, detail) {
+    if (!pane) return;
+    var placeholder = pane.querySelector('p.desc');
+    if (placeholder) pane.removeChild(placeholder);
+    var row = el('div', 'activity-row');
+    var who = el('span', 'who'); who.textContent = state.profile.full_name || 'You';
+    var when = el('span', 'when'); when.textContent = fmtDateTime(new Date().toISOString());
+    who.appendChild(when);
+    row.appendChild(who);
+    var detailEl = el('div', 'detail'); detailEl.textContent = detail; row.appendChild(detailEl);
+    pane.insertBefore(row, pane.firstChild);
+  }
+
   function openModal(contentEl) {
     var card = qs('#modalCard');
     clear(card);
@@ -286,6 +310,26 @@
     if (res.error) { toast('Could not load work: ' + res.error.message, true); return []; }
     return res.data || [];
   }
+  // Returns { [work_item_id]: "unresolved item titles, comma joined" } for
+  // display on Today's attention rows and the Client Page's Outstanding
+  // section — the source of truth for "what are we waiting on" is the
+  // work_waiting_items checklist, not the old single-text waiting_reason.
+  async function loadWaitingSummaries(workItemIds) {
+    if (!workItemIds.length) return {};
+    var res = await sb.from('work_waiting_items').select('*').in('work_item_id', workItemIds);
+    var byWork = {};
+    (res.data || []).forEach(function (wi) {
+      if (!byWork[wi.work_item_id]) byWork[wi.work_item_id] = [];
+      byWork[wi.work_item_id].push(wi);
+    });
+    var summaries = {};
+    Object.keys(byWork).forEach(function (workId) {
+      var items = byWork[workId];
+      var unresolved = items.filter(function (i) { return !i.is_received; });
+      summaries[workId] = unresolved.length ? unresolved.map(function (i) { return i.title; }).join(', ') : null;
+    });
+    return summaries;
+  }
 
   // ============================================================
   // Routing — minimal hash-based routing so the back button and page
@@ -422,9 +466,10 @@
     open.filter(function (w) { return w.status === 'changes_required'; }).forEach(function (w) { if (!seen[w.id]) { attention.push({ w: w, reason: 'changes' }); seen[w.id] = true; } });
 
     if (attention.length) {
+      var waitingSummaries = await loadWaitingSummaries(waiting.map(function (w) { return w.id; }));
       var h2a = el('div', 'section-h'); h2a.textContent = 'Needs Your Attention';
       main.appendChild(h2a);
-      attention.forEach(function (a) { main.appendChild(attentionRow(a.w, a.reason)); });
+      attention.forEach(function (a) { main.appendChild(attentionRow(a.w, a.reason, waitingSummaries[a.w.id])); });
     }
 
     // Upcoming — next 7 days, excluding anything already shown above.
@@ -451,7 +496,7 @@
     }
   }
 
-  function attentionRow(w, reason) {
+  function attentionRow(w, reason, waitingSummary) {
     var row = el('div', 'attention-row' + (reason === 'waiting' ? ' reason-waiting' : reason === 'changes' ? ' reason-changes' : ''));
     row.addEventListener('click', function () { gotoWork(w.id); });
     var body = el('div', 'body');
@@ -466,7 +511,7 @@
       reasonEl.textContent = 'OVERDUE ' + n + ' DAY' + (n === 1 ? '' : 'S');
       actionLabel = 'Open →';
     } else if (reason === 'waiting') {
-      reasonEl.textContent = w.waiting_reason ? ('Waiting for ' + w.waiting_reason + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '')) : 'Waiting for client';
+      reasonEl.textContent = waitingSummary ? ('Waiting for ' + waitingSummary + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '')) : 'Waiting for client';
       actionLabel = 'Follow up →';
     } else {
       reasonEl.textContent = 'Reviewer requested changes';
@@ -906,6 +951,8 @@
     var workRes = await sb.from('work_items').select('*').eq('id', id).single();
     var checklistRes = await sb.from('work_checklist_items').select('*').eq('work_item_id', id).order('sort_order');
     var commentsRes = await sb.from('work_comments').select('*').eq('work_item_id', id).order('created_at');
+    var waitingItemsRes = await sb.from('work_waiting_items').select('*').eq('work_item_id', id).order('sort_order');
+    var activityRes = await sb.from('work_activity').select('*').eq('work_item_id', id).order('created_at', { ascending: false });
     clear(main);
 
     if (workRes.error || !workRes.data) {
@@ -919,6 +966,8 @@
     var work = workRes.data;
     var checklist = checklistRes.data || [];
     var comments = commentsRes.data || [];
+    var waitingItems = waitingItemsRes.data || [];
+    var activity = activityRes.data || [];
     var isMine = work.assignee_id === state.user.id;
     var canEditFull = isReviewerOrAdmin();
     var template = templateById(work.service_template_id);
@@ -950,22 +999,25 @@
     var overviewBtn = el('button'); overviewBtn.type = 'button'; overviewBtn.textContent = 'Overview'; overviewBtn.classList.add('is-active');
     var checklistBtn = el('button'); checklistBtn.type = 'button';
     checklistBtn.textContent = 'Checklist' + (checklist.length ? ' (' + checklist.filter(function (i) { return i.is_done; }).length + '/' + checklist.length + ')' : '');
-    tabs.appendChild(overviewBtn); tabs.appendChild(checklistBtn);
+    var activityBtn = el('button'); activityBtn.type = 'button'; activityBtn.textContent = 'Activity';
+    tabs.appendChild(overviewBtn); tabs.appendChild(checklistBtn); tabs.appendChild(activityBtn);
     card.appendChild(tabs);
 
     var overviewPane = el('div');
     var checklistPane = el('div', 'hidden');
-    card.appendChild(overviewPane); card.appendChild(checklistPane);
+    var activityPane = el('div', 'hidden');
+    card.appendChild(overviewPane); card.appendChild(checklistPane); card.appendChild(activityPane);
     main.appendChild(card);
 
-    overviewBtn.addEventListener('click', function () {
-      overviewBtn.classList.add('is-active'); checklistBtn.classList.remove('is-active');
-      overviewPane.classList.remove('hidden'); checklistPane.classList.add('hidden');
-    });
-    checklistBtn.addEventListener('click', function () {
-      checklistBtn.classList.add('is-active'); overviewBtn.classList.remove('is-active');
-      checklistPane.classList.remove('hidden'); overviewPane.classList.add('hidden');
-    });
+    var tabButtons = [overviewBtn, checklistBtn, activityBtn];
+    var tabPanes = [overviewPane, checklistPane, activityPane];
+    function showTab(activeBtn, activePane) {
+      tabButtons.forEach(function (b) { b.classList.toggle('is-active', b === activeBtn); });
+      tabPanes.forEach(function (p) { p.classList.toggle('hidden', p !== activePane); });
+    }
+    overviewBtn.addEventListener('click', function () { showTab(overviewBtn, overviewPane); });
+    checklistBtn.addEventListener('click', function () { showTab(checklistBtn, checklistPane); });
+    activityBtn.addEventListener('click', function () { showTab(activityBtn, activityPane); });
 
     // ---- Overview pane ----
     var metaGrid = el('div', 'meta-grid');
@@ -999,22 +1051,27 @@
       statusSel.addEventListener('change', async function () {
         var newStatus = statusSel.value;
         if (newStatus === 'waiting_for_client' && prevStatus !== 'waiting_for_client') {
-          openWaitingModal(work, function (waitingFields) {
-            applyStatusChange(newStatus, waitingFields);
+          openWaitingModal(work, function (waitingFields, waitingItems) {
+            applyStatusChange(newStatus, waitingFields, waitingItems);
           }, function () { statusSel.value = prevStatus; });
           return;
         }
         var patch = { status: newStatus };
-        if (newStatus !== 'waiting_for_client') { patch.waiting_reason = null; patch.waiting_since = null; patch.follow_up_date = null; }
+        if (newStatus !== 'waiting_for_client') { patch.waiting_reason = null; patch.waiting_since = null; patch.follow_up_date = null; patch.waiting_requested_by = null; }
         // Tracks how long something has actually sat in the review queue —
         // separate from updated_at, which any field change would bump —
         // so the Manager Dashboard can flag reviews that are going stale.
         patch.ready_for_review_at = newStatus === 'ready_for_review' ? new Date().toISOString() : null;
         applyStatusChange(newStatus, patch);
       });
-      async function applyStatusChange(newStatus, patch) {
+      async function applyStatusChange(newStatus, patch, waitingItems) {
         var res = await sb.from('work_items').update(patch).eq('id', work.id);
         if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = prevStatus; return; }
+        if (waitingItems && waitingItems.length) {
+          var rows = waitingItems.map(function (title, i) { return { work_item_id: work.id, title: title, sort_order: i }; });
+          await sb.from('work_waiting_items').insert(rows);
+        }
+        logActivity(work.id, 'status_changed', STATUS_LABELS[prevStatus] + ' → ' + STATUS_LABELS[newStatus]);
         toast('Status updated.');
         renderWorkDetail(id);
       }
@@ -1030,17 +1087,55 @@
     if (work.status === 'waiting_for_client') {
       var actionBox = el('div', 'action-box');
       var atitle = el('div', 'action-title'); atitle.textContent = 'Current Action'; actionBox.appendChild(atitle);
-      var wf = el('div');
-      wf.innerHTML = '<strong>Waiting for:</strong> ' + (work.waiting_reason ? escapeHtml(work.waiting_reason) : '—');
-      actionBox.appendChild(wf);
-      if (work.waiting_since) { var reqLine = el('div'); reqLine.style.marginTop = '4px'; reqLine.style.fontSize = '.85rem'; reqLine.textContent = 'Requested: ' + fmtDate(work.waiting_since); actionBox.appendChild(reqLine); }
+      var wfLabel = el('div'); wfLabel.style.cssText = 'font-weight:700;font-size:.9rem;margin-bottom:4px;'; wfLabel.textContent = 'Waiting for:';
+      actionBox.appendChild(wfLabel);
+      if (!waitingItems.length) {
+        var noWaitItems = el('div'); noWaitItems.style.cssText = 'font-size:.88rem;color:var(--ink-soft);'; noWaitItems.textContent = '—';
+        actionBox.appendChild(noWaitItems);
+      }
+      waitingItems.forEach(function (wi) {
+        var row = el('label', 'checklist-item' + (wi.is_received ? ' done' : ''));
+        row.style.padding = '5px 0';
+        var cb = el('input'); cb.type = 'checkbox'; cb.checked = wi.is_received;
+        cb.addEventListener('change', async function () {
+          var res = await sb.from('work_waiting_items').update({ is_received: cb.checked }).eq('id', wi.id);
+          if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
+          row.classList.toggle('done', cb.checked);
+          var detail = (cb.checked ? 'Received: ' : 'Un-received: ') + wi.title;
+          logActivity(work.id, 'waiting_item_toggled', detail);
+          prependActivityRow(activityPane, detail);
+        });
+        var span = el('span'); span.textContent = wi.title;
+        row.appendChild(cb); row.appendChild(span);
+        actionBox.appendChild(row);
+      });
+      if (isMine || canEditFull) {
+        var addWaitRow = el('div'); addWaitRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        var newWaitInput = el('input'); newWaitInput.type = 'text'; newWaitInput.placeholder = 'Add another item…'; newWaitInput.style.flex = '1';
+        var addWaitBtn = el('button', 'btn btn-outline btn-sm'); addWaitBtn.type = 'button'; addWaitBtn.textContent = 'Add';
+        addWaitBtn.addEventListener('click', async function () {
+          if (!newWaitInput.value.trim()) return;
+          var res = await sb.from('work_waiting_items').insert({ work_item_id: work.id, title: newWaitInput.value.trim(), sort_order: waitingItems.length });
+          if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
+          renderWorkDetail(id);
+        });
+        addWaitRow.appendChild(newWaitInput); addWaitRow.appendChild(addWaitBtn);
+        actionBox.appendChild(addWaitRow);
+      }
+      if (work.waiting_requested_by) { var reqByLine = el('div'); reqByLine.style.cssText = 'margin-top:10px;font-size:.85rem;'; reqByLine.textContent = 'Requested by: ' + profileName(work.waiting_requested_by); actionBox.appendChild(reqByLine); }
+      if (work.waiting_since) { var reqLine = el('div'); reqLine.style.marginTop = '2px'; reqLine.style.fontSize = '.85rem'; reqLine.textContent = 'Requested: ' + fmtDate(work.waiting_since); actionBox.appendChild(reqLine); }
       if (work.follow_up_date) { var fuLine = el('div'); fuLine.style.marginTop = '2px'; fuLine.style.fontSize = '.85rem'; fuLine.textContent = 'Follow-up: ' + fmtDate(work.follow_up_date); actionBox.appendChild(fuLine); }
       if (isMine || canEditFull) {
         var receivedBtn = el('button', 'btn btn-outline btn-sm'); receivedBtn.type = 'button'; receivedBtn.style.marginTop = '12px';
         receivedBtn.appendChild(icon('check')); receivedBtn.appendChild(document.createTextNode('Mark Documents Received'));
         receivedBtn.addEventListener('click', async function () {
-          var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null }).eq('id', work.id);
+          var outstanding = waitingItems.filter(function (wi) { return !wi.is_received; });
+          if (outstanding.length) {
+            await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
+          }
+          var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
           if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+          logActivity(work.id, 'waiting_resolved', 'All outstanding documents marked received.');
           toast('Marked as received — back In Progress.');
           renderWorkDetail(id);
         });
@@ -1098,7 +1193,7 @@
       if (!stageItems.length) return;
       anyStage = true;
       var h3 = el('div', 'checklist-stage'); h3.textContent = STAGE_LABELS[stage]; checklistPane.appendChild(h3);
-      stageItems.forEach(function (item) { checklistPane.appendChild(checklistRow(item, id)); });
+      stageItems.forEach(function (item) { checklistPane.appendChild(checklistRow(item, id, activityPane)); });
     });
     if (!anyStage) {
       var noItems = el('p', 'desc'); noItems.textContent = 'No checklist items yet.';
@@ -1123,6 +1218,21 @@
       addItemRow.appendChild(newItemInput); addItemRow.appendChild(stageSel); addItemRow.appendChild(addItemBtn);
       checklistPane.appendChild(addItemRow);
     }
+
+    // ---- Activity pane ----
+    if (!activity.length) {
+      var noActivity = el('p', 'desc'); noActivity.textContent = 'Nothing logged yet — status changes and checklist updates show up here.';
+      activityPane.appendChild(noActivity);
+    }
+    activity.forEach(function (a) {
+      var row = el('div', 'activity-row');
+      var who = el('span', 'who'); who.textContent = a.actor_id ? profileName(a.actor_id) : 'System';
+      var when = el('span', 'when'); when.textContent = fmtDateTime(a.created_at);
+      who.appendChild(when);
+      row.appendChild(who);
+      if (a.detail) { var detailEl = el('div', 'detail'); detailEl.textContent = a.detail; row.appendChild(detailEl); }
+      activityPane.appendChild(row);
+    });
   }
 
   // Lets a title/period/due-date typo (or a bulk-generated item that still
@@ -1168,13 +1278,16 @@
     openModal(wrap);
   }
 
-  function checklistRow(item, workId) {
+  function checklistRow(item, workId, activityPane) {
     var row = el('label', 'checklist-item' + (item.is_done ? ' done' : ''));
     var cb = el('input'); cb.type = 'checkbox'; cb.checked = item.is_done;
     cb.addEventListener('change', async function () {
       var res = await sb.from('work_checklist_items').update({ is_done: cb.checked }).eq('id', item.id);
       if (res.error) { toast('Could not update item: ' + res.error.message, true); cb.checked = !cb.checked; return; }
       row.classList.toggle('done', cb.checked);
+      var detail = (cb.checked ? 'Checked off: ' : 'Unchecked: ') + item.title;
+      logActivity(workId, 'checklist_toggled', detail);
+      prependActivityRow(activityPane, detail);
     });
     var span = el('span'); span.textContent = item.title;
     row.appendChild(cb); row.appendChild(span);
@@ -1194,8 +1307,8 @@
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
 
-    var reasonInput = el('input'); reasonInput.type = 'text'; reasonInput.placeholder = 'e.g. Bank statement, purchase invoices';
-    wrap.appendChild(field('Waiting for', reasonInput));
+    var itemsInput = el('textarea'); itemsInput.rows = 3; itemsInput.placeholder = 'One item per line, e.g.\nPurchase invoices\nBank statement';
+    wrap.appendChild(field('Waiting for', itemsInput));
     var followUpInput = el('input'); followUpInput.type = 'date';
     wrap.appendChild(field('Follow-up date (optional)', followUpInput));
 
@@ -1203,21 +1316,18 @@
     var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
     saveBtn.addEventListener('click', function () {
       closeModal();
+      var items = itemsInput.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
       onSave({
         status: 'waiting_for_client',
-        waiting_reason: reasonInput.value.trim() || null,
         waiting_since: new Date().toISOString().slice(0, 10),
         follow_up_date: followUpInput.value || null,
+        waiting_requested_by: state.user.id,
         ready_for_review_at: null,
-      });
+      }, items);
     });
     actions.appendChild(saveBtn);
     wrap.appendChild(actions);
     openModal(wrap);
-  }
-
-  function escapeHtml(s) {
-    var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
   }
 
   function metaItem(label, value, iconName, showAvatar) {
@@ -1403,6 +1513,7 @@
     // ---- Outstanding (what we're waiting on this client for) ----
     var waiting = openWork.filter(function (w) { return w.status === 'waiting_for_client'; });
     if (waiting.length) {
+      var waitingSummaries = await loadWaitingSummaries(waiting.map(function (w) { return w.id; }));
       var outCard = el('div', 'card');
       var outH2 = el('h2'); outH2.appendChild(icon('alert')); outH2.appendChild(document.createTextNode('Outstanding')); outCard.appendChild(outH2);
       waiting.forEach(function (w) {
@@ -1413,7 +1524,8 @@
         var tmpl = templateById(w.service_template_id);
         svc.textContent = (tmpl ? tmpl.title : w.title) + (w.period ? ' · ' + w.period : '');
         var reasonEl = el('div', 'reason');
-        reasonEl.textContent = (w.waiting_reason ? 'Waiting for ' + w.waiting_reason : 'Waiting for client') + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '');
+        var summary = waitingSummaries[w.id];
+        reasonEl.textContent = (summary ? 'Waiting for ' + summary : 'Waiting for client') + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '');
         body.appendChild(svc); body.appendChild(reasonEl);
         row.appendChild(body);
         var action = el('div', 'action'); action.textContent = 'Follow up →';
