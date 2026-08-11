@@ -59,6 +59,7 @@
     flag: '<line x1="5" y1="3" x2="5" y2="21"/><path d="M5 4h11l-2.5 4L16 12H5z"/>',
     message: '<path d="M4 4h16v12H8l-4 4z"/>',
     idcard: '<rect x="2" y="5" width="20" height="14" rx="1"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="19" y2="10"/><line x1="13" y1="14" x2="18" y2="14"/>',
+    list: '<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><path d="M4 6l1 1 2-2"/><path d="M4 12l1 1 2-2"/><path d="M4 18l1 1 2-2"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -280,7 +281,7 @@
       renderTaskDetail(state.taskId);
       return;
     }
-    var known = ['my-tasks', 'review-queue', 'all-tasks', 'clients', 'engagements', 'templates', 'staff'];
+    var known = ['my-tasks', 'review-queue', 'all-tasks', 'todo', 'clients', 'engagements', 'templates', 'staff'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'my-tasks';
     render();
   }
@@ -305,6 +306,7 @@
     var group1 = el('div', 'sidebar-group'); group1.textContent = 'Work';
     nav.appendChild(group1);
     item('my-tasks', 'My Tasks', 'clipboard');
+    item('todo', 'My To-Do List', 'list');
     if (isReviewerOrAdmin()) {
       item('review-queue', 'Review Queue', 'check');
       item('all-tasks', 'All Tasks', 'folder');
@@ -326,6 +328,7 @@
     if (state.view === 'my-tasks') return renderTaskListView(main, 'My Tasks', 'mine');
     if (state.view === 'review-queue') return renderTaskListView(main, 'Review Queue', 'review-queue');
     if (state.view === 'all-tasks') return renderTaskListView(main, 'All Tasks', 'all');
+    if (state.view === 'todo') return renderTodoPage(main);
     if (state.view === 'clients') return renderClients(main);
     if (state.view === 'engagements') return renderEngagements(main);
     if (state.view === 'templates') return renderTemplates(main);
@@ -728,6 +731,84 @@
     body.appendChild(l); body.appendChild(v);
     wrap.appendChild(body);
     return wrap;
+  }
+
+  // ============================================================
+  // Personal to-do list — private scratchpad per user, not tied to any
+  // client/task/reviewer. RLS on personal_todos restricts every row to its
+  // owner (auth.uid() = user_id), so unlike client credentials this needs
+  // no SECURITY DEFINER function — plain table access is already scoped
+  // correctly, even for admins looking at their own list.
+  // ============================================================
+  async function renderTodoPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'My To-Do List'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var note = el('p', 'desc');
+    note.style.marginTop = '-10px'; note.style.marginBottom = '16px';
+    note.textContent = "Private to you — nobody else on the team can see this list.";
+    main.appendChild(note);
+
+    var card = el('div', 'card');
+
+    var addRow = el('div');
+    addRow.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;';
+    var input = el('input'); input.type = 'text'; input.placeholder = 'Add something to remember…';
+    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('Add'));
+    addRow.appendChild(input); addRow.appendChild(addBtn);
+    card.appendChild(addRow);
+
+    var listWrap = el('div');
+    card.appendChild(listWrap);
+    main.appendChild(card);
+
+    async function refresh() {
+      clear(listWrap);
+      var loading = el('p', 'desc'); loading.textContent = 'Loading…'; listWrap.appendChild(loading);
+      var res = await sb.from('personal_todos').select('*').eq('user_id', state.user.id)
+        .order('is_done').order('created_at', { ascending: false });
+      clear(listWrap);
+      if (res.error) { toast('Could not load your list: ' + res.error.message, true); return; }
+      var items = res.data || [];
+      if (!items.length) {
+        var empty = el('p', 'desc'); empty.textContent = 'Nothing on your list yet.'; listWrap.appendChild(empty);
+        return;
+      }
+      items.forEach(function (t) {
+        var row = el('label', 'checklist-item' + (t.is_done ? ' done' : ''));
+        var cb = el('input'); cb.type = 'checkbox'; cb.checked = t.is_done;
+        cb.addEventListener('change', async function () {
+          var r = await sb.from('personal_todos').update({ is_done: cb.checked }).eq('id', t.id);
+          if (r.error) { toast('Could not update: ' + r.error.message, true); cb.checked = !cb.checked; return; }
+          row.classList.toggle('done', cb.checked);
+        });
+        var span = el('span'); span.textContent = t.text;
+        var delBtn = el('button', 'todo-del'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Delete';
+        delBtn.addEventListener('click', async function (e) {
+          e.preventDefault();
+          var r = await sb.from('personal_todos').delete().eq('id', t.id);
+          if (r.error) { toast('Could not delete: ' + r.error.message, true); return; }
+          refresh();
+        });
+        row.appendChild(cb); row.appendChild(span); row.appendChild(delBtn);
+        listWrap.appendChild(row);
+      });
+    }
+    await refresh();
+
+    async function addItem() {
+      var text = input.value.trim();
+      if (!text) return;
+      addBtn.disabled = true;
+      var r = await sb.from('personal_todos').insert({ user_id: state.user.id, text: text });
+      addBtn.disabled = false;
+      if (r.error) { toast('Could not add: ' + r.error.message, true); return; }
+      input.value = '';
+      refresh();
+    }
+    addBtn.addEventListener('click', addItem);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
   }
 
   // ============================================================
