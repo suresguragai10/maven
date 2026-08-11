@@ -9,24 +9,32 @@
   var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   var STATUS_LABELS = {
-    not_started: 'Not Started',
+    to_do: 'To Do',
     in_progress: 'In Progress',
     waiting_for_client: 'Waiting for Client',
     ready_for_review: 'Ready for Review',
     changes_required: 'Changes Required',
+    approved: 'Approved',
+    ready_to_submit: 'Ready to Submit',
     completed: 'Completed',
   };
-  var EMPLOYEE_STATUSES = ['not_started', 'in_progress', 'waiting_for_client', 'ready_for_review'];
-  var ALL_STATUSES = ['not_started', 'in_progress', 'waiting_for_client', 'ready_for_review', 'changes_required', 'completed'];
+  // Statuses an employee may set themselves — always available regardless
+  // of which service template a work item follows. Everything past
+  // "Ready for Review" requires a reviewer/admin, enforced both here (UI)
+  // and in the guard_work_item_update() trigger (DB).
+  var EMPLOYEE_STATUSES = ['to_do', 'in_progress', 'waiting_for_client', 'ready_for_review'];
+  var STAGE_LABELS = { preparation: 'Preparation', review: 'Review', submission: 'Submission' };
+  var STAGES = ['preparation', 'review', 'submission'];
+  var TEMPLATE_CATEGORIES = ['Bookkeeping', 'Tax', 'Payroll', 'Reporting', 'Registration', 'Advisory', 'NFRS/IFRS'];
 
   var state = {
     user: null,
     profile: null,
     profiles: [],
     clients: [],
-    engagements: [],
-    view: 'my-tasks',
-    taskId: null,
+    templates: [],
+    view: 'today',
+    workId: null,
   };
 
   // ============================================================
@@ -60,6 +68,7 @@
     message: '<path d="M4 4h16v12H8l-4 4z"/>',
     idcard: '<rect x="2" y="5" width="20" height="14" rx="1"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="19" y2="10"/><line x1="13" y1="14" x2="18" y2="14"/>',
     list: '<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><path d="M4 6l1 1 2-2"/><path d="M4 12l1 1 2-2"/><path d="M4 18l1 1 2-2"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -93,7 +102,7 @@
   }
 
   // Catches anything the try/catch in enterApp() doesn't — an error thrown
-  // inside an async view render (e.g. render(), renderTaskDetail()) becomes
+  // inside an async view render (e.g. render(), renderWorkDetail()) becomes
   // an unhandled promise rejection, not a thrown exception, so it wouldn't
   // hit a normal try/catch around the call site. This is a blanket safety
   // net so "the page just went blank with no explanation" can't happen
@@ -133,17 +142,27 @@
     return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' +
       dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
-  function isOverdue(task) {
-    if (!task.due_date || task.status === 'completed') return false;
-    return new Date(task.due_date + 'T00:00:00') < new Date(new Date().toDateString());
+  // A work item can carry two due dates; the internal one is what actually
+  // drives urgency day-to-day (it's meant to land before the real filing
+  // deadline), so it wins when both are set.
+  function effectiveDue(w) { return w.internal_due_date || w.external_due_date || null; }
+  function isOverdue(w) {
+    var due = effectiveDue(w);
+    if (!due || w.status === 'completed') return false;
+    return new Date(due + 'T00:00:00') < new Date(new Date().toDateString());
+  }
+  function daysOverdue(w) {
+    var due = effectiveDue(w);
+    if (!due) return 0;
+    var ms = new Date(new Date().toDateString()) - new Date(due + 'T00:00:00');
+    return Math.max(1, Math.round(ms / 86400000));
   }
   function clientName(id) {
     var c = state.clients.find(function (x) { return x.id === id; });
     return c ? c.name : '—';
   }
-  function engagementTitle(id) {
-    var e = state.engagements.find(function (x) { return x.id === id; });
-    return e ? e.title : '—';
+  function templateById(id) {
+    return state.templates.find(function (t) { return t.id === id; }) || null;
   }
   function profileName(id) {
     var p = state.profiles.find(function (x) { return x.id === id; });
@@ -225,7 +244,7 @@
     // otherwise fail silently (the header renders, then nothing) — this
     // surfaces it instead of leaving a blank page with no clue why.
     try {
-      await Promise.all([loadProfiles(), loadClients(), loadEngagements()]);
+      await Promise.all([loadProfiles(), loadClients(), loadTemplates()]);
       renderSidebar();
       routeFromHash();
     } catch (err) {
@@ -239,10 +258,10 @@
   }
 
   // ============================================================
-  // Data loading — profiles/clients/engagements are small lists (a handful
+  // Data loading — profiles/clients/templates are small lists (a handful
   // to a few dozen rows at this org's size), so they're loaded once into
-  // memory and looked up client-side rather than joined per-query. Tasks are
-  // loaded fresh per view since they change constantly.
+  // memory and looked up client-side rather than joined per-query. Work
+  // items are loaded fresh per view since they change constantly.
   // ============================================================
   async function loadProfiles() {
     var res = await sb.from('profiles').select('*').order('full_name');
@@ -254,17 +273,17 @@
     if (res.error) { toast('Could not load clients: ' + res.error.message, true); return; }
     state.clients = res.data || [];
   }
-  async function loadEngagements() {
-    var res = await sb.from('engagements').select('*').order('title');
-    if (res.error) { toast('Could not load engagements: ' + res.error.message, true); return; }
-    state.engagements = res.data || [];
+  async function loadTemplates() {
+    var res = await sb.from('service_templates').select('*').order('title');
+    if (res.error) { toast('Could not load service templates: ' + res.error.message, true); return; }
+    state.templates = res.data || [];
   }
-  async function loadTasks(mode) {
-    var q = sb.from('tasks').select('*').order('due_date', { ascending: true, nullsFirst: false });
+  async function loadWork(mode) {
+    var q = sb.from('work_items').select('*').order('internal_due_date', { ascending: true, nullsFirst: false });
     if (mode === 'mine') q = q.eq('assignee_id', state.user.id);
-    if (mode === 'review-queue') q = q.eq('status', 'ready_for_review');
+    if (mode === 'review') q = q.eq('status', 'ready_for_review');
     var res = await q;
-    if (res.error) { toast('Could not load tasks: ' + res.error.message, true); return []; }
+    if (res.error) { toast('Could not load work: ' + res.error.message, true); return []; }
     return res.data || [];
   }
 
@@ -275,18 +294,18 @@
   window.addEventListener('hashchange', routeFromHash);
   function routeFromHash() {
     var hash = location.hash.replace(/^#/, '');
-    if (hash.indexOf('task/') === 0) {
-      state.view = 'task-detail';
-      state.taskId = hash.slice(5);
-      renderTaskDetail(state.taskId);
+    if (hash.indexOf('work/') === 0) {
+      state.view = 'work-detail';
+      state.workId = hash.slice(5);
+      renderWorkDetail(state.workId);
       return;
     }
-    var known = ['my-tasks', 'review-queue', 'all-tasks', 'todo', 'clients', 'engagements', 'templates', 'staff'];
-    state.view = known.indexOf(hash) !== -1 ? hash : 'my-tasks';
+    var known = ['today', 'my-work', 'review', 'all-work', 'todo', 'clients', 'templates', 'staff'];
+    state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
   function goto(view) { location.hash = view; }
-  function gotoTask(id) { location.hash = 'task/' + id; }
+  function gotoWork(id) { location.hash = 'work/' + id; }
 
   // ============================================================
   // Sidebar
@@ -299,24 +318,26 @@
       b.type = 'button';
       b.appendChild(icon(iconName));
       b.appendChild(document.createTextNode(label));
-      b.classList.toggle('is-active', state.view === view || (state.view === 'task-detail' && view === 'my-tasks'));
+      b.classList.toggle('is-active', state.view === view || (state.view === 'work-detail' && view === 'today'));
       b.addEventListener('click', function () { goto(view); });
       nav.appendChild(b);
     }
     var group1 = el('div', 'sidebar-group'); group1.textContent = 'Work';
     nav.appendChild(group1);
-    item('my-tasks', 'My Tasks', 'clipboard');
-    item('todo', 'My To-Do List', 'list');
+    item('today', 'Today', 'sun');
+    item('my-work', 'My Work', 'clipboard');
     if (isReviewerOrAdmin()) {
-      item('review-queue', 'Review Queue', 'check');
-      item('all-tasks', 'All Tasks', 'folder');
+      item('review', 'Review', 'check');
+      item('all-work', 'All Work', 'folder');
     }
+    item('todo', 'My To-Do List', 'list');
     if (isAdmin()) {
-      var group2 = el('div', 'sidebar-group'); group2.textContent = 'Manage';
+      var group2 = el('div', 'sidebar-group'); group2.textContent = 'Clients';
       nav.appendChild(group2);
       item('clients', 'Clients', 'building');
-      item('engagements', 'Engagements', 'idcard');
-      item('templates', 'Task Templates', 'flag');
+      var group3 = el('div', 'sidebar-group'); group3.textContent = 'Manage';
+      nav.appendChild(group3);
+      item('templates', 'Templates', 'flag');
       item('staff', 'Staff', 'users');
     }
   }
@@ -325,91 +346,205 @@
     renderSidebar();
     var main = qs('#main');
     clear(main);
-    if (state.view === 'my-tasks') return renderTaskListView(main, 'My Tasks', 'mine');
-    if (state.view === 'review-queue') return renderTaskListView(main, 'Review Queue', 'review-queue');
-    if (state.view === 'all-tasks') return renderTaskListView(main, 'All Tasks', 'all');
+    if (state.view === 'today') return renderTodayPage(main);
+    if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
+    if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
+    if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
     if (state.view === 'todo') return renderTodoPage(main);
     if (state.view === 'clients') return renderClients(main);
-    if (state.view === 'engagements') return renderEngagements(main);
     if (state.view === 'templates') return renderTemplates(main);
     if (state.view === 'staff') return renderStaff(main);
   }
 
   // ============================================================
-  // Task list views (My Tasks / Review Queue / All Tasks)
+  // Today — the landing screen. Purpose: help the person decide what to
+  // work on next, not show off charts. Pulls only "my work" plus (for
+  // reviewers/admins) how many items are sitting in the review queue.
   // ============================================================
-  async function renderTaskListView(main, title, mode) {
+  async function renderTodayPage(main) {
+    var greeting = el('h1', 'greeting');
+    var hour = new Date().getHours();
+    greeting.textContent = (hour < 12 ? 'Good morning, ' : hour < 17 ? 'Good afternoon, ' : 'Good evening, ') + (state.profile.full_name || '').split(' ')[0];
+    main.appendChild(greeting);
+    var dateLine = el('div', 'greeting-date');
+    dateLine.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+    main.appendChild(dateLine);
+
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
+    main.appendChild(loading);
+
+    var mine = await loadWork('mine');
+    var reviewCount = 0;
+    if (isReviewerOrAdmin()) {
+      var reviewItems = await loadWork('review');
+      reviewCount = reviewItems.length;
+    }
+    main.removeChild(loading);
+
+    var open = mine.filter(function (w) { return w.status !== 'completed'; });
+    var overdue = open.filter(isOverdue);
+    var todayStr = new Date().toISOString().slice(0, 10);
+    var dueToday = open.filter(function (w) { return effectiveDue(w) === todayStr && !isOverdue(w); });
+    var waiting = open.filter(function (w) { return w.status === 'waiting_for_client'; });
+
+    var strip = el('div', 'today-strip');
+    function stat(n, label, colorCls) {
+      var s = el('div', 'today-stat');
+      var num = el('div', 'n' + (colorCls ? ' ' + colorCls : '')); num.textContent = String(n);
+      var l = el('div', 'l'); l.textContent = label;
+      s.appendChild(num); s.appendChild(l);
+      strip.appendChild(s);
+    }
+    stat(overdue.length, 'Overdue', 'n-red');
+    stat(dueToday.length, 'Due Today');
+    stat(waiting.length, 'Waiting', 'n-amber');
+    if (isReviewerOrAdmin()) stat(reviewCount, 'Review', 'n-purple');
+    main.appendChild(strip);
+
+    // Needs Your Attention — overdue first, then anything I'm waiting on a
+    // client for, then anything a reviewer sent back. An item never
+    // appears twice even if it'd qualify for more than one reason.
+    var seen = {};
+    var attention = [];
+    overdue.forEach(function (w) { attention.push({ w: w, reason: 'overdue' }); seen[w.id] = true; });
+    waiting.forEach(function (w) { if (!seen[w.id]) { attention.push({ w: w, reason: 'waiting' }); seen[w.id] = true; } });
+    open.filter(function (w) { return w.status === 'changes_required'; }).forEach(function (w) { if (!seen[w.id]) { attention.push({ w: w, reason: 'changes' }); seen[w.id] = true; } });
+
+    if (attention.length) {
+      var h2a = el('div', 'section-h'); h2a.textContent = 'Needs Your Attention';
+      main.appendChild(h2a);
+      attention.forEach(function (a) { main.appendChild(attentionRow(a.w, a.reason)); });
+    }
+
+    // Upcoming — next 7 days, excluding anything already shown above.
+    var horizon = new Date(); horizon.setDate(horizon.getDate() + 7);
+    var upcoming = open.filter(function (w) {
+      if (seen[w.id]) return false;
+      var due = effectiveDue(w);
+      if (!due) return false;
+      var dt = new Date(due + 'T00:00:00');
+      return dt >= new Date(new Date().toDateString()) && dt <= horizon;
+    }).sort(function (a, b) { return (effectiveDue(a) || '').localeCompare(effectiveDue(b) || ''); });
+
+    if (upcoming.length) {
+      var h2b = el('div', 'section-h'); h2b.style.marginTop = '22px'; h2b.textContent = 'Upcoming (Next 7 Days)';
+      main.appendChild(h2b);
+      var wrap = el('div', 'task-group');
+      upcoming.forEach(function (w) { wrap.appendChild(workRow(w)); });
+      main.appendChild(wrap);
+    }
+
+    if (!attention.length && !upcoming.length) {
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('check')); empty.appendChild(document.createTextNode('Nothing needs your attention right now.'));
+      main.appendChild(empty);
+    }
+  }
+
+  function attentionRow(w, reason) {
+    var row = el('div', 'attention-row' + (reason === 'waiting' ? ' reason-waiting' : reason === 'changes' ? ' reason-changes' : ''));
+    row.addEventListener('click', function () { gotoWork(w.id); });
+    var body = el('div', 'body');
+    var client = el('div', 'client'); client.textContent = clientName(w.client_id);
+    var svc = el('div', 'svc');
+    var tmpl = templateById(w.service_template_id);
+    svc.textContent = (tmpl ? tmpl.title : w.title) + (w.period ? ' · ' + w.period : '');
+    var reasonEl = el('div', 'reason');
+    var actionLabel;
+    if (reason === 'overdue') {
+      var n = daysOverdue(w);
+      reasonEl.textContent = 'OVERDUE ' + n + ' DAY' + (n === 1 ? '' : 'S');
+      actionLabel = 'Open →';
+    } else if (reason === 'waiting') {
+      reasonEl.textContent = w.waiting_reason ? ('Waiting for ' + w.waiting_reason + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '')) : 'Waiting for client';
+      actionLabel = 'Follow up →';
+    } else {
+      reasonEl.textContent = 'Reviewer requested changes';
+      actionLabel = 'Fix →';
+    }
+    body.appendChild(client); body.appendChild(svc); body.appendChild(reasonEl);
+    row.appendChild(body);
+    var action = el('div', 'action'); action.textContent = actionLabel;
+    row.appendChild(action);
+    return row;
+  }
+
+  // ============================================================
+  // Work list views (My Work / Review / All Work)
+  // ============================================================
+  async function renderWorkListView(main, title, mode) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = title;
     head.appendChild(h1);
     // Everyone can log their own work now, not just reviewers/admins —
-    // openNewTaskModal() locks the assignee to "self" for employees (see
+    // openNewWorkModal() locks the assignee to "self" for employees (see
     // there), so this doesn't let anyone hand work to someone else.
     var addBtn = el('button', 'btn btn-sm');
-    addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Task'));
-    addBtn.addEventListener('click', function () { openNewTaskModal(); });
+    addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Work'));
+    addBtn.addEventListener('click', function () { openNewWorkModal(); });
     head.appendChild(addBtn);
     main.appendChild(head);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
 
-    var tasks = await loadTasks(mode);
+    var items = await loadWork(mode);
     main.removeChild(loading);
 
-    if (mode === 'all') renderWorkloadSummary(main, tasks);
+    if (mode === 'all') renderWorkloadSummary(main, items);
 
     if (mode === 'mine') {
-      renderGroupedTasks(main, tasks);
+      renderGroupedWork(main, items);
     } else {
-      renderFlatTaskList(main, tasks);
+      renderFlatWorkList(main, items);
     }
   }
 
-  function renderGroupedTasks(main, tasks) {
+  function renderGroupedWork(main, items) {
     var groups = [
-      { key: 'overdue', label: 'Overdue', filter: function (t) { return isOverdue(t); } },
-      { key: 'ready_for_review', label: 'Ready for Review', filter: function (t) { return t.status === 'ready_for_review' && !isOverdue(t); } },
-      { key: 'changes_required', label: 'Changes Required', filter: function (t) { return t.status === 'changes_required' && !isOverdue(t); } },
-      { key: 'in_progress', label: 'In Progress', filter: function (t) { return t.status === 'in_progress' && !isOverdue(t); } },
-      { key: 'waiting_for_client', label: 'Waiting for Client', filter: function (t) { return t.status === 'waiting_for_client' && !isOverdue(t); } },
-      { key: 'not_started', label: 'Not Started', filter: function (t) { return t.status === 'not_started' && !isOverdue(t); } },
-      { key: 'completed', label: 'Recently Completed', filter: function (t) { return t.status === 'completed'; } },
+      { key: 'overdue', label: 'Overdue', filter: function (w) { return isOverdue(w); } },
+      { key: 'ready_for_review', label: 'Ready for Review', filter: function (w) { return w.status === 'ready_for_review' && !isOverdue(w); } },
+      { key: 'changes_required', label: 'Changes Required', filter: function (w) { return w.status === 'changes_required' && !isOverdue(w); } },
+      { key: 'in_progress', label: 'In Progress', filter: function (w) { return w.status === 'in_progress' && !isOverdue(w); } },
+      { key: 'waiting_for_client', label: 'Waiting for Client', filter: function (w) { return w.status === 'waiting_for_client' && !isOverdue(w); } },
+      { key: 'approved', label: 'Approved', filter: function (w) { return w.status === 'approved' && !isOverdue(w); } },
+      { key: 'ready_to_submit', label: 'Ready to Submit', filter: function (w) { return w.status === 'ready_to_submit' && !isOverdue(w); } },
+      { key: 'to_do', label: 'To Do', filter: function (w) { return w.status === 'to_do' && !isOverdue(w); } },
+      { key: 'completed', label: 'Recently Completed', filter: function (w) { return w.status === 'completed'; } },
     ];
     var shown = 0;
     groups.forEach(function (g) {
-      var items = tasks.filter(g.filter);
-      if (g.key === 'completed') items = items.slice(0, 10);
-      if (!items.length) return;
-      shown += items.length;
+      var rows = items.filter(g.filter);
+      if (g.key === 'completed') rows = rows.slice(0, 10);
+      if (!rows.length) return;
+      shown += rows.length;
       var wrap = el('div', 'task-group');
       var h3 = el('h3');
       h3.appendChild(document.createTextNode(g.label + ' '));
-      var count = el('span', 'count'); count.textContent = String(items.length);
+      var count = el('span', 'count'); count.textContent = String(rows.length);
       h3.appendChild(count);
       wrap.appendChild(h3);
-      items.forEach(function (t) { wrap.appendChild(taskRow(t)); });
+      rows.forEach(function (w) { wrap.appendChild(workRow(w)); });
       main.appendChild(wrap);
     });
     if (!shown) {
-      var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No tasks assigned to you yet.'));
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No work assigned to you yet.'));
       main.appendChild(empty);
     }
   }
 
-  // "Who's overloaded this week" — the one thing a flat task list can't
-  // answer at a glance. Counts open (non-completed) work per assignee,
-  // sorted busiest-first, with overdue count called out separately since
-  // that's the number that actually matters day to day.
-  function renderWorkloadSummary(main, tasks) {
-    var open = tasks.filter(function (t) { return t.status !== 'completed'; });
+  // "Who's overloaded this week" — the one thing a flat list can't answer
+  // at a glance. Counts open (non-completed) work per assignee, sorted
+  // busiest-first, with overdue count called out separately since that's
+  // the number that actually matters day to day.
+  function renderWorkloadSummary(main, items) {
+    var open = items.filter(function (w) { return w.status !== 'completed'; });
     if (!open.length) return;
     var byAssignee = {};
-    open.forEach(function (t) {
-      var key = t.assignee_id || 'unassigned';
+    open.forEach(function (w) {
+      var key = w.assignee_id || 'unassigned';
       if (!byAssignee[key]) byAssignee[key] = { open: 0, overdue: 0 };
       byAssignee[key].open++;
-      if (isOverdue(t)) byAssignee[key].overdue++;
+      if (isOverdue(w)) byAssignee[key].overdue++;
     });
     var rows = Object.keys(byAssignee).map(function (id) {
       return { id: id, name: id === 'unassigned' ? 'Unassigned' : profileName(id), open: byAssignee[id].open, overdue: byAssignee[id].overdue };
@@ -435,86 +570,85 @@
     main.appendChild(card);
   }
 
-  function renderFlatTaskList(main, tasks) {
-    if (!tasks.length) {
-      var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No tasks here yet.'));
+  function renderFlatWorkList(main, items) {
+    if (!items.length) {
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No work here yet.'));
       main.appendChild(empty);
       return;
     }
     var wrap = el('div', 'task-group');
-    tasks.forEach(function (t) { wrap.appendChild(taskRow(t)); });
+    items.forEach(function (w) { wrap.appendChild(workRow(w)); });
     main.appendChild(wrap);
   }
 
-  function taskRow(t) {
+  function workRow(w) {
     var row = el('div', 'task-row');
-    row.addEventListener('click', function () { gotoTask(t.id); });
-    row.appendChild(avatar(profileName(t.assignee_id)));
-    var dot = el('span', 'priority-dot priority-dot-' + t.priority);
-    dot.title = t.priority.charAt(0).toUpperCase() + t.priority.slice(1) + ' priority';
+    row.addEventListener('click', function () { gotoWork(w.id); });
+    row.appendChild(avatar(profileName(w.assignee_id)));
+    var dot = el('span', 'priority-dot priority-dot-' + w.priority);
+    dot.title = w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority';
     row.appendChild(dot);
     var title = el('div', 'title');
-    var strong = el('strong'); strong.textContent = t.title;
+    var tmpl = templateById(w.service_template_id);
+    var strong = el('strong'); strong.textContent = w.title + (w.period ? ' · ' + w.period : '');
     var span = el('span');
     span.appendChild(icon('building'));
-    span.appendChild(document.createTextNode(clientName(t.client_id) + (t.engagement_id ? ' · ' + engagementTitle(t.engagement_id) : '')));
+    span.appendChild(document.createTextNode(clientName(w.client_id) + (tmpl ? ' · ' + tmpl.title : '')));
     title.appendChild(strong); title.appendChild(span);
     row.appendChild(title);
-    var due = el('span', 'due' + (isOverdue(t) ? ' overdue' : ''));
+    var due = el('span', 'due' + (isOverdue(w) ? ' overdue' : ''));
     due.appendChild(icon('calendar'));
-    due.appendChild(document.createTextNode(t.due_date ? fmtDate(t.due_date) : 'No due date'));
+    due.appendChild(document.createTextNode(effectiveDue(w) ? fmtDate(effectiveDue(w)) : 'No due date'));
     row.appendChild(due);
-    var badge = el('span', 'badge badge-' + t.status);
-    badge.textContent = STATUS_LABELS[t.status] || t.status;
+    var badge = el('span', 'badge badge-' + w.status);
+    badge.textContent = STATUS_LABELS[w.status] || w.status;
     row.appendChild(badge);
     return row;
   }
 
   // ============================================================
-  // New task modal
+  // New Work modal
   // ============================================================
-  // prefill (optional): { title, description, assigneeId, reviewerId,
-  // templateId, checklistItems } — used by "Use This Template" on the Task
-  // Templates page so recurring compliance work (VAT, TDS, monthly close)
-  // doesn't have to be retyped by hand every time.
-  function openNewTaskModal(prefill) {
+  // prefill (optional): { templateId, clientId } — used by "Use This
+  // Template" on the Templates page so recurring compliance work (VAT,
+  // TDS, monthly close) doesn't have to be retyped by hand every time.
+  function openNewWorkModal(prefill) {
     prefill = prefill || {};
     var wrap = el('div');
     var head = el('div', 'modal-head');
-    var h2 = el('h2'); h2.textContent = 'New Task';
+    var h2 = el('h2'); h2.textContent = 'New Work';
     var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
     closeBtn.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
 
-    var titleInput = el('input'); titleInput.type = 'text'; titleInput.value = prefill.title || '';
-    wrap.appendChild(field('Title', titleInput));
-
     var clientSel = el('select');
-    clientSel.appendChild(new Option('— No client —', ''));
+    clientSel.appendChild(new Option('— Select client —', ''));
     state.clients.filter(function (c) { return c.is_active; }).forEach(function (c) { clientSel.appendChild(new Option(c.name, c.id)); });
+    if (prefill.clientId) clientSel.value = prefill.clientId;
     wrap.appendChild(field('Client', clientSel));
 
-    var engSel = el('select');
-    engSel.appendChild(new Option('— No engagement —', ''));
-    wrap.appendChild(field('Engagement', engSel));
-    clientSel.addEventListener('change', function () {
-      clear(engSel);
-      engSel.appendChild(new Option('— No engagement —', ''));
-      state.engagements.filter(function (e) { return e.client_id === clientSel.value && e.status !== 'completed'; })
-        .forEach(function (e) { engSel.appendChild(new Option(e.title, e.id)); });
-    });
+    var templateSel = el('select');
+    templateSel.appendChild(new Option('— No template (ad-hoc) —', ''));
+    state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+      .forEach(function (t) { templateSel.appendChild(new Option(t.title + ' (' + t.category + ')', t.id)); });
+    wrap.appendChild(field('Service Template', templateSel));
+
+    var titleInput = el('input'); titleInput.type = 'text';
+    wrap.appendChild(field('Title', titleInput));
+
+    var periodInput = el('input'); periodInput.type = 'text'; periodInput.placeholder = 'e.g. Shrawan 2083';
+    wrap.appendChild(field('Period (optional)', periodInput));
 
     var assigneeSel = el('select');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
-    if (prefill.assigneeId) assigneeSel.value = prefill.assigneeId;
     var assigneeField = field('Assignee', assigneeSel);
     if (!isReviewerOrAdmin()) {
-      // Employees can create tasks for themselves, not hand work to
+      // Employees can create work for themselves, not hand it to
       // colleagues — that stays a reviewer/admin action.
       assigneeSel.value = state.user.id;
       assigneeSel.disabled = true;
-      var lockedHint = el('span', 'f-hint'); lockedHint.textContent = 'Tasks you create are assigned to you.';
+      var lockedHint = el('span', 'f-hint'); lockedHint.textContent = 'Work you create is assigned to you.';
       assigneeField.appendChild(lockedHint);
     }
     wrap.appendChild(assigneeField);
@@ -523,48 +657,67 @@
     reviewerSel.appendChild(new Option('— No reviewer —', ''));
     state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); })
       .forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
-    if (prefill.reviewerId) reviewerSel.value = prefill.reviewerId;
     wrap.appendChild(field('Reviewer', reviewerSel));
 
-    var dueInput = el('input'); dueInput.type = 'date';
-    wrap.appendChild(field('Due Date', dueInput));
+    var internalDueInput = el('input'); internalDueInput.type = 'date';
+    wrap.appendChild(field('Internal Due', internalDueInput));
+    var externalDueInput = el('input'); externalDueInput.type = 'date';
+    wrap.appendChild(field('Filing / Client Due (optional)', externalDueInput));
 
     var prioritySel = el('select');
     ['low', 'normal', 'high'].forEach(function (p) { prioritySel.appendChild(new Option(p.charAt(0).toUpperCase() + p.slice(1), p)); });
     prioritySel.value = 'normal';
     wrap.appendChild(field('Priority', prioritySel));
 
-    var descInput = el('textarea'); descInput.rows = 3; descInput.value = prefill.description || '';
+    var descInput = el('textarea'); descInput.rows = 3;
     wrap.appendChild(field('Description / Instructions', descInput));
 
+    function applyTemplate(id) {
+      var t = templateById(id);
+      if (!t) return;
+      if (!titleInput.value.trim() || titleInput.dataset.auto === '1') { titleInput.value = t.title; titleInput.dataset.auto = '1'; }
+      if (t.default_assignee_id && isReviewerOrAdmin()) assigneeSel.value = t.default_assignee_id;
+      if (t.default_reviewer_id) reviewerSel.value = t.default_reviewer_id;
+    }
+    titleInput.addEventListener('input', function () { titleInput.dataset.auto = '0'; });
+    templateSel.addEventListener('change', function () { applyTemplate(templateSel.value); });
+    if (prefill.templateId) { templateSel.value = prefill.templateId; applyTemplate(prefill.templateId); }
+
     var actions = el('div', 'modal-actions');
-    var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Task';
+    var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Work';
     createBtn.addEventListener('click', async function () {
-      if (!titleInput.value.trim()) { toast('Give the task a title.', true); return; }
+      if (!clientSel.value) { toast('Choose a client.', true); return; }
+      if (!titleInput.value.trim()) { toast('Give the work a title.', true); return; }
       if (!assigneeSel.value) { toast('No active staff available to assign — activate someone under Staff first.', true); return; }
       createBtn.disabled = true;
-      var res = await sb.from('tasks').insert({
+      var res = await sb.from('work_items').insert({
+        client_id: clientSel.value,
+        service_template_id: templateSel.value || null,
         title: titleInput.value.trim(),
-        client_id: clientSel.value || null,
-        engagement_id: engSel.value || null,
-        template_id: prefill.templateId || null,
+        period: periodInput.value.trim() || null,
         assignee_id: assigneeSel.value,
         reviewer_id: reviewerSel.value || null,
-        due_date: dueInput.value || null,
+        internal_due_date: internalDueInput.value || null,
+        external_due_date: externalDueInput.value || null,
         priority: prioritySel.value,
         description: descInput.value.trim() || null,
         created_by: state.user.id,
       }).select().single();
-      if (res.error) { createBtn.disabled = false; toast('Could not create task: ' + res.error.message, true); return; }
-      if (prefill.checklistItems && prefill.checklistItems.length) {
-        var rows = prefill.checklistItems.map(function (title, i) { return { task_id: res.data.id, title: title, sort_order: i }; });
-        var clRes = await sb.from('task_checklist_items').insert(rows);
-        if (clRes.error) toast('Task created, but checklist items failed: ' + clRes.error.message, true);
+      if (res.error) { createBtn.disabled = false; toast('Could not create work: ' + res.error.message, true); return; }
+
+      if (templateSel.value) {
+        var itemsRes = await sb.from('service_template_items').select('*').eq('template_id', templateSel.value);
+        var items = (itemsRes.data || []);
+        if (items.length) {
+          var rows = items.map(function (it) { return { work_item_id: res.data.id, stage: it.stage, title: it.title, sort_order: it.sort_order }; });
+          var clRes = await sb.from('work_checklist_items').insert(rows);
+          if (clRes.error) toast('Work created, but checklist items failed: ' + clRes.error.message, true);
+        }
       }
       createBtn.disabled = false;
       closeModal();
-      toast('Task created.');
-      gotoTask(res.data.id);
+      toast('Work created.');
+      gotoWork(res.data.id);
     });
     actions.appendChild(createBtn);
     wrap.appendChild(actions);
@@ -573,123 +726,162 @@
   }
 
   // ============================================================
-  // Task detail
+  // Work Details — Overview + Checklist tabs
   // ============================================================
-  async function renderTaskDetail(id) {
+  async function renderWorkDetail(id) {
     var main = qs('#main');
     clear(main);
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
 
-    var taskRes = await sb.from('tasks').select('*').eq('id', id).single();
-    var checklistRes = await sb.from('task_checklist_items').select('*').eq('task_id', id).order('sort_order');
-    var commentsRes = await sb.from('task_comments').select('*').eq('task_id', id).order('created_at');
+    var workRes = await sb.from('work_items').select('*').eq('id', id).single();
+    var checklistRes = await sb.from('work_checklist_items').select('*').eq('work_item_id', id).order('sort_order');
+    var commentsRes = await sb.from('work_comments').select('*').eq('work_item_id', id).order('created_at');
     clear(main);
 
-    if (taskRes.error || !taskRes.data) {
-      var empty = el('div', 'empty-note'); empty.textContent = "That task doesn't exist, or you don't have access to it.";
+    if (workRes.error || !workRes.data) {
+      var empty = el('div', 'empty-note'); empty.textContent = "That work item doesn't exist, or you don't have access to it.";
       main.appendChild(empty);
-      var back = el('button', 'btn btn-outline btn-sm'); back.type = 'button'; back.textContent = '← Back to My Tasks';
-      back.addEventListener('click', function () { goto('my-tasks'); });
+      var back = el('button', 'btn btn-outline btn-sm'); back.type = 'button'; back.textContent = '← Back to Today';
+      back.addEventListener('click', function () { goto('today'); });
       main.appendChild(back);
       return;
     }
-    var task = taskRes.data;
+    var work = workRes.data;
     var checklist = checklistRes.data || [];
     var comments = commentsRes.data || [];
-    var isMine = task.assignee_id === state.user.id;
+    var isMine = work.assignee_id === state.user.id;
     var canEditFull = isReviewerOrAdmin();
+    var template = templateById(work.service_template_id);
 
     var card = el('div', 'card');
     var head = el('div', 'detail-head');
-    var h1 = el('h1'); h1.style.fontSize = '1.25rem'; h1.textContent = task.title;
-    var badge = el('span', 'badge badge-' + task.status); badge.textContent = STATUS_LABELS[task.status];
-    head.appendChild(h1); head.appendChild(badge);
+    var titleWrap = el('div');
+    var h1 = el('h1'); h1.style.fontSize = '1.25rem'; h1.textContent = work.title;
+    var sub = el('div'); sub.style.cssText = 'color:var(--ink-soft);font-size:.88rem;margin-top:2px;';
+    sub.textContent = clientName(work.client_id) + (work.period ? ' · ' + work.period : '');
+    titleWrap.appendChild(h1); titleWrap.appendChild(sub);
+    var badge = el('span', 'badge badge-' + work.status); badge.textContent = STATUS_LABELS[work.status];
+    head.appendChild(titleWrap); head.appendChild(badge);
     card.appendChild(head);
-    var backLink = el('a'); backLink.href = '#' + (state.view === 'task-detail' ? 'my-tasks' : state.view);
+    var backLink = el('a'); backLink.href = '#today';
     backLink.textContent = '← Back';
     backLink.style.fontSize = '.85rem';
     card.appendChild(backLink);
 
-    var metaGrid = el('div', 'meta-grid');
-    metaGrid.appendChild(metaItem('Client', clientName(task.client_id), 'building'));
-    metaGrid.appendChild(metaItem('Engagement', engagementTitle(task.engagement_id), 'idcard'));
-    metaGrid.appendChild(metaItem('Assignee', profileName(task.assignee_id), 'user', true));
-    metaGrid.appendChild(metaItem('Reviewer', task.reviewer_id ? profileName(task.reviewer_id) : '—', 'user', !!task.reviewer_id));
-    metaGrid.appendChild(metaItem('Due Date', fmtDate(task.due_date), 'calendar'));
-    metaGrid.appendChild(metaItem('Priority', task.priority.charAt(0).toUpperCase() + task.priority.slice(1), 'flag'));
-    card.appendChild(metaGrid);
+    // ---- Tabs ----
+    var tabs = el('div', 'tabs');
+    var overviewBtn = el('button'); overviewBtn.type = 'button'; overviewBtn.textContent = 'Overview'; overviewBtn.classList.add('is-active');
+    var checklistBtn = el('button'); checklistBtn.type = 'button';
+    checklistBtn.textContent = 'Checklist' + (checklist.length ? ' (' + checklist.filter(function (i) { return i.is_done; }).length + '/' + checklist.length + ')' : '');
+    tabs.appendChild(overviewBtn); tabs.appendChild(checklistBtn);
+    card.appendChild(tabs);
 
-    // Status control — employees on their own task get a restricted set of
-    // options (can't self-approve); reviewers/admins get all of them.
+    var overviewPane = el('div');
+    var checklistPane = el('div', 'hidden');
+    card.appendChild(overviewPane); card.appendChild(checklistPane);
+    main.appendChild(card);
+
+    overviewBtn.addEventListener('click', function () {
+      overviewBtn.classList.add('is-active'); checklistBtn.classList.remove('is-active');
+      overviewPane.classList.remove('hidden'); checklistPane.classList.add('hidden');
+    });
+    checklistBtn.addEventListener('click', function () {
+      checklistBtn.classList.add('is-active'); overviewBtn.classList.remove('is-active');
+      checklistPane.classList.remove('hidden'); overviewPane.classList.add('hidden');
+    });
+
+    // ---- Overview pane ----
+    var metaGrid = el('div', 'meta-grid');
+    metaGrid.appendChild(metaItem('Client', clientName(work.client_id), 'building'));
+    metaGrid.appendChild(metaItem('Service', template ? template.title : 'Ad-hoc', 'idcard'));
+    metaGrid.appendChild(metaItem('Assignee', profileName(work.assignee_id), 'user', true));
+    metaGrid.appendChild(metaItem('Reviewer', work.reviewer_id ? profileName(work.reviewer_id) : '—', 'user', !!work.reviewer_id));
+    metaGrid.appendChild(metaItem('Internal Due', fmtDate(work.internal_due_date), 'calendar'));
+    metaGrid.appendChild(metaItem('Filing Due', fmtDate(work.external_due_date), 'calendar'));
+    metaGrid.appendChild(metaItem('Priority', work.priority.charAt(0).toUpperCase() + work.priority.slice(1), 'flag'));
+    overviewPane.appendChild(metaGrid);
+
+    // Status control — employees on their own work get a restricted set of
+    // options (can't self-approve); reviewers/admins get the full,
+    // template-aware set. Setting status to "Waiting for Client" prompts
+    // for the structured waiting details before committing; the reverse
+    // is a one-click "Mark Documents Received."
     if (isMine || canEditFull) {
       var statusWrap = el('div', 'f');
       var statusLabel = el('label'); statusLabel.textContent = 'Status'; statusWrap.appendChild(statusLabel);
       var statusSel = el('select');
-      var allowed = canEditFull ? ALL_STATUSES : EMPLOYEE_STATUSES;
+      var full = ['to_do', 'in_progress', 'waiting_for_client', 'ready_for_review', 'changes_required', 'approved'];
+      if (!template || template.requires_submission) full.push('ready_to_submit');
+      full.push('completed');
+      var allowed = canEditFull ? full : EMPLOYEE_STATUSES.slice();
+      if (allowed.indexOf(work.status) === -1) allowed = [work.status].concat(allowed);
       allowed.forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
-      statusSel.value = task.status;
+      statusSel.value = work.status;
       if (!canEditFull && !isMine) statusSel.disabled = true;
+      var prevStatus = work.status;
       statusSel.addEventListener('change', async function () {
-        var res = await sb.from('tasks').update({ status: statusSel.value }).eq('id', task.id);
-        if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = task.status; return; }
-        task.status = statusSel.value;
-        badge.className = 'badge badge-' + task.status;
-        badge.textContent = STATUS_LABELS[task.status];
-        toast('Status updated.');
+        var newStatus = statusSel.value;
+        if (newStatus === 'waiting_for_client' && prevStatus !== 'waiting_for_client') {
+          openWaitingModal(work, function (waitingFields) {
+            applyStatusChange(newStatus, waitingFields);
+          }, function () { statusSel.value = prevStatus; });
+          return;
+        }
+        var patch = { status: newStatus };
+        if (newStatus !== 'waiting_for_client') { patch.waiting_reason = null; patch.waiting_since = null; patch.follow_up_date = null; }
+        applyStatusChange(newStatus, patch);
       });
+      async function applyStatusChange(newStatus, patch) {
+        var res = await sb.from('work_items').update(patch).eq('id', work.id);
+        if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = prevStatus; return; }
+        toast('Status updated.');
+        renderWorkDetail(id);
+      }
       statusWrap.appendChild(statusSel);
       if (!canEditFull) {
-        var hint = el('span', 'f-hint'); hint.textContent = 'A reviewer sets Completed or Changes Required.';
+        var hint = el('span', 'f-hint'); hint.textContent = 'A reviewer sets Approved, Ready to Submit, or Completed.';
         statusWrap.appendChild(hint);
       }
-      card.appendChild(statusWrap);
+      overviewPane.appendChild(statusWrap);
     }
 
-    if (task.description) {
-      var descP = el('p'); descP.style.whiteSpace = 'pre-wrap'; descP.style.marginTop = '14px'; descP.textContent = task.description;
-      card.appendChild(descP);
+    // Current action — status-dependent context box.
+    if (work.status === 'waiting_for_client') {
+      var actionBox = el('div', 'action-box');
+      var atitle = el('div', 'action-title'); atitle.textContent = 'Current Action'; actionBox.appendChild(atitle);
+      var wf = el('div');
+      wf.innerHTML = '<strong>Waiting for:</strong> ' + (work.waiting_reason ? escapeHtml(work.waiting_reason) : '—');
+      actionBox.appendChild(wf);
+      if (work.waiting_since) { var reqLine = el('div'); reqLine.style.marginTop = '4px'; reqLine.style.fontSize = '.85rem'; reqLine.textContent = 'Requested: ' + fmtDate(work.waiting_since); actionBox.appendChild(reqLine); }
+      if (work.follow_up_date) { var fuLine = el('div'); fuLine.style.marginTop = '2px'; fuLine.style.fontSize = '.85rem'; fuLine.textContent = 'Follow-up: ' + fmtDate(work.follow_up_date); actionBox.appendChild(fuLine); }
+      if (isMine || canEditFull) {
+        var receivedBtn = el('button', 'btn btn-outline btn-sm'); receivedBtn.type = 'button'; receivedBtn.style.marginTop = '12px';
+        receivedBtn.appendChild(icon('check')); receivedBtn.appendChild(document.createTextNode('Mark Documents Received'));
+        receivedBtn.addEventListener('click', async function () {
+          var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null }).eq('id', work.id);
+          if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+          toast('Marked as received — back In Progress.');
+          renderWorkDetail(id);
+        });
+        actionBox.appendChild(receivedBtn);
+      }
+      overviewPane.appendChild(actionBox);
+    } else if (work.status === 'changes_required') {
+      var cBox = el('div', 'action-box');
+      var ctitle = el('div', 'action-title'); ctitle.textContent = 'Current Action'; cBox.appendChild(ctitle);
+      var cLine = el('div'); cLine.textContent = 'The reviewer sent this back — see the comments below for what needs fixing.'; cBox.appendChild(cLine);
+      overviewPane.appendChild(cBox);
     }
-    main.appendChild(card);
 
-    // Checklist
-    var checklistCard = el('div', 'card');
-    var clH2 = el('h2'); clH2.appendChild(icon('check')); clH2.appendChild(document.createTextNode('Checklist')); checklistCard.appendChild(clH2);
-    if (!checklist.length) {
-      var noItems = el('p', 'desc'); noItems.textContent = 'No checklist items yet.';
-      checklistCard.appendChild(noItems);
+    if (work.description) {
+      var descP = el('p'); descP.style.whiteSpace = 'pre-wrap'; descP.style.marginTop = '14px'; descP.textContent = work.description;
+      overviewPane.appendChild(descP);
     }
-    checklist.forEach(function (item) {
-      var row = el('label', 'checklist-item' + (item.is_done ? ' done' : ''));
-      var cb = el('input'); cb.type = 'checkbox'; cb.checked = item.is_done;
-      cb.addEventListener('change', async function () {
-        var res = await sb.from('task_checklist_items').update({ is_done: cb.checked }).eq('id', item.id);
-        if (res.error) { toast('Could not update item: ' + res.error.message, true); cb.checked = !cb.checked; return; }
-        row.classList.toggle('done', cb.checked);
-      });
-      var span = el('span'); span.textContent = item.title;
-      row.appendChild(cb); row.appendChild(span);
-      checklistCard.appendChild(row);
-    });
-    if (isMine || canEditFull) {
-      var addItemRow = el('div', 'f');
-      addItemRow.style.display = 'flex'; addItemRow.style.gap = '8px'; addItemRow.style.marginTop = '12px';
-      var newItemInput = el('input'); newItemInput.type = 'text'; newItemInput.placeholder = 'Add a checklist item…';
-      var addItemBtn = el('button', 'btn btn-outline btn-sm'); addItemBtn.type = 'button'; addItemBtn.textContent = 'Add';
-      addItemBtn.addEventListener('click', async function () {
-        if (!newItemInput.value.trim()) return;
-        var res = await sb.from('task_checklist_items').insert({ task_id: task.id, title: newItemInput.value.trim(), sort_order: checklist.length }).select().single();
-        if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
-        newItemInput.value = '';
-        renderTaskDetail(id);
-      });
-      addItemRow.appendChild(newItemInput); addItemRow.appendChild(addItemBtn);
-      checklistCard.appendChild(addItemRow);
-    }
-    main.appendChild(checklistCard);
 
-    // Comments
-    var commentsCard = el('div', 'card');
+    // Comments — stay attached to the work item and visible on Overview,
+    // since review feedback needs to be seen right where the status is.
+    var commentsCard = el('div', 'card'); commentsCard.style.marginTop = '20px'; commentsCard.style.boxShadow = 'none'; commentsCard.style.border = '1px solid var(--border)';
     var coH2 = el('h2'); coH2.appendChild(icon('message')); coH2.appendChild(document.createTextNode('Comments')); commentsCard.appendChild(coH2);
     if (!comments.length) {
       var noComments = el('p', 'desc'); noComments.textContent = 'No comments yet.';
@@ -710,14 +902,98 @@
     commentBtn.style.marginTop = '8px';
     commentBtn.addEventListener('click', async function () {
       if (!commentInput.value.trim()) return;
-      var res = await sb.from('task_comments').insert({ task_id: task.id, author_id: state.user.id, body: commentInput.value.trim() });
+      var res = await sb.from('work_comments').insert({ work_item_id: work.id, author_id: state.user.id, body: commentInput.value.trim() });
       if (res.error) { toast('Could not post comment: ' + res.error.message, true); return; }
       commentInput.value = '';
-      renderTaskDetail(id);
+      renderWorkDetail(id);
     });
     commentsCard.appendChild(commentInput);
     commentsCard.appendChild(commentBtn);
-    main.appendChild(commentsCard);
+    overviewPane.appendChild(commentsCard);
+
+    // ---- Checklist pane ----
+    var anyStage = false;
+    STAGES.forEach(function (stage) {
+      var stageItems = checklist.filter(function (i) { return i.stage === stage; });
+      if (!stageItems.length) return;
+      anyStage = true;
+      var h3 = el('div', 'checklist-stage'); h3.textContent = STAGE_LABELS[stage]; checklistPane.appendChild(h3);
+      stageItems.forEach(function (item) { checklistPane.appendChild(checklistRow(item, id)); });
+    });
+    if (!anyStage) {
+      var noItems = el('p', 'desc'); noItems.textContent = 'No checklist items yet.';
+      checklistPane.appendChild(noItems);
+    }
+    if (isMine || canEditFull) {
+      var addItemRow = el('div');
+      addItemRow.style.cssText = 'display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;';
+      var newItemInput = el('input'); newItemInput.type = 'text'; newItemInput.placeholder = 'Add a checklist item…';
+      newItemInput.style.flex = '1'; newItemInput.style.minWidth = '160px';
+      var stageSel = el('select'); stageSel.style.width = 'auto';
+      STAGES.forEach(function (s) { stageSel.appendChild(new Option(STAGE_LABELS[s], s)); });
+      var addItemBtn = el('button', 'btn btn-outline btn-sm'); addItemBtn.type = 'button'; addItemBtn.textContent = 'Add';
+      addItemBtn.addEventListener('click', async function () {
+        if (!newItemInput.value.trim()) return;
+        var stageCount = checklist.filter(function (i) { return i.stage === stageSel.value; }).length;
+        var res = await sb.from('work_checklist_items').insert({ work_item_id: work.id, stage: stageSel.value, title: newItemInput.value.trim(), sort_order: stageCount });
+        if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
+        newItemInput.value = '';
+        renderWorkDetail(id);
+      });
+      addItemRow.appendChild(newItemInput); addItemRow.appendChild(stageSel); addItemRow.appendChild(addItemBtn);
+      checklistPane.appendChild(addItemRow);
+    }
+  }
+
+  function checklistRow(item, workId) {
+    var row = el('label', 'checklist-item' + (item.is_done ? ' done' : ''));
+    var cb = el('input'); cb.type = 'checkbox'; cb.checked = item.is_done;
+    cb.addEventListener('change', async function () {
+      var res = await sb.from('work_checklist_items').update({ is_done: cb.checked }).eq('id', item.id);
+      if (res.error) { toast('Could not update item: ' + res.error.message, true); cb.checked = !cb.checked; return; }
+      row.classList.toggle('done', cb.checked);
+    });
+    var span = el('span'); span.textContent = item.title;
+    row.appendChild(cb); row.appendChild(span);
+    return row;
+  }
+
+  // Small inline prompt for the structured "waiting for client" fields —
+  // reason + follow-up date — captured up front rather than left as a bare
+  // status flip, so Today's attention list and the manager view (later
+  // phase) both have something real to show.
+  function openWaitingModal(work, onSave, onCancel) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Waiting for Client';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Cancel';
+    closeBtn.addEventListener('click', function () { closeModal(); onCancel(); });
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var reasonInput = el('input'); reasonInput.type = 'text'; reasonInput.placeholder = 'e.g. Bank statement, purchase invoices';
+    wrap.appendChild(field('Waiting for', reasonInput));
+    var followUpInput = el('input'); followUpInput.type = 'date';
+    wrap.appendChild(field('Follow-up date (optional)', followUpInput));
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', function () {
+      closeModal();
+      onSave({
+        status: 'waiting_for_client',
+        waiting_reason: reasonInput.value.trim() || null,
+        waiting_since: new Date().toISOString().slice(0, 10),
+        follow_up_date: followUpInput.value || null,
+      });
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
   }
 
   function metaItem(label, value, iconName, showAvatar) {
@@ -731,84 +1007,6 @@
     body.appendChild(l); body.appendChild(v);
     wrap.appendChild(body);
     return wrap;
-  }
-
-  // ============================================================
-  // Personal to-do list — private scratchpad per user, not tied to any
-  // client/task/reviewer. RLS on personal_todos restricts every row to its
-  // owner (auth.uid() = user_id), so unlike client credentials this needs
-  // no SECURITY DEFINER function — plain table access is already scoped
-  // correctly, even for admins looking at their own list.
-  // ============================================================
-  async function renderTodoPage(main) {
-    var head = el('div', 'page-head');
-    var h1 = el('h1'); h1.textContent = 'My To-Do List'; head.appendChild(h1);
-    main.appendChild(head);
-
-    var note = el('p', 'desc');
-    note.style.marginTop = '-10px'; note.style.marginBottom = '16px';
-    note.textContent = "Private to you — nobody else on the team can see this list.";
-    main.appendChild(note);
-
-    var card = el('div', 'card');
-
-    var addRow = el('div');
-    addRow.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;';
-    var input = el('input'); input.type = 'text'; input.placeholder = 'Add something to remember…';
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('Add'));
-    addRow.appendChild(input); addRow.appendChild(addBtn);
-    card.appendChild(addRow);
-
-    var listWrap = el('div');
-    card.appendChild(listWrap);
-    main.appendChild(card);
-
-    async function refresh() {
-      clear(listWrap);
-      var loading = el('p', 'desc'); loading.textContent = 'Loading…'; listWrap.appendChild(loading);
-      var res = await sb.from('personal_todos').select('*').eq('user_id', state.user.id)
-        .order('is_done').order('created_at', { ascending: false });
-      clear(listWrap);
-      if (res.error) { toast('Could not load your list: ' + res.error.message, true); return; }
-      var items = res.data || [];
-      if (!items.length) {
-        var empty = el('p', 'desc'); empty.textContent = 'Nothing on your list yet.'; listWrap.appendChild(empty);
-        return;
-      }
-      items.forEach(function (t) {
-        var row = el('label', 'checklist-item' + (t.is_done ? ' done' : ''));
-        var cb = el('input'); cb.type = 'checkbox'; cb.checked = t.is_done;
-        cb.addEventListener('change', async function () {
-          var r = await sb.from('personal_todos').update({ is_done: cb.checked }).eq('id', t.id);
-          if (r.error) { toast('Could not update: ' + r.error.message, true); cb.checked = !cb.checked; return; }
-          row.classList.toggle('done', cb.checked);
-        });
-        var span = el('span'); span.textContent = t.text;
-        var delBtn = el('button', 'todo-del'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Delete';
-        delBtn.addEventListener('click', async function (e) {
-          e.preventDefault();
-          var r = await sb.from('personal_todos').delete().eq('id', t.id);
-          if (r.error) { toast('Could not delete: ' + r.error.message, true); return; }
-          refresh();
-        });
-        row.appendChild(cb); row.appendChild(span); row.appendChild(delBtn);
-        listWrap.appendChild(row);
-      });
-    }
-    await refresh();
-
-    async function addItem() {
-      var text = input.value.trim();
-      if (!text) return;
-      addBtn.disabled = true;
-      var r = await sb.from('personal_todos').insert({ user_id: state.user.id, text: text });
-      addBtn.disabled = false;
-      if (r.error) { toast('Could not add: ' + r.error.message, true); return; }
-      input.value = '';
-      refresh();
-    }
-    addBtn.addEventListener('click', addItem);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
   }
 
   // ============================================================
@@ -1052,107 +1250,29 @@
   }
 
   // ============================================================
-  // Admin: Engagements
-  // ============================================================
-  function renderEngagements(main) {
-    var head = el('div', 'page-head');
-    var h1 = el('h1'); h1.textContent = 'Engagements'; head.appendChild(h1);
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Engagement'));
-    addBtn.addEventListener('click', openNewEngagementModal);
-    head.appendChild(addBtn);
-    main.appendChild(head);
-
-    var card = el('div', 'card');
-    var table = el('table');
-    var thead = el('thead'); var trh = el('tr');
-    ['Title', 'Client', 'Status'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
-    thead.appendChild(trh); table.appendChild(thead);
-    var tbody = el('tbody');
-    var ENGAGEMENT_STATUSES = ['active', 'on_hold', 'completed'];
-    var ENGAGEMENT_STATUS_LABELS = { active: 'Active', on_hold: 'On Hold', completed: 'Completed' };
-    state.engagements.forEach(function (e) {
-      var tr = el('tr', e.status === 'completed' ? 'inactive-row' : '');
-      var tdTitle = el('td'); tdTitle.textContent = e.title;
-      var tdClient = el('td'); tdClient.textContent = clientName(e.client_id);
-      var tdStatus = el('td');
-      var statusSel = el('select', 'role-select');
-      ENGAGEMENT_STATUSES.forEach(function (s) { statusSel.appendChild(new Option(ENGAGEMENT_STATUS_LABELS[s], s)); });
-      statusSel.value = e.status || 'active';
-      statusSel.addEventListener('change', async function () {
-        var res = await sb.from('engagements').update({ status: statusSel.value }).eq('id', e.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); statusSel.value = e.status; return; }
-        e.status = statusSel.value;
-        toast(e.title + ' is now ' + ENGAGEMENT_STATUS_LABELS[e.status] + '.');
-        tr.className = e.status === 'completed' ? 'inactive-row' : '';
-      });
-      tdStatus.appendChild(statusSel);
-      tr.appendChild(tdTitle); tr.appendChild(tdClient); tr.appendChild(tdStatus);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    card.appendChild(table);
-    if (!state.engagements.length) {
-      var empty = el('p', 'desc'); empty.textContent = 'No engagements yet.'; card.appendChild(empty);
-    }
-    main.appendChild(card);
-  }
-
-  function openNewEngagementModal() {
-    var wrap = el('div');
-    var head = el('div', 'modal-head');
-    var h2 = el('h2'); h2.textContent = 'New Engagement';
-    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
-    closeBtn.addEventListener('click', closeModal);
-    head.appendChild(h2); head.appendChild(closeBtn);
-    wrap.appendChild(head);
-
-    var clientSel = el('select');
-    state.clients.filter(function (c) { return c.is_active; }).forEach(function (c) { clientSel.appendChild(new Option(c.name, c.id)); });
-    wrap.appendChild(field('Client', clientSel));
-    var titleInput = el('input'); titleInput.type = 'text';
-    wrap.appendChild(field('Engagement Title', titleInput));
-    var descInput = el('textarea'); descInput.rows = 2;
-    wrap.appendChild(field('Description (optional)', descInput));
-
-    var actions = el('div', 'modal-actions');
-    var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Engagement';
-    createBtn.addEventListener('click', async function () {
-      if (!titleInput.value.trim()) { toast('Give the engagement a title.', true); return; }
-      if (!clientSel.value) { toast('Choose a client first — add one under Clients if none exist yet.', true); return; }
-      var res = await sb.from('engagements').insert({ client_id: clientSel.value, title: titleInput.value.trim(), description: descInput.value.trim() || null });
-      if (res.error) { toast('Could not create engagement: ' + res.error.message, true); return; }
-      closeModal();
-      toast('Engagement created.');
-      await loadEngagements();
-      render();
-    });
-    actions.appendChild(createBtn);
-    wrap.appendChild(actions);
-    openModal(wrap);
-  }
-
-  // ============================================================
-  // Admin: Task Templates (definitions only — generating task instances
+  // Admin: Templates (service definitions — recurring work generation
   // from these on a schedule is a later addition, not built yet)
   // ============================================================
   async function renderTemplates(main) {
     var head = el('div', 'page-head');
-    var h1 = el('h1'); h1.textContent = 'Task Templates'; head.appendChild(h1);
-    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Template'));
-    addBtn.addEventListener('click', openNewTemplateModal);
-    head.appendChild(addBtn);
+    var h1 = el('h1'); h1.textContent = 'Templates'; head.appendChild(h1);
+    if (isAdmin()) {
+      var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Template'));
+      addBtn.addEventListener('click', openNewTemplateModal);
+      head.appendChild(addBtn);
+    }
     main.appendChild(head);
 
     var note = el('div', 'card');
     var p = el('p', 'desc');
     p.style.margin = '0';
-    p.textContent = 'Templates describe recurring work (e.g. "Monthly Bookkeeping Close"). Generating tasks automatically on a schedule isn\'t built yet — "Use This Template" fills in a new task and its checklist for you, one client at a time.';
+    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). Generating work automatically on a schedule isn\'t built yet — "Use This Template" fills in a new work item and its checklist for you, one client at a time.';
     note.appendChild(p);
     main.appendChild(note);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
-    var res = await sb.from('task_templates').select('*, task_template_items(*)').order('title');
+    var res = await sb.from('service_templates').select('*, service_template_items(*)').order('title');
     main.removeChild(loading);
     if (res.error) { toast('Could not load templates: ' + res.error.message, true); return; }
     var templates = res.data || [];
@@ -1161,46 +1281,55 @@
       main.appendChild(empty);
       return;
     }
-    templates.forEach(function (t) {
-      var card = el('div', 'card');
-      var h2 = el('h2'); h2.textContent = t.title; card.appendChild(h2);
-      var meta = el('p', 'desc');
-      meta.textContent = (t.recurrence !== 'none' ? 'Recurs ' + t.recurrence : 'One-off') +
-        (t.default_assignee_id ? ' · Default assignee: ' + profileName(t.default_assignee_id) : '');
-      card.appendChild(meta);
-      if (t.description) { var d = el('p'); d.textContent = t.description; card.appendChild(d); }
-      var items = t.task_template_items || [];
-      if (items.length) {
-        var ul = el('ul'); ul.style.paddingLeft = '18px'; ul.style.listStyle = 'disc';
-        items.sort(function (a, b) { return a.sort_order - b.sort_order; }).forEach(function (it) {
-          var li = el('li'); li.textContent = it.title; ul.appendChild(li);
-        });
-        card.appendChild(ul);
-      }
-      var useBtn = el('button', 'btn btn-outline btn-sm');
-      useBtn.type = 'button';
-      useBtn.style.marginTop = '14px';
-      useBtn.appendChild(icon('plus'));
-      useBtn.appendChild(document.createTextNode('Use This Template'));
-      useBtn.addEventListener('click', function () {
-        openNewTaskModal({
-          title: t.title,
-          description: t.description,
-          assigneeId: t.default_assignee_id,
-          reviewerId: t.default_reviewer_id,
-          templateId: t.id,
-          checklistItems: items.sort(function (a, b) { return a.sort_order - b.sort_order; }).map(function (it) { return it.title; }),
-        });
-      });
-      card.appendChild(useBtn);
-      main.appendChild(card);
+
+    TEMPLATE_CATEGORIES.forEach(function (cat) {
+      var inCat = templates.filter(function (t) { return t.category === cat; });
+      if (!inCat.length) return;
+      var h2 = el('div', 'section-h'); h2.style.marginTop = '22px'; h2.textContent = cat;
+      main.appendChild(h2);
+      inCat.forEach(function (t) { main.appendChild(templateCard(t)); });
     });
+    // Anything with an unrecognized/legacy category still shows up, grouped last.
+    var other = templates.filter(function (t) { return TEMPLATE_CATEGORIES.indexOf(t.category) === -1; });
+    if (other.length) {
+      var h2b = el('div', 'section-h'); h2b.style.marginTop = '22px'; h2b.textContent = 'Other';
+      main.appendChild(h2b);
+      other.forEach(function (t) { main.appendChild(templateCard(t)); });
+    }
+  }
+
+  function templateCard(t) {
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.textContent = t.title; card.appendChild(h2);
+    var meta = el('p', 'desc');
+    meta.textContent = (t.recurrence !== 'none' ? 'Recurs ' + t.recurrence : 'One-off') +
+      (t.requires_submission ? ' · Includes a submission step' : '') +
+      (t.default_assignee_id ? ' · Default assignee: ' + profileName(t.default_assignee_id) : '');
+    card.appendChild(meta);
+    if (t.description) { var d = el('p'); d.textContent = t.description; card.appendChild(d); }
+    var items = t.service_template_items || [];
+    STAGES.forEach(function (stage) {
+      var stageItems = items.filter(function (i) { return i.stage === stage; }).sort(function (a, b) { return a.sort_order - b.sort_order; });
+      if (!stageItems.length) return;
+      var stageLabel = el('div', 'checklist-stage'); stageLabel.textContent = STAGE_LABELS[stage]; card.appendChild(stageLabel);
+      var ul = el('ul'); ul.style.paddingLeft = '18px'; ul.style.listStyle = 'disc'; ul.style.margin = '0';
+      stageItems.forEach(function (it) { var li = el('li'); li.textContent = it.title; ul.appendChild(li); });
+      card.appendChild(ul);
+    });
+    var useBtn = el('button', 'btn btn-outline btn-sm');
+    useBtn.type = 'button';
+    useBtn.style.marginTop = '14px';
+    useBtn.appendChild(icon('plus'));
+    useBtn.appendChild(document.createTextNode('Use This Template'));
+    useBtn.addEventListener('click', function () { openNewWorkModal({ templateId: t.id }); });
+    card.appendChild(useBtn);
+    return card;
   }
 
   function openNewTemplateModal() {
     var wrap = el('div');
     var head = el('div', 'modal-head');
-    var h2 = el('h2'); h2.textContent = 'New Task Template';
+    var h2 = el('h2'); h2.textContent = 'New Template';
     var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
     closeBtn.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(closeBtn);
@@ -1208,29 +1337,65 @@
 
     var titleInput = el('input'); titleInput.type = 'text';
     wrap.appendChild(field('Title', titleInput));
+
+    var catSel = el('select');
+    TEMPLATE_CATEGORIES.forEach(function (c) { catSel.appendChild(new Option(c, c)); });
+    wrap.appendChild(field('Category', catSel));
+
     var descInput = el('textarea'); descInput.rows = 2;
     wrap.appendChild(field('Description (optional)', descInput));
+
     var recurSel = el('select');
     [['none', 'One-off'], ['monthly', 'Monthly'], ['quarterly', 'Quarterly'], ['yearly', 'Yearly']]
       .forEach(function (r) { recurSel.appendChild(new Option(r[1], r[0])); });
     wrap.appendChild(field('Recurrence', recurSel));
-    var itemsInput = el('textarea'); itemsInput.rows = 4; itemsInput.placeholder = 'One checklist item per line';
-    wrap.appendChild(field('Checklist Items (one per line, optional)', itemsInput));
+
+    var submissionWrap = el('div', 'f');
+    var submissionLabel = el('label');
+    var submissionCb = el('input'); submissionCb.type = 'checkbox'; submissionCb.style.width = 'auto'; submissionCb.style.marginRight = '8px';
+    submissionLabel.appendChild(submissionCb);
+    submissionLabel.appendChild(document.createTextNode('Requires a submission step (adds "Ready to Submit" before Completed)'));
+    submissionWrap.appendChild(submissionLabel);
+    wrap.appendChild(submissionWrap);
+
+    var defaultAssigneeSel = el('select');
+    defaultAssigneeSel.appendChild(new Option('— No default —', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { defaultAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    wrap.appendChild(field('Default Assignee (optional)', defaultAssigneeSel));
+
+    var defaultReviewerSel = el('select');
+    defaultReviewerSel.appendChild(new Option('— No default —', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { defaultReviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    wrap.appendChild(field('Default Reviewer (optional)', defaultReviewerSel));
+
+    var prepInput = el('textarea'); prepInput.rows = 3; prepInput.placeholder = 'One item per line';
+    wrap.appendChild(field('Preparation Checklist (optional)', prepInput));
+    var reviewInput = el('textarea'); reviewInput.rows = 2; reviewInput.placeholder = 'One item per line';
+    wrap.appendChild(field('Review Checklist (optional)', reviewInput));
+    var submissionInput = el('textarea'); submissionInput.rows = 2; submissionInput.placeholder = 'One item per line';
+    wrap.appendChild(field('Submission Checklist (optional)', submissionInput));
 
     var actions = el('div', 'modal-actions');
     var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Template';
     createBtn.addEventListener('click', async function () {
       if (!titleInput.value.trim()) { toast('Give the template a title.', true); return; }
-      var res = await sb.from('task_templates').insert({
+      var res = await sb.from('service_templates').insert({
         title: titleInput.value.trim(),
+        category: catSel.value,
         description: descInput.value.trim() || null,
         recurrence: recurSel.value,
+        requires_submission: submissionCb.checked,
+        default_assignee_id: defaultAssigneeSel.value || null,
+        default_reviewer_id: defaultReviewerSel.value || null,
       }).select().single();
       if (res.error) { toast('Could not create template: ' + res.error.message, true); return; }
-      var lines = itemsInput.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-      if (lines.length) {
-        var rows = lines.map(function (title, i) { return { template_id: res.data.id, title: title, sort_order: i }; });
-        var itemsRes = await sb.from('task_template_items').insert(rows);
+      var rows = [];
+      [['preparation', prepInput], ['review', reviewInput], ['submission', submissionInput]].forEach(function (pair) {
+        var lines = pair[1].value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+        lines.forEach(function (title, i) { rows.push({ template_id: res.data.id, stage: pair[0], title: title, sort_order: i }); });
+      });
+      if (rows.length) {
+        var itemsRes = await sb.from('service_template_items').insert(rows);
         if (itemsRes.error) toast('Template created, but checklist items failed: ' + itemsRes.error.message, true);
       }
       closeModal();
@@ -1240,6 +1405,84 @@
     actions.appendChild(createBtn);
     wrap.appendChild(actions);
     openModal(wrap);
+  }
+
+  // ============================================================
+  // Personal to-do list — private scratchpad per user, not tied to any
+  // client/work item/reviewer. RLS on personal_todos restricts every row to
+  // its owner (auth.uid() = user_id), so unlike client credentials this
+  // needs no SECURITY DEFINER function — plain table access is already
+  // scoped correctly, even for admins looking at their own list.
+  // ============================================================
+  async function renderTodoPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'My To-Do List'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var note = el('p', 'desc');
+    note.style.marginTop = '-10px'; note.style.marginBottom = '16px';
+    note.textContent = "Private to you — nobody else on the team can see this list.";
+    main.appendChild(note);
+
+    var card = el('div', 'card');
+
+    var addRow = el('div');
+    addRow.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;';
+    var input = el('input'); input.type = 'text'; input.placeholder = 'Add something to remember…';
+    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('Add'));
+    addRow.appendChild(input); addRow.appendChild(addBtn);
+    card.appendChild(addRow);
+
+    var listWrap = el('div');
+    card.appendChild(listWrap);
+    main.appendChild(card);
+
+    async function refresh() {
+      clear(listWrap);
+      var loading = el('p', 'desc'); loading.textContent = 'Loading…'; listWrap.appendChild(loading);
+      var res = await sb.from('personal_todos').select('*').eq('user_id', state.user.id)
+        .order('is_done').order('created_at', { ascending: false });
+      clear(listWrap);
+      if (res.error) { toast('Could not load your list: ' + res.error.message, true); return; }
+      var items = res.data || [];
+      if (!items.length) {
+        var empty = el('p', 'desc'); empty.textContent = 'Nothing on your list yet.'; listWrap.appendChild(empty);
+        return;
+      }
+      items.forEach(function (t) {
+        var row = el('label', 'checklist-item' + (t.is_done ? ' done' : ''));
+        var cb = el('input'); cb.type = 'checkbox'; cb.checked = t.is_done;
+        cb.addEventListener('change', async function () {
+          var r = await sb.from('personal_todos').update({ is_done: cb.checked }).eq('id', t.id);
+          if (r.error) { toast('Could not update: ' + r.error.message, true); cb.checked = !cb.checked; return; }
+          row.classList.toggle('done', cb.checked);
+        });
+        var span = el('span'); span.textContent = t.text;
+        var delBtn = el('button', 'todo-del'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Delete';
+        delBtn.addEventListener('click', async function (e) {
+          e.preventDefault();
+          var r = await sb.from('personal_todos').delete().eq('id', t.id);
+          if (r.error) { toast('Could not delete: ' + r.error.message, true); return; }
+          refresh();
+        });
+        row.appendChild(cb); row.appendChild(span); row.appendChild(delBtn);
+        listWrap.appendChild(row);
+      });
+    }
+    await refresh();
+
+    async function addItem() {
+      var text = input.value.trim();
+      if (!text) return;
+      addBtn.disabled = true;
+      var r = await sb.from('personal_todos').insert({ user_id: state.user.id, text: text });
+      addBtn.disabled = false;
+      if (r.error) { toast('Could not add: ' + r.error.message, true); return; }
+      input.value = '';
+      refresh();
+    }
+    addBtn.addEventListener('click', addItem);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') addItem(); });
   }
 
   // ============================================================
@@ -1305,17 +1548,17 @@
     main.appendChild(card);
   }
 
-  // Deactivating someone who still has open work would silently strand
-  // those tasks: the person can no longer log in (enterApp() checks
-  // is_active), but the tasks stay assigned to them, invisible in anyone's
-  // "My Tasks" except an admin/reviewer's firm-wide views. This checks for
-  // open tasks first and, if there are any, makes reassignment part of the
-  // deactivation instead of an afterthought someone has to remember later.
+  // Deactivating someone who still has open work would silently strand it:
+  // the person can no longer log in (enterApp() checks is_active), but the
+  // work stays assigned to them, invisible in anyone's "My Work" except an
+  // admin/reviewer's firm-wide views. This checks for open work first and,
+  // if there is any, makes reassignment part of the deactivation instead of
+  // an afterthought someone has to remember later.
   async function confirmDeactivateStaff(p2) {
-    var res = await sb.from('tasks').select('*').eq('assignee_id', p2.id).neq('status', 'completed');
-    if (res.error) { toast('Could not check their open tasks: ' + res.error.message, true); return; }
-    var openTasks = res.data || [];
-    if (!openTasks.length) {
+    var res = await sb.from('work_items').select('*').eq('assignee_id', p2.id).neq('status', 'completed');
+    if (res.error) { toast('Could not check their open work: ' + res.error.message, true); return; }
+    var openWork = res.data || [];
+    if (!openWork.length) {
       var directRes = await sb.from('profiles').update({ is_active: false }).eq('id', p2.id);
       if (directRes.error) { toast('Could not update: ' + directRes.error.message, true); return; }
       await loadProfiles();
@@ -1332,11 +1575,11 @@
     wrap.appendChild(head);
 
     var p = el('p', 'desc');
-    p.textContent = p2.full_name + ' has ' + openTasks.length + ' open task' + (openTasks.length === 1 ? '' : 's') + '. Once deactivated they can\'t log in, so those tasks need a new assignee first.';
+    p.textContent = p2.full_name + ' has ' + openWork.length + ' open item' + (openWork.length === 1 ? '' : 's') + '. Once deactivated they can\'t log in, so those need a new assignee first.';
     wrap.appendChild(p);
 
     var list = el('ul'); list.style.paddingLeft = '18px'; list.style.listStyle = 'disc'; list.style.marginBottom = '14px';
-    openTasks.forEach(function (t) { var li = el('li'); li.textContent = t.title; list.appendChild(li); });
+    openWork.forEach(function (w) { var li = el('li'); li.textContent = w.title; list.appendChild(li); });
     wrap.appendChild(list);
 
     var reassignSel = el('select');
@@ -1350,13 +1593,13 @@
     confirmBtn.addEventListener('click', async function () {
       if (!reassignSel.value) { toast('No other active staff to reassign to.', true); return; }
       confirmBtn.disabled = true;
-      var reassignRes = await sb.from('tasks').update({ assignee_id: reassignSel.value }).eq('assignee_id', p2.id).neq('status', 'completed');
-      if (reassignRes.error) { confirmBtn.disabled = false; toast('Could not reassign tasks: ' + reassignRes.error.message, true); return; }
+      var reassignRes = await sb.from('work_items').update({ assignee_id: reassignSel.value }).eq('assignee_id', p2.id).neq('status', 'completed');
+      if (reassignRes.error) { confirmBtn.disabled = false; toast('Could not reassign work: ' + reassignRes.error.message, true); return; }
       var deactivateRes = await sb.from('profiles').update({ is_active: false }).eq('id', p2.id);
       confirmBtn.disabled = false;
-      if (deactivateRes.error) { toast('Tasks reassigned, but deactivation failed: ' + deactivateRes.error.message, true); return; }
+      if (deactivateRes.error) { toast('Work reassigned, but deactivation failed: ' + deactivateRes.error.message, true); return; }
       closeModal();
-      toast(openTasks.length + ' task' + (openTasks.length === 1 ? '' : 's') + ' reassigned; ' + p2.full_name + ' deactivated.');
+      toast(openWork.length + ' item' + (openWork.length === 1 ? '' : 's') + ' reassigned; ' + p2.full_name + ' deactivated.');
       await loadProfiles();
       render();
     });

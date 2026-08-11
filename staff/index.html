@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Maven Consultancy — Staff Portal</title>
+<title>Maven Work Desk</title>
 <link rel="icon" type="image/png" href="/images/logo-icon.png">
 <style>
   :root{
@@ -12,6 +12,7 @@
     --gold-500:#C79A3E;--gold-600:#A87D2E;--gold-700:#8F6B22;--gold-100:#F7EFDC;
     --mist:#F4F6F8;--mist-dark:#ECEFF3;--border:#DEE3E9;--ink:#1C2530;--ink-soft:#4B5A6B;
     --red:#B3261E;--red-soft:#FBEAE9;--green:#1E7B3E;--green-soft:#E9F6ED;--amber:#9A6B00;--amber-soft:#FBF1DC;
+    --teal:#0F766E;--teal-soft:#E6F5F3;
     --font:'Segoe UI',-apple-system,Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;}
@@ -101,23 +102,56 @@
   .task-row .due .ic{width:14px;height:14px;}
   .task-row .due.overdue{color:var(--red);font-weight:700;}
   .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap;}
-  .badge-not_started{background:var(--mist-dark);color:var(--ink-soft);}
+  .badge-to_do{background:var(--mist-dark);color:var(--ink-soft);}
   .badge-in_progress{background:#E4EEFB;color:#1D4ED8;}
   .badge-waiting_for_client{background:var(--amber-soft);color:var(--amber);}
   .badge-ready_for_review{background:#EDE4FB;color:#6D28D9;}
   .badge-changes_required{background:var(--red-soft);color:var(--red);}
+  .badge-approved{background:var(--teal-soft);color:var(--teal);}
   .badge-completed{background:var(--green-soft);color:var(--green);}
+  .badge-ready_to_submit{background:var(--gold-100);color:var(--gold-700);}
   .badge-type{background:var(--gold-100);color:var(--gold-700);}
   .empty-note{color:var(--ink-soft);font-size:.9rem;padding:24px 16px;text-align:center;}
   .empty-note .ic{display:block;margin:0 auto 10px;color:var(--border);width:32px;height:32px;}
 
-  /* ---- Task detail ---- */
+  /* ---- Today dashboard ---- */
+  .greeting{font-size:1.5rem;margin-bottom:2px;}
+  .greeting-date{color:var(--ink-soft);font-size:.92rem;margin-bottom:20px;}
+  .today-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:26px;}
+  .today-stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .today-stat .n{font-size:1.7rem;font-weight:800;color:var(--navy-950);line-height:1;}
+  .today-stat .n.n-red{color:var(--red);}
+  .today-stat .n.n-amber{color:var(--amber);}
+  .today-stat .n.n-purple{color:#6D28D9;}
+  .today-stat .l{font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-top:5px;}
+  .section-h{font-size:.95rem;font-weight:700;color:var(--navy-950);margin:0 0 12px;}
+  .attention-row{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--red);border-radius:10px;padding:13px 16px;margin-bottom:8px;cursor:pointer;}
+  .attention-row:hover{box-shadow:0 4px 14px -6px rgba(16,42,76,.18);}
+  .attention-row.reason-waiting{border-left-color:var(--amber);}
+  .attention-row.reason-changes{border-left-color:#6D28D9;}
+  .attention-row .body{flex:1;min-width:0;}
+  .attention-row .client{font-size:.95rem;font-weight:700;color:var(--navy-950);}
+  .attention-row .svc{font-size:.82rem;color:var(--ink-soft);margin-top:1px;}
+  .attention-row .reason{font-size:.8rem;font-weight:700;margin-top:5px;}
+  .attention-row.reason-waiting .reason{color:var(--amber);}
+  .attention-row.reason-changes .reason{color:#6D28D9;}
+  .attention-row:not(.reason-waiting):not(.reason-changes) .reason{color:var(--red);}
+  .attention-row .action{font-size:.85rem;font-weight:700;color:var(--gold-700);white-space:nowrap;}
+
+  /* ---- Work detail ---- */
   .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:6px;}
   .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;margin:18px 0;}
   .meta-item{display:flex;align-items:flex-start;gap:10px;}
   .meta-item .ic{color:var(--gold-600);margin-top:2px;}
   .meta-item label{display:block;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:3px;}
   .meta-item .value{display:flex;align-items:center;gap:7px;font-size:.94rem;color:var(--navy-950);}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:18px 0 20px;}
+  .tabs button{background:none;border:none;padding:10px 4px;margin-right:22px;font-size:.9rem;font-weight:700;color:var(--ink-soft);border-bottom:2px solid transparent;border-radius:0;}
+  .tabs button.is-active{color:var(--navy-950);border-bottom-color:var(--gold-500);}
+  .action-box{background:var(--mist);border:1px solid var(--border);border-radius:10px;padding:16px;margin:16px 0;}
+  .action-box .action-title{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;}
+  .checklist-stage{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin:18px 0 4px;}
+  .checklist-stage:first-child{margin-top:0;}
   .checklist-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
   .checklist-item input[type=checkbox]{width:18px;height:18px;flex:0 0 auto;accent-color:var(--gold-600);}
   .checklist-item span{flex:1;font-size:.92rem;}
@@ -173,7 +207,7 @@
 <div id="loginScreen">
   <div class="login-card">
     <div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Consultancy</span></div>
-    <h1>Staff Portal</h1>
+    <h1>Work Desk</h1>
     <p class="sub">Sign in with the email and password you were given.</p>
     <div id="loginMsg"></div>
     <div class="f">
@@ -191,7 +225,7 @@
 
 <div id="app" class="hidden">
   <header id="topbar">
-    <div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Staff Portal</span></div>
+    <div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Work Desk</span></div>
     <div class="spacer"></div>
     <div class="who"><strong id="whoName">—</strong><span id="whoRole">—</span></div>
     <button class="btn btn-outline btn-sm" id="logoutBtn">Sign Out</button>
