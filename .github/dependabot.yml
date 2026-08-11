@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # npm dependencies (js-yaml, marked, wrangler)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # GitHub Actions versions used in .github/workflows/deploy.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
