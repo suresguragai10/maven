@@ -933,10 +933,17 @@
     var badge = el('span', 'badge badge-' + work.status); badge.textContent = STATUS_LABELS[work.status];
     head.appendChild(titleWrap); head.appendChild(badge);
     card.appendChild(head);
+    var headRow2 = el('div'); headRow2.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;';
     var backLink = el('a'); backLink.href = '#today';
     backLink.textContent = '← Back';
     backLink.style.fontSize = '.85rem';
-    card.appendChild(backLink);
+    headRow2.appendChild(backLink);
+    if (isMine || canEditFull) {
+      var editWorkBtn = el('button', 'btn btn-outline btn-sm'); editWorkBtn.type = 'button'; editWorkBtn.textContent = 'Edit';
+      editWorkBtn.addEventListener('click', function () { openEditWorkModal(work); });
+      headRow2.appendChild(editWorkBtn);
+    }
+    card.appendChild(headRow2);
 
     // ---- Tabs ----
     var tabs = el('div', 'tabs');
@@ -1116,6 +1123,49 @@
       addItemRow.appendChild(newItemInput); addItemRow.appendChild(stageSel); addItemRow.appendChild(addItemBtn);
       checklistPane.appendChild(addItemRow);
     }
+  }
+
+  // Lets a title/period/due-date typo (or a bulk-generated item that still
+  // needs its dates filled in — see "Generate Period Work") be fixed
+  // without recreating the work item.
+  function openEditWorkModal(work) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Edit Work';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var titleInput = el('input'); titleInput.type = 'text'; titleInput.value = work.title;
+    wrap.appendChild(field('Title', titleInput));
+    var periodInput = el('input'); periodInput.type = 'text'; periodInput.value = work.period || ''; periodInput.placeholder = 'e.g. Shrawan 2083';
+    wrap.appendChild(field('Period (optional)', periodInput));
+    var internalDueInput = el('input'); internalDueInput.type = 'date'; internalDueInput.value = work.internal_due_date || '';
+    wrap.appendChild(field('Internal Due', internalDueInput));
+    var externalDueInput = el('input'); externalDueInput.type = 'date'; externalDueInput.value = work.external_due_date || '';
+    wrap.appendChild(field('Filing / Client Due (optional)', externalDueInput));
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
+    saveBtn.addEventListener('click', async function () {
+      if (!titleInput.value.trim()) { toast('Give the work a title.', true); return; }
+      saveBtn.disabled = true;
+      var res = await sb.from('work_items').update({
+        title: titleInput.value.trim(),
+        period: periodInput.value.trim() || null,
+        internal_due_date: internalDueInput.value || null,
+        external_due_date: externalDueInput.value || null,
+      }).eq('id', work.id);
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      closeModal();
+      toast('Work updated.');
+      renderWorkDetail(work.id);
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
   }
 
   function checklistRow(item, workId) {
@@ -1644,6 +1694,9 @@
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Templates'; head.appendChild(h1);
     if (isAdmin()) {
+      var genBtn = el('button', 'btn btn-outline btn-sm'); genBtn.type = 'button'; genBtn.appendChild(icon('flag')); genBtn.appendChild(document.createTextNode('Generate Period Work'));
+      genBtn.addEventListener('click', openGeneratePeriodModal);
+      head.appendChild(genBtn);
       var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Template'));
       addBtn.addEventListener('click', openNewTemplateModal);
       head.appendChild(addBtn);
@@ -1653,7 +1706,7 @@
     var note = el('div', 'card');
     var p = el('p', 'desc');
     p.style.margin = '0';
-    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). Generating work automatically on a schedule isn\'t built yet — "Use This Template" fills in a new work item and its checklist for you, one client at a time.';
+    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). "Use This Template" fills in one work item at a time; "Generate Period Work" fills in a whole period at once from every client\'s Active Services. Neither runs automatically on a schedule yet — both are click-to-run.';
     note.appendChild(p);
     main.appendChild(note);
 
@@ -1792,6 +1845,119 @@
     actions.appendChild(createBtn);
     wrap.appendChild(actions);
     openModal(wrap);
+  }
+
+  // Bulk-creates one work item per active client_service for a given
+  // period, using each service's template/assignee/reviewer — a manual,
+  // click-to-run version of "recurring generation." Existing work for the
+  // same client+service+period is skipped so it's safe to run more than
+  // once (e.g. if a new client_service was added after the first run).
+  // Due dates are intentionally left blank: computing them automatically
+  // would mean guessing at a period-to-calendar-date mapping (this firm
+  // works in the Nepali BS calendar, e.g. "Shrawan 2083"), which needs a
+  // real conversion table this app doesn't have — see the note about
+  // scheduled automation and reminders.
+  async function openGeneratePeriodModal() {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Generate Period Work';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var periodInput = el('input'); periodInput.type = 'text'; periodInput.placeholder = 'e.g. Shrawan 2083';
+    wrap.appendChild(field('Period', periodInput));
+    var hint = el('p', 'desc'); hint.textContent = 'Creates one work item per active service below for this period. Anything already generated for this exact period is skipped automatically.';
+    wrap.appendChild(hint);
+
+    var listWrap = el('div');
+    var loading = el('p', 'desc'); loading.textContent = 'Loading active services…'; listWrap.appendChild(loading);
+    wrap.appendChild(listWrap);
+    var actions = el('div', 'modal-actions');
+    var genBtn = el('button', 'btn'); genBtn.type = 'button'; genBtn.textContent = 'Generate';
+    genBtn.disabled = true;
+    actions.appendChild(genBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+
+    var svcRes = await sb.from('client_services').select('*, service_templates(*)').eq('is_active', true);
+    clear(listWrap);
+    if (svcRes.error) { toast('Could not load active services: ' + svcRes.error.message, true); return; }
+    var services = svcRes.data || [];
+    if (!services.length) {
+      var none = el('p', 'desc'); none.textContent = 'No active services set up yet — add some from a client\'s page first.'; listWrap.appendChild(none);
+      return;
+    }
+
+    var checkboxes = [];
+    async function refreshExisting() {
+      var period = periodInput.value.trim();
+      clear(listWrap);
+      if (!period) {
+        var prompt = el('p', 'desc'); prompt.textContent = 'Enter a period above to see what would be generated.'; listWrap.appendChild(prompt);
+        genBtn.disabled = true;
+        return;
+      }
+      var existingRes = await sb.from('work_items').select('client_id, service_template_id').eq('period', period);
+      var existing = existingRes.data || [];
+      function alreadyExists(s) {
+        return existing.some(function (w) { return w.client_id === s.client_id && w.service_template_id === s.service_template_id; });
+      }
+      checkboxes = [];
+      services.forEach(function (s) {
+        var exists = alreadyExists(s);
+        var row = el('label', 'service-row' + (exists ? ' is-inactive' : ''));
+        var cb = el('input'); cb.type = 'checkbox'; cb.checked = !exists; cb.disabled = exists;
+        row.appendChild(cb);
+        var body = el('div', 'body');
+        var title = el('div', 'title'); title.textContent = clientName(s.client_id) + ' — ' + (s.service_templates ? s.service_templates.title : 'Unknown service');
+        var meta = el('div', 'meta'); meta.textContent = exists ? 'Already generated for ' + period : (s.assignee_id ? 'Assignee: ' + profileName(s.assignee_id) : 'No assignee set');
+        body.appendChild(title); body.appendChild(meta);
+        row.appendChild(body);
+        listWrap.appendChild(row);
+        if (!exists) checkboxes.push({ cb: cb, service: s });
+      });
+      genBtn.disabled = checkboxes.length === 0;
+    }
+    periodInput.addEventListener('input', refreshExisting);
+    await refreshExisting();
+
+    genBtn.addEventListener('click', async function () {
+      var period = periodInput.value.trim();
+      var toCreate = checkboxes.filter(function (c) { return c.cb.checked; }).map(function (c) { return c.service; });
+      if (!toCreate.length) { toast('Nothing selected.', true); return; }
+      genBtn.disabled = true;
+      var created = 0;
+      var failed = 0;
+      for (var i = 0; i < toCreate.length; i++) {
+        var s = toCreate[i];
+        var tmpl = s.service_templates;
+        var res = await sb.from('work_items').insert({
+          client_id: s.client_id,
+          service_template_id: s.service_template_id,
+          title: tmpl ? tmpl.title : 'Work',
+          period: period,
+          assignee_id: s.assignee_id || state.user.id,
+          reviewer_id: s.reviewer_id || null,
+          priority: 'normal',
+          created_by: state.user.id,
+        }).select().single();
+        if (res.error) { failed++; continue; }
+        created++;
+        if (tmpl) {
+          var itemsRes = await sb.from('service_template_items').select('*').eq('template_id', tmpl.id);
+          var items = itemsRes.data || [];
+          if (items.length) {
+            var rows = items.map(function (it) { return { work_item_id: res.data.id, stage: it.stage, title: it.title, sort_order: it.sort_order }; });
+            await sb.from('work_checklist_items').insert(rows);
+          }
+        }
+      }
+      genBtn.disabled = false;
+      closeModal();
+      toast(created + ' work item' + (created === 1 ? '' : 's') + ' created' + (failed ? ', ' + failed + ' failed' : '') + '. Set due dates on each before assigning out.', failed > 0);
+    });
   }
 
   // ============================================================
