@@ -38,7 +38,10 @@ create policy "client_services_read" on public.client_services
 -- Reviewers keep read access and keep every other privilege they had
 -- (credentials, work review, etc.) -- only client_services write moves
 -- to admin-only.
-create policy "client_services_insert" on public.client_services
+-- Named "_write" not "_insert" to match the live policy name (this table
+-- predates SQL being tracked in this repo -- same caveat as profiles/
+-- clients/work_checklist_items).
+create policy "client_services_write" on public.client_services
   for insert with check (public.current_user_role() = 'admin');
 create policy "client_services_update" on public.client_services
   for update using (public.current_user_role() = 'admin');
