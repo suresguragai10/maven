@@ -17,6 +17,19 @@ create table if not exists public.service_templates (
   requires_submission boolean not null default false,
   default_assignee_id uuid references public.profiles(id),
   default_reviewer_id uuid references public.profiles(id),
+  -- Optional deadline rule, added 2026-08-12: days after the WORK ITEM'S
+  -- OWN generation date (not the period's calendar start/end, which this
+  -- app has no verified BS-conversion table to compute -- see the header
+  -- note in 20260811091000_recurring_work_generation.sql). Null means no
+  -- rule -- due dates land blank and stay a manual fill-in, same as
+  -- before this column existed. When set, both bulk generation and the
+  -- New Work modal's "apply template" prefill use it as a same-day
+  -- offset from whenever the work item is actually created, which is a
+  -- reasonable proxy for "days after period start" as long as generation
+  -- happens promptly at the start of the new period (the expected usage
+  -- pattern), but won't be exactly right if generation is run late.
+  internal_deadline_days int,
+  filing_deadline_days int,
   created_at timestamptz not null default now()
 );
 
