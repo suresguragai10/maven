@@ -1097,12 +1097,20 @@
         patch.ready_for_review_at = newStatus === 'ready_for_review' ? new Date().toISOString() : null;
         applyStatusChange(newStatus, patch);
       });
-      async function applyStatusChange(newStatus, patch, waitingItems) {
+      async function applyStatusChange(newStatus, patch, newWaitingItemTitles) {
         var res = await sb.from('work_items').update(patch).eq('id', work.id);
         if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = prevStatus; return; }
-        if (waitingItems && waitingItems.length) {
-          var rows = waitingItems.map(function (title, i) { return { work_item_id: work.id, title: title, sort_order: i }; });
+        if (newWaitingItemTitles && newWaitingItemTitles.length) {
+          var rows = newWaitingItemTitles.map(function (title, i) { return { work_item_id: work.id, title: title, sort_order: i }; });
           await sb.from('work_waiting_items').insert(rows);
+        }
+        // Leaving Waiting for Client through any path — not just "Mark
+        // Documents Received" — should resolve any outstanding waiting-
+        // checklist items too, so a later wait doesn't show stale items
+        // left over from one that was abandoned via the status dropdown
+        // instead of that button.
+        if (prevStatus === 'waiting_for_client' && newStatus !== 'waiting_for_client') {
+          await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
         }
         logActivity(work.id, 'status_changed', STATUS_LABELS[prevStatus] + ' → ' + STATUS_LABELS[newStatus]);
         toast('Status updated.');
@@ -1133,6 +1141,8 @@
         cb.addEventListener('change', async function () {
           var res = await sb.from('work_waiting_items').update({ is_received: cb.checked }).eq('id', wi.id);
           if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
+          wi.is_received = cb.checked; // keep the in-memory copy in sync, not just the DOM/DB —
+          // "Mark Documents Received" below reads this same waitingItems array.
           row.classList.toggle('done', cb.checked);
           var detail = (cb.checked ? 'Received: ' : 'Un-received: ') + wi.title;
           logActivity(work.id, 'waiting_item_toggled', detail);
@@ -1348,8 +1358,9 @@
     var actions = el('div', 'modal-actions');
     var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
     saveBtn.addEventListener('click', function () {
-      closeModal();
       var items = itemsInput.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+      if (!items.length) { toast('Enter at least one thing you\'re waiting for.', true); return; }
+      closeModal();
       onSave({
         status: 'waiting_for_client',
         waiting_since: new Date().toISOString().slice(0, 10),
