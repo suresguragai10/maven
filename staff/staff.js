@@ -181,6 +181,18 @@
     var ms = new Date(new Date().toDateString()) - new Date(due + 'T00:00:00');
     return Math.max(1, Math.round(ms / 86400000));
   }
+  // Sorts by effective due date (internal, falling back to filing due) —
+  // items with neither date set sort last, not first, matching what the
+  // old DB-level "order by internal_due_date, nulls last" used to do
+  // before it was replaced everywhere with this so an item with only a
+  // filing due date wouldn't be treated as dateless.
+  function compareByDue(a, b) {
+    var da = effectiveDue(a), db = effectiveDue(b);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return da.localeCompare(db);
+  }
   function clientName(id) {
     var c = state.clients.find(function (x) { return x.id === id; });
     return c ? c.name : '—';
@@ -495,7 +507,7 @@
       if (!due) return false;
       var dt = new Date(due + 'T00:00:00');
       return dt >= new Date(new Date().toDateString()) && dt <= horizon;
-    }).sort(function (a, b) { return (effectiveDue(a) || '').localeCompare(effectiveDue(b) || ''); });
+    }).sort(compareByDue);
 
     if (upcoming.length) {
       var h2b = el('div', 'section-h'); h2b.style.marginTop = '22px'; h2b.textContent = 'Upcoming (Next 7 Days)';
@@ -559,6 +571,12 @@
     main.appendChild(loading);
 
     var items = await loadWork(mode);
+    // The DB query orders by internal_due_date alone, which pushes a work
+    // item that only has a filing due date set to the bottom as if it had
+    // no due date at all. Re-sort client-side by effective due date
+    // (internal, falling back to filing) so it lands where it actually
+    // belongs.
+    items = items.slice().sort(compareByDue);
     main.removeChild(loading);
 
     if (mode === 'all') renderWorkloadSummary(main, items);
@@ -669,7 +687,15 @@
     row.appendChild(title);
     var due = el('span', 'due' + (isOverdue(w) ? ' overdue' : ''));
     due.appendChild(icon('calendar'));
-    due.appendChild(document.createTextNode(effectiveDue(w) ? fmtDate(effectiveDue(w)) : 'No due date'));
+    var dueText = effectiveDue(w) ? fmtDate(effectiveDue(w)) : 'No due date';
+    // The internal date drives the badge/overdue styling, but the filing
+    // deadline shouldn't disappear just because it's not the primary one —
+    // only worth adding when it's actually a different date from what's
+    // already shown, so this doesn't just repeat the same date twice.
+    if (w.internal_due_date && w.external_due_date && w.internal_due_date !== w.external_due_date) {
+      dueText += ' (filing ' + fmtDate(w.external_due_date) + ')';
+    }
+    due.appendChild(document.createTextNode(dueText));
     row.appendChild(due);
     var badge = el('span', 'badge badge-' + w.status);
     badge.textContent = STATUS_LABELS[w.status] || w.status;
@@ -713,7 +739,7 @@
       items = items.filter(function (w) { return w.status !== 'completed' && effectiveDue(w); });
       if (clientSel.value) items = items.filter(function (w) { return w.client_id === clientSel.value; });
       if (serviceSel.value) items = items.filter(function (w) { return w.service_template_id === serviceSel.value; });
-      items.sort(function (a, b) { return (effectiveDue(a) || '').localeCompare(effectiveDue(b) || ''); });
+      items.sort(compareByDue);
 
       var todayStr = new Date().toISOString().slice(0, 10);
       var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
@@ -1488,7 +1514,7 @@
       main.appendChild(back);
       return;
     }
-    var work = workRes.data || [];
+    var work = (workRes.data || []).slice().sort(compareByDue);
     var services = servicesRes.data || [];
     if (workRes.error) toast('Could not load work: ' + workRes.error.message, true);
     if (servicesRes.error) toast('Could not load active services: ' + servicesRes.error.message, true);
