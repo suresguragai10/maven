@@ -1924,6 +1924,29 @@
   // Client Detail — the single internal view of the client: what's open,
   // what's expected recurring, what we're waiting on them for, and notes.
   // ============================================================
+  // Compact Service/Period/Status/Deadline table — used for both Current
+  // Work and Recently Completed on the Client page so the two read as
+  // one consistent format rather than two different list styles.
+  function clientWorkTable(items) {
+    var table = el('table');
+    var thead = el('thead'); var trh = el('tr');
+    ['Service', 'Period', 'Status', 'Deadline'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
+    var tbody = el('tbody');
+    items.forEach(function (w) {
+      var tmpl = templateById(w.service_template_id);
+      var tr = el('tr'); tr.style.cursor = 'pointer';
+      tr.addEventListener('click', function () { gotoWork(w.id); });
+      var tdService = el('td'); tdService.textContent = tmpl ? tmpl.title : w.title; tr.appendChild(tdService);
+      var tdPeriod = el('td'); tdPeriod.textContent = w.period || '—'; tr.appendChild(tdPeriod);
+      var tdStatus = el('td'); var badge = el('span', 'badge badge-' + w.status); badge.textContent = STATUS_LABELS[w.status] || w.status; tdStatus.appendChild(badge); tr.appendChild(tdStatus);
+      var tdDeadline = el('td'); if (isOverdue(w)) tdDeadline.style.cssText = 'color:var(--red);font-weight:700;'; tdDeadline.textContent = dueDateText(w); tr.appendChild(tdDeadline);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return table;
+  }
+
   async function renderClientDetail(id) {
     var main = qs('#main');
     clear(main);
@@ -1995,52 +2018,8 @@
     card.appendChild(headActions);
     main.appendChild(card);
 
-    // ---- Active Work ----
-    var workCard = el('div', 'card');
-    var workHead = el('div', 'page-head'); workHead.style.marginBottom = '10px';
-    var workH2 = el('h2'); workH2.appendChild(icon('clipboard')); workH2.appendChild(document.createTextNode('Active Work')); workHead.appendChild(workH2);
-    var newWorkBtn = el('button', 'btn btn-outline btn-sm'); newWorkBtn.type = 'button'; newWorkBtn.appendChild(icon('plus')); newWorkBtn.appendChild(document.createTextNode('New Work'));
-    newWorkBtn.addEventListener('click', function () { openNewWorkModal({ clientId: id }); });
-    workHead.appendChild(newWorkBtn);
-    workCard.appendChild(workHead);
-
     var openWork = work.filter(function (w) { return w.status !== 'completed'; });
     var completedWork = work.filter(function (w) { return w.status === 'completed'; }).slice(0, 15);
-    if (!openWork.length) {
-      var noOpen = el('p', 'desc'); noOpen.textContent = 'No open work for this client.'; workCard.appendChild(noOpen);
-    } else {
-      openWork.forEach(function (w) { workCard.appendChild(workRow(w)); });
-    }
-    if (completedWork.length) {
-      var histLabel = el('div', 'checklist-stage'); histLabel.textContent = 'Recently Completed'; workCard.appendChild(histLabel);
-      completedWork.forEach(function (w) { workCard.appendChild(workRow(w)); });
-    }
-    main.appendChild(workCard);
-
-    // ---- Outstanding (what we're waiting on this client for) ----
-    var waiting = openWork.filter(function (w) { return w.status === 'waiting_for_client'; });
-    if (waiting.length) {
-      var waitingSummaries = await loadWaitingSummaries(waiting.map(function (w) { return w.id; }));
-      var outCard = el('div', 'card');
-      var outH2 = el('h2'); outH2.appendChild(icon('alert')); outH2.appendChild(document.createTextNode('Outstanding')); outCard.appendChild(outH2);
-      waiting.forEach(function (w) {
-        var row = el('div', 'attention-row reason-waiting outstanding-row');
-        row.addEventListener('click', function () { gotoWork(w.id); });
-        var body = el('div', 'body');
-        var svc = el('div', 'svc'); svc.style.color = 'var(--navy-950)'; svc.style.fontWeight = '700';
-        var tmpl = templateById(w.service_template_id);
-        svc.textContent = (tmpl ? tmpl.title : w.title) + (w.period ? ' · ' + w.period : '');
-        var reasonEl = el('div', 'reason');
-        var summary = waitingSummaries[w.id];
-        reasonEl.textContent = (summary ? 'Waiting for ' + summary : 'Waiting for client') + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '');
-        body.appendChild(svc); body.appendChild(reasonEl);
-        row.appendChild(body);
-        var action = el('div', 'action'); action.textContent = 'Follow up →';
-        row.appendChild(action);
-        outCard.appendChild(row);
-      });
-      main.appendChild(outCard);
-    }
 
     // ---- Active Services (recurring subscriptions — "Create This Period's
     // Work" is a manual one-click bridge, not automatic generation) ----
@@ -2049,9 +2028,11 @@
     if (!services.length) {
       var noSvc = el('p', 'desc'); noSvc.textContent = 'No services set up for this client yet.'; svcCard.appendChild(noSvc);
     }
-    // Active/inactive is a service-management action (client_services RLS
-    // is admin/reviewer write) — staff can see the list but not toggle it.
-    var canManageServices = isReviewerOrAdmin();
+    // Client-service write access is admin-only (client_services RLS) —
+    // staff (and reviewers) can see the list but not toggle/add. Tightened
+    // 2026-08-12 from admin/reviewer at explicit request; see
+    // supabase/migrations/20260811090600_client_services.sql.
+    var canManageServices = isAdmin();
     services.forEach(function (s) {
       var tmpl = s.service_templates;
       var row = el('div', 'service-row' + (s.is_active ? '' : ' is-inactive'));
@@ -2120,6 +2101,71 @@
       }
     }
     main.appendChild(svcCard);
+
+    // ---- Current Work — compact Service/Period/Status/Deadline table ----
+    var workCard = el('div', 'card');
+    var workHead = el('div', 'page-head'); workHead.style.marginBottom = '10px';
+    var workH2 = el('h2'); workH2.appendChild(icon('clipboard')); workH2.appendChild(document.createTextNode('Current Work')); workHead.appendChild(workH2);
+    var newWorkBtn = el('button', 'btn btn-outline btn-sm'); newWorkBtn.type = 'button'; newWorkBtn.appendChild(icon('plus')); newWorkBtn.appendChild(document.createTextNode('New Work'));
+    newWorkBtn.addEventListener('click', function () { openNewWorkModal({ clientId: id }); });
+    workHead.appendChild(newWorkBtn);
+    workCard.appendChild(workHead);
+    if (!openWork.length) {
+      var noOpen = el('p', 'desc'); noOpen.textContent = 'No open work for this client.'; workCard.appendChild(noOpen);
+    } else {
+      workCard.appendChild(clientWorkTable(openWork));
+    }
+    main.appendChild(workCard);
+
+    // ---- Upcoming Deadlines — the urgent subset of Current Work, not a
+    // duplicate list: overdue or due within a week, so a compliance
+    // reviewer can tell what needs attention without scanning the whole
+    // table above. ----
+    var horizon = new Date(); horizon.setDate(horizon.getDate() + 7);
+    var upcoming = openWork.filter(function (w) {
+      var due = effectiveDue(w);
+      if (!due) return false;
+      return isOverdue(w) || new Date(due + 'T00:00:00') <= horizon;
+    });
+    if (upcoming.length) {
+      var upcomingCard = el('div', 'card');
+      var upcomingH2 = el('h2'); upcomingH2.appendChild(icon('calendar')); upcomingH2.appendChild(document.createTextNode('Upcoming Deadlines')); upcomingCard.appendChild(upcomingH2);
+      upcomingCard.appendChild(clientWorkTable(upcoming));
+      main.appendChild(upcomingCard);
+    }
+
+    // ---- Waiting for Client ----
+    var waiting = openWork.filter(function (w) { return w.status === 'waiting_for_client'; });
+    if (waiting.length) {
+      var waitingSummaries = await loadWaitingSummaries(waiting.map(function (w) { return w.id; }));
+      var outCard = el('div', 'card');
+      var outH2 = el('h2'); outH2.appendChild(icon('alert')); outH2.appendChild(document.createTextNode('Waiting for Client')); outCard.appendChild(outH2);
+      waiting.forEach(function (w) {
+        var row = el('div', 'attention-row reason-waiting outstanding-row');
+        row.addEventListener('click', function () { gotoWork(w.id); });
+        var body = el('div', 'body');
+        var svc = el('div', 'svc'); svc.style.color = 'var(--navy-950)'; svc.style.fontWeight = '700';
+        var tmpl = templateById(w.service_template_id);
+        svc.textContent = (tmpl ? tmpl.title : w.title) + (w.period ? ' · ' + w.period : '');
+        var reasonEl = el('div', 'reason');
+        var summary = waitingSummaries[w.id];
+        reasonEl.textContent = (summary ? 'Waiting for ' + summary : 'Waiting for client') + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '');
+        body.appendChild(svc); body.appendChild(reasonEl);
+        row.appendChild(body);
+        var action = el('div', 'action'); action.textContent = 'Follow up →';
+        row.appendChild(action);
+        outCard.appendChild(row);
+      });
+      main.appendChild(outCard);
+    }
+
+    // ---- Recently Completed ----
+    if (completedWork.length) {
+      var completedCard = el('div', 'card');
+      var completedH2 = el('h2'); completedH2.appendChild(icon('check')); completedH2.appendChild(document.createTextNode('Recently Completed')); completedCard.appendChild(completedH2);
+      completedCard.appendChild(clientWorkTable(completedWork));
+      main.appendChild(completedCard);
+    }
 
     // ---- Notes ---- (client-info edit stays admin-only, same as the
     // Edit button above; staff see notes but can't change them)

@@ -29,9 +29,18 @@ alter table public.client_services enable row level security;
 
 create policy "client_services_read" on public.client_services
   for select using (auth.role() = 'authenticated');
+-- Tightened from admin/reviewer to admin-only (Client Compliance Overview
+-- task, 2026-08-12, explicit instruction: "Only authorized admin users
+-- may change client services"). The earlier role audit flagged this same
+-- broader reviewer access as extending past "reviewers review work
+-- assigned to them" but left it alone since narrowing it hadn't been
+-- asked for yet -- see [[maven_implementation_checklist_2026-08-10]].
+-- Reviewers keep read access and keep every other privilege they had
+-- (credentials, work review, etc.) -- only client_services write moves
+-- to admin-only.
 create policy "client_services_insert" on public.client_services
-  for insert with check (public.current_user_role() in ('admin', 'reviewer'));
+  for insert with check (public.current_user_role() = 'admin');
 create policy "client_services_update" on public.client_services
-  for update using (public.current_user_role() in ('admin', 'reviewer'));
+  for update using (public.current_user_role() = 'admin');
 create policy "client_services_delete" on public.client_services
-  for delete using (public.current_user_role() in ('admin', 'reviewer'));
+  for delete using (public.current_user_role() = 'admin');
