@@ -54,7 +54,10 @@ create policy "work_checklist_items_read" on public.work_checklist_items
         )
     )
   );
-create policy "work_checklist_items_insert" on public.work_checklist_items
+-- Named "_write" not "_insert" to match the live policy name (this table
+-- predates SQL being tracked in this repo -- see the provenance note in
+-- 20260811090100_profiles.sql for the same caveat).
+create policy "work_checklist_items_write" on public.work_checklist_items
   for insert with check (
     public.current_user_role() in ('admin', 'reviewer')
     or exists (select 1 from public.work_items w where w.id = work_item_id and w.assignee_id = auth.uid())
