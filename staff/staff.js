@@ -431,7 +431,7 @@
       renderClientDetail(state.clientDetailId);
       return;
     }
-    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'todo', 'clients', 'templates', 'staff'];
+    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'periods', 'todo', 'clients', 'templates', 'staff'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -464,6 +464,7 @@
     }
     item('deadlines', 'Deadlines', 'calendar');
     if (isReviewerOrAdmin()) item('manager', 'Manager Dashboard', 'users');
+    item('periods', 'Period Summary', 'calendar');
     item('todo', 'My To-Do List', 'list');
     // Every active staff member can look clients up (name, contact info,
     // active work/services) — that's just read access the app already
@@ -492,6 +493,7 @@
     if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
     if (state.view === 'deadlines') return renderDeadlinesPage(main);
     if (state.view === 'manager') return renderManagerDashboard(main);
+    if (state.view === 'periods') return renderPeriodSummaryPage(main);
     if (state.view === 'todo') return renderTodoPage(main);
     if (state.view === 'clients') return renderClients(main);
     if (state.view === 'templates') return renderTemplates(main);
@@ -924,6 +926,137 @@
       });
     }
     main.appendChild(attnCard);
+  }
+
+  // ============================================================
+  // Period Summary — a filterable compliance snapshot: pick a period
+  // (and optionally service/assignee/reviewer/status/client), see the
+  // status breakdown, then the matching work items below. Managers/admin
+  // see the whole team (mode 'all', same query All Work/Manager Dashboard
+  // already use); normal staff only ever see their own work (mode
+  // 'mine') — no new RLS needed, this reuses the same loadWork() scoping
+  // every other list view already relies on. Cards are computed from
+  // every filter EXCEPT status/overdue (a status breakdown of an
+  // already-status-filtered set wouldn't mean anything); the list below
+  // applies all of them, including status/overdue.
+  // ============================================================
+  async function renderPeriodSummaryPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Period Summary'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
+    main.appendChild(loading);
+    var items = await loadWork(isReviewerOrAdmin() ? 'all' : 'mine');
+    main.removeChild(loading);
+
+    var filters = { period: '', service: '', assignee: '', reviewer: '', status: '', client: '', overdueOnly: false };
+
+    var filterCard = el('div', 'card');
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
+
+    var periodSel = el('select'); periodSel.style.width = 'auto';
+    periodSel.appendChild(new Option('All Periods', ''));
+    Array.from(new Set(items.map(function (w) { return w.period; }).filter(Boolean))).sort()
+      .forEach(function (p) { periodSel.appendChild(new Option(p, p)); });
+
+    var serviceSel = el('select'); serviceSel.style.width = 'auto';
+    serviceSel.appendChild(new Option('All Services', ''));
+    state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+      .forEach(function (t) { serviceSel.appendChild(new Option(t.title, t.id)); });
+
+    var assigneeSel = el('select'); assigneeSel.style.width = 'auto';
+    assigneeSel.appendChild(new Option('All Assignees', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
+
+    var reviewerSel = el('select'); reviewerSel.style.width = 'auto';
+    reviewerSel.appendChild(new Option('All Reviewers', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
+
+    var statusSel = el('select'); statusSel.style.width = 'auto';
+    statusSel.appendChild(new Option('All Statuses', ''));
+    Object.keys(STATUS_LABELS).forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
+
+    var clientSel = el('select'); clientSel.style.width = 'auto';
+    clientSel.appendChild(new Option('All Clients', ''));
+    state.clients.filter(function (c) { return c.is_active; }).forEach(function (c) { clientSel.appendChild(new Option(c.name, c.id)); });
+
+    [periodSel, serviceSel, assigneeSel, reviewerSel, statusSel, clientSel].forEach(function (sel) { filterRow.appendChild(sel); });
+    filterCard.appendChild(filterRow);
+
+    var statusLine = el('div'); statusLine.style.cssText = 'margin-top:10px;font-size:.85rem;color:var(--ink-soft);display:flex;align-items:center;gap:10px;';
+    var statusText = el('span');
+    var clearBtn = el('button', 'btn btn-outline btn-sm'); clearBtn.type = 'button'; clearBtn.textContent = 'Clear Filters';
+    statusLine.appendChild(statusText); statusLine.appendChild(clearBtn);
+    filterCard.appendChild(statusLine);
+    main.appendChild(filterCard);
+
+    var cardsWrap = el('div', 'today-strip');
+    main.appendChild(cardsWrap);
+    var listWrap = el('div');
+    main.appendChild(listWrap);
+
+    function matches(w, includeStatus) {
+      if (filters.period && w.period !== filters.period) return false;
+      if (filters.service && w.service_template_id !== filters.service) return false;
+      if (filters.assignee && w.assignee_id !== filters.assignee) return false;
+      if (filters.reviewer && w.reviewer_id !== filters.reviewer) return false;
+      if (filters.client && w.client_id !== filters.client) return false;
+      if (includeStatus && filters.status && w.status !== filters.status) return false;
+      if (includeStatus && filters.overdueOnly && !isOverdue(w)) return false;
+      return true;
+    }
+
+    function refresh() {
+      var forCards = items.filter(function (w) { return matches(w, false); });
+      var forList = items.filter(function (w) { return matches(w, true); });
+
+      clear(cardsWrap);
+      function statCard(n, label, color, onClick) {
+        var s = el('div', 'today-stat'); s.style.cursor = 'pointer';
+        var num = el('div', 'n'); if (color) num.style.color = color; num.textContent = String(n);
+        var l = el('div', 'l'); l.textContent = label;
+        s.appendChild(num); s.appendChild(l);
+        s.addEventListener('click', onClick);
+        cardsWrap.appendChild(s);
+      }
+      function setStatusFilter(status, overdue) {
+        filters.status = status; filters.overdueOnly = !!overdue;
+        statusSel.value = status;
+        refresh();
+      }
+      statCard(forCards.length, 'Total Work', null, function () { setStatusFilter('', false); });
+      statCard(forCards.filter(function (w) { return w.status === 'completed'; }).length, 'Completed', 'var(--green)', function () { setStatusFilter('completed'); });
+      statCard(forCards.filter(function (w) { return w.status === 'in_progress'; }).length, 'In Progress', null, function () { setStatusFilter('in_progress'); });
+      statCard(forCards.filter(function (w) { return w.status === 'waiting_for_client'; }).length, 'Waiting Client', 'var(--amber)', function () { setStatusFilter('waiting_for_client'); });
+      statCard(forCards.filter(function (w) { return w.status === 'ready_for_review'; }).length, 'Review', '#6D28D9', function () { setStatusFilter('ready_for_review'); });
+      statCard(forCards.filter(isOverdue).length, 'Overdue', 'var(--red)', function () { setStatusFilter('', true); });
+
+      statusText.textContent = filters.overdueOnly ? 'Showing: Overdue only'
+        : filters.status ? 'Showing: ' + STATUS_LABELS[filters.status]
+        : 'Showing: all statuses';
+
+      clear(listWrap);
+      if (!forList.length) {
+        var empty = el('div', 'empty-note'); empty.appendChild(icon('folder')); empty.appendChild(document.createTextNode('No work items match these filters.'));
+        listWrap.appendChild(empty);
+      } else {
+        forList.slice().sort(compareByDue).forEach(function (w) { listWrap.appendChild(workRow(w)); });
+      }
+    }
+
+    var fieldMap = [['period', periodSel], ['service', serviceSel], ['assignee', assigneeSel], ['reviewer', reviewerSel], ['client', clientSel]];
+    fieldMap.forEach(function (pair) {
+      pair[1].addEventListener('change', function () { filters[pair[0]] = pair[1].value; refresh(); });
+    });
+    statusSel.addEventListener('change', function () { filters.status = statusSel.value; filters.overdueOnly = false; refresh(); });
+    clearBtn.addEventListener('click', function () {
+      filters = { period: '', service: '', assignee: '', reviewer: '', status: '', client: '', overdueOnly: false };
+      [periodSel, serviceSel, assigneeSel, reviewerSel, statusSel, clientSel].forEach(function (sel) { sel.value = ''; });
+      refresh();
+    });
+
+    refresh();
   }
 
   // ============================================================
