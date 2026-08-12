@@ -1031,7 +1031,14 @@
     var waitingItems = waitingItemsRes.data || [];
     var activity = activityRes.data || [];
     var isMine = work.assignee_id === state.user.id;
-    var canEditFull = isReviewerOrAdmin();
+    // A reviewer's elevated rights apply only to work items they're
+    // actually the assigned reviewer for -- "review work assigned to
+    // them," not every work item company-wide. Matches the same scoping
+    // enforced server-side in guard_work_item_update() (see
+    // supabase/migrations/20260811090400_work_items.sql) so this can't
+    // drift from what the DB will actually allow.
+    var canEditFull = isAdmin() || (state.profile.role === 'reviewer' && work.reviewer_id === state.user.id);
+    var canToggleChildren = isMine || canEditFull;
     var template = templateById(work.service_template_id);
 
     var card = el('div', 'card');
@@ -1178,6 +1185,7 @@
         var row = el('label', 'checklist-item' + (wi.is_received ? ' done' : ''));
         row.style.padding = '5px 0';
         var cb = el('input'); cb.type = 'checkbox'; cb.checked = wi.is_received;
+        cb.disabled = !canToggleChildren;
         cb.addEventListener('change', async function () {
           var res = await sb.from('work_waiting_items').update({ is_received: cb.checked }).eq('id', wi.id);
           if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
@@ -1276,7 +1284,7 @@
       if (!stageItems.length) return;
       anyStage = true;
       var h3 = el('div', 'checklist-stage'); h3.textContent = STAGE_LABELS[stage]; checklistPane.appendChild(h3);
-      stageItems.forEach(function (item) { checklistPane.appendChild(checklistRow(item, id, activityPane)); });
+      stageItems.forEach(function (item) { checklistPane.appendChild(checklistRow(item, id, activityPane, canToggleChildren)); });
     });
     if (!anyStage) {
       var noItems = el('p', 'desc'); noItems.textContent = 'No checklist items yet.';
@@ -1361,9 +1369,10 @@
     openModal(wrap);
   }
 
-  function checklistRow(item, workId, activityPane) {
+  function checklistRow(item, workId, activityPane, canToggle) {
     var row = el('label', 'checklist-item' + (item.is_done ? ' done' : ''));
     var cb = el('input'); cb.type = 'checkbox'; cb.checked = item.is_done;
+    cb.disabled = !canToggle;
     cb.addEventListener('change', async function () {
       var res = await sb.from('work_checklist_items').update({ is_done: cb.checked }).eq('id', item.id);
       if (res.error) { toast('Could not update item: ' + res.error.message, true); cb.checked = !cb.checked; return; }

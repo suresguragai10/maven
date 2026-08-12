@@ -106,8 +106,24 @@ create policy "work_items_read" on public.work_items
     or reviewer_id = auth.uid()
     or status <> 'ready_for_review'
   );
+-- Tightened from a blanket "authenticated" check (role-audit finding,
+-- 2026-08-11): that alone let any employee insert a work_items row for a
+-- COLLEAGUE (assignee_id set to anyone) or with an arbitrary starting
+-- status ('completed'/'approved'/etc, bypassing guard_work_item_update()
+-- entirely since it's a BEFORE UPDATE trigger and never fires on INSERT)
+-- -- via a direct API call bypassing the New Work modal's own
+-- assignee-lock, which was frontend-only. Every real creation path
+-- (New Work modal, _generate_period_work_core) already only ever inserts
+-- status='to_do', so requiring it here costs nothing legitimate.
 create policy "work_items_insert" on public.work_items
-  for insert with check (auth.role() = 'authenticated');
+  for insert with check (
+    auth.role() = 'authenticated'
+    and status = 'to_do'
+    and (
+      public.current_user_role() in ('admin', 'reviewer')
+      or assignee_id = auth.uid()
+    )
+  );
 create policy "work_items_update" on public.work_items
   for update using (auth.role() = 'authenticated');
 create policy "work_items_delete" on public.work_items
@@ -117,7 +133,16 @@ create policy "work_items_delete" on public.work_items
 -- touch their own assigned work item, can't reassign or rescope it
 -- (change assignee/reviewer/client/service), and can't self-set a
 -- reviewer-gated status (approved/changes_required/ready_to_submit/
--- completed). Reviewers and admins bypass all of this.
+-- completed). Admins bypass all of this unconditionally.
+--
+-- Reviewers get the same bypass, but ONLY on work items where they are
+-- actually old/new.reviewer_id (role-audit finding, 2026-08-11: the
+-- previous version bypassed for ANY reviewer on ANY work item company-
+-- wide -- meaning Reviewer B could approve, complete, or reassign
+-- Reviewer A's assigned review, which contradicts "reviewers review work
+-- assigned to them"). A reviewer who is neither the assignee nor this
+-- item's designated reviewer falls through to the same restrictions as
+-- a plain employee.
 create or replace function public.guard_work_item_update()
 returns trigger
 language plpgsql
@@ -137,7 +162,10 @@ begin
   end if;
 
   role := public.current_user_role();
-  if role in ('admin', 'reviewer') then
+  if role = 'admin' then
+    return new;
+  end if;
+  if role = 'reviewer' and (old.reviewer_id = auth.uid() or new.reviewer_id = auth.uid()) then
     return new;
   end if;
   if old.assignee_id <> auth.uid() then
