@@ -1300,17 +1300,26 @@
         renderWorkDetail(id);
       });
 
+      // Reminder message draft — only makes sense while something's still
+      // outstanding to remind the client about, so it shares the same
+      // "hidden once allDone" visibility as receivedBtn.
+      var messageBtn = el('button', 'btn btn-outline btn-sm'); messageBtn.type = 'button'; messageBtn.style.cssText = 'margin-top:10px;';
+      messageBtn.appendChild(icon('message')); messageBtn.appendChild(document.createTextNode('Draft Message to Client'));
+      messageBtn.addEventListener('click', function () { openMessageModal(work, waitingItems); });
+
       function refreshWaitingCta() {
         var allDone = waitingItems.length > 0 && waitingItems.every(function (wi) { return wi.is_received; });
         var canAct = isMine || canEditFull;
         allReceivedBanner.classList.toggle('hidden', !(allDone && canAct));
         receivedBtn.classList.toggle('hidden', !(!allDone && canAct));
+        messageBtn.classList.toggle('hidden', !(!allDone && canAct));
       }
 
       waitingItems.forEach(function (wi) {
         actionBox.appendChild(waitingItemRow(wi, work.id, activityPane, canToggleChildren, refreshWaitingCta));
       });
       if (isMine || canEditFull) {
+        actionBox.appendChild(messageBtn);
         var addWaitRow = el('div'); addWaitRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
         var newWaitInput = el('input'); newWaitInput.type = 'text'; newWaitInput.placeholder = 'Add another item…'; newWaitInput.style.flex = '1';
         var addWaitBtn = el('button', 'btn btn-outline btn-sm'); addWaitBtn.type = 'button'; addWaitBtn.textContent = 'Add';
@@ -1589,6 +1598,70 @@
       onDone();
     });
     actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
+  // Plain-text reminder draft — client name, service/period, the still-
+  // outstanding items, and the filing deadline if one's set. Deliberately
+  // just a string assembled from data already in memory: no WhatsApp/SMS/
+  // email API, paid or otherwise, and nothing here gets written to the
+  // database (see openMessageModal below) — it exists only in the
+  // textarea until the tab closes.
+  function buildWaitingClientMessage(work, waitingItems) {
+    var client = state.clients.find(function (c) { return c.id === work.client_id; });
+    var greetName = (client && client.contact_person) || (client && client.name) || 'Sir/Madam';
+    var tmpl = templateById(work.service_template_id);
+    var serviceLabel = (tmpl ? tmpl.title : work.title) + (work.period ? ' (' + work.period + ')' : '');
+    var outstanding = waitingItems.filter(function (wi) { return !wi.is_received; }).map(function (wi) { return wi.title; });
+
+    var lines = [];
+    lines.push('Dear ' + greetName + ',');
+    lines.push('');
+    lines.push('This is a reminder regarding your ' + serviceLabel + '. We are still waiting to receive the following:');
+    outstanding.forEach(function (title) { lines.push('- ' + title); });
+    lines.push('');
+    lines.push(work.external_due_date
+      ? 'Kindly share these by ' + fmtDate(work.external_due_date) + ' so we can meet the filing deadline.'
+      : 'Kindly share these at your earliest convenience.');
+    lines.push('');
+    lines.push('Thank you,');
+    lines.push(state.profile.full_name || 'Maven Consultancy Services');
+    return lines.join('\n');
+  }
+
+  // Editable draft + a Copy button using the browser's own clipboard API
+  // (navigator.clipboard) — no external service, paid or free, is
+  // involved in sending anything; staff paste it into whatever they
+  // already use (WhatsApp Web, email, SMS app) themselves. The generated
+  // text lives only in this textarea's value; closing the modal discards
+  // it, nothing is saved.
+  function openMessageModal(work, waitingItems) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Message to Client';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var hint = el('p', 'desc'); hint.style.margin = '0 0 14px'; hint.textContent = 'Edit as needed, then copy — nothing here is saved. Paste it into WhatsApp, email, or wherever you\'d normally message this client.';
+    wrap.appendChild(hint);
+
+    var msgInput = el('textarea'); msgInput.rows = 11; msgInput.value = buildWaitingClientMessage(work, waitingItems);
+    wrap.appendChild(field('Message', msgInput));
+
+    var actions = el('div', 'modal-actions');
+    var copyBtn = el('button', 'btn'); copyBtn.type = 'button'; copyBtn.textContent = 'Copy Message';
+    copyBtn.addEventListener('click', async function () {
+      try {
+        await navigator.clipboard.writeText(msgInput.value);
+        toast('Message copied.');
+      } catch (err) {
+        toast('Could not copy automatically — select the text and copy manually.', true);
+      }
+    });
+    actions.appendChild(copyBtn);
     wrap.appendChild(actions);
     openModal(wrap);
   }
