@@ -17,19 +17,25 @@ create table if not exists public.service_templates (
   requires_submission boolean not null default false,
   default_assignee_id uuid references public.profiles(id),
   default_reviewer_id uuid references public.profiles(id),
-  -- Optional deadline rule, added 2026-08-12: days after the WORK ITEM'S
-  -- OWN generation date (not the period's calendar start/end, which this
-  -- app has no verified BS-conversion table to compute -- see the header
-  -- note in 20260811091000_recurring_work_generation.sql). Null means no
-  -- rule -- due dates land blank and stay a manual fill-in, same as
-  -- before this column existed. When set, both bulk generation and the
-  -- New Work modal's "apply template" prefill use it as a same-day
-  -- offset from whenever the work item is actually created, which is a
-  -- reasonable proxy for "days after period start" as long as generation
-  -- happens promptly at the start of the new period (the expected usage
-  -- pattern), but won't be exactly right if generation is run late.
-  internal_deadline_days int,
-  filing_deadline_days int,
+  -- Deadline rule, added 2026-08-12, revised same day to derive the
+  -- internal date FROM the filing date instead of two independent
+  -- generation-relative offsets (the original version): filing_deadline_
+  -- day is a day-of-month (1-31) -- "the 25th of the month" -- applied to
+  -- whatever month the work item is actually generated in (the English/
+  -- Gregorian calendar is enough per the user; this app still has no BS-
+  -- calendar table, so it still can't derive a date from a Nepali period
+  -- LABEL like "Shrawan 2083", only from the real calendar date generation
+  -- happens on). internal_offset_days is "days before the filing date" --
+  -- e.g. filing_deadline_day=25, internal_offset_days=3 on a work item
+  -- generated in August gives external_due_date=Aug 25, internal_due_date
+  -- =Aug 22. Either or both may be left null: null filing_deadline_day
+  -- means no external date gets computed (stays a manual fill-in);
+  -- internal_offset_days is only meaningful once a filing date exists, so
+  -- it's a no-op without one. A day-of-month past the end of a shorter
+  -- month (e.g. 31 in a 30-day month) clamps to that month's last day —
+  -- see the clamping logic in 20260811091000_recurring_work_generation.sql.
+  filing_deadline_day int check (filing_deadline_day between 1 and 31),
+  internal_offset_days int check (internal_offset_days >= 0),
   created_at timestamptz not null default now()
 );
 

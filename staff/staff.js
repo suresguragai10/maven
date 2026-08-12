@@ -193,6 +193,20 @@
     if (!db) return -1;
     return da.localeCompare(db);
   }
+  // Explicitly labeled so it's never ambiguous which date is which —
+  // used everywhere a work item's due date shows in list form (Today,
+  // My Work, All Work, Deadlines). Internal is the primary/urgency date
+  // (see isOverdue/effectiveDue); filing only appears when it's set and
+  // actually different, so a work item with just one date doesn't show
+  // a redundant second label.
+  function dueDateText(w) {
+    if (w.internal_due_date && w.external_due_date && w.internal_due_date !== w.external_due_date) {
+      return 'Internal ' + fmtDate(w.internal_due_date) + ' · Filing ' + fmtDate(w.external_due_date);
+    }
+    if (w.internal_due_date) return 'Internal ' + fmtDate(w.internal_due_date);
+    if (w.external_due_date) return 'Filing ' + fmtDate(w.external_due_date);
+    return 'No due date';
+  }
   function clientName(id) {
     var c = state.clients.find(function (x) { return x.id === id; });
     return c ? c.name : '—';
@@ -561,7 +575,7 @@
     var actionLabel;
     if (reason === 'overdue') {
       var n = daysOverdue(w);
-      reasonEl.textContent = 'OVERDUE ' + n + ' DAY' + (n === 1 ? '' : 'S');
+      reasonEl.textContent = 'OVERDUE ' + n + ' DAY' + (n === 1 ? '' : 'S') + ' — ' + dueDateText(w);
       actionLabel = 'Open →';
     } else if (reason === 'waiting') {
       reasonEl.textContent = waitingSummary ? ('Waiting for ' + waitingSummary + (w.waiting_since ? ', requested ' + fmtDate(w.waiting_since) : '')) : 'Waiting for client';
@@ -713,15 +727,7 @@
     row.appendChild(title);
     var due = el('span', 'due' + (isOverdue(w) ? ' overdue' : ''));
     due.appendChild(icon('calendar'));
-    var dueText = effectiveDue(w) ? fmtDate(effectiveDue(w)) : 'No due date';
-    // The internal date drives the badge/overdue styling, but the filing
-    // deadline shouldn't disappear just because it's not the primary one —
-    // only worth adding when it's actually a different date from what's
-    // already shown, so this doesn't just repeat the same date twice.
-    if (w.internal_due_date && w.external_due_date && w.internal_due_date !== w.external_due_date) {
-      dueText += ' (filing ' + fmtDate(w.external_due_date) + ')';
-    }
-    due.appendChild(document.createTextNode(dueText));
+    due.appendChild(document.createTextNode(dueDateText(w)));
     row.appendChild(due);
     var badge = el('span', 'badge badge-' + w.status);
     badge.textContent = STATUS_LABELS[w.status] || w.status;
@@ -956,19 +962,35 @@
     var descInput = el('textarea'); descInput.rows = 3;
     wrap.appendChild(field('Description / Instructions', descInput));
 
-    // Same day-offset-from-today rule used by bulk generation (see
-    // supabase/migrations/20260811091000_recurring_work_generation.sql)
-    // — only fills a date the user hasn't already typed something into,
-    // and stays fully editable/overridable afterward like any default.
-    function addDays(n) { var d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+    // Same day-of-month-in-the-current-month rule used by bulk generation
+    // (see supabase/migrations/20260811091000_recurring_work_generation.
+    // sql) — clamps to the month's real last day, then derives internal
+    // FROM filing (not independently). Only fills a date the user hasn't
+    // already typed something into, and stays fully editable/overridable
+    // afterward like any default — internal_due_date and external_due_
+    // date remain two separate fields either can be changed without
+    // touching the other.
+    function computeFilingDate(dayOfMonth) {
+      var now = new Date();
+      var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      var d = new Date(now.getFullYear(), now.getMonth(), Math.min(dayOfMonth, lastDay));
+      return d.toISOString().slice(0, 10);
+    }
+    function subtractDays(dateStr, n) {
+      var d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    }
     function applyTemplate(id) {
       var t = templateById(id);
       if (!t) return;
       if (!titleInput.value.trim() || titleInput.dataset.auto === '1') { titleInput.value = t.title; titleInput.dataset.auto = '1'; }
       if (t.default_assignee_id && isReviewerOrAdmin()) assigneeSel.value = t.default_assignee_id;
       if (t.default_reviewer_id) reviewerSel.value = t.default_reviewer_id;
-      if (t.internal_deadline_days != null && !internalDueInput.value) internalDueInput.value = addDays(t.internal_deadline_days);
-      if (t.filing_deadline_days != null && !externalDueInput.value) externalDueInput.value = addDays(t.filing_deadline_days);
+      if (t.filing_deadline_day != null) {
+        if (!externalDueInput.value) externalDueInput.value = computeFilingDate(t.filing_deadline_day);
+        if (t.internal_offset_days != null && !internalDueInput.value) internalDueInput.value = subtractDays(externalDueInput.value, t.internal_offset_days);
+      }
     }
     titleInput.addEventListener('input', function () { titleInput.dataset.auto = '0'; });
     templateSel.addEventListener('change', function () { applyTemplate(templateSel.value); });
@@ -2074,8 +2096,8 @@
     meta.textContent = (t.recurrence !== 'none' ? 'Recurs ' + t.recurrence : 'One-off') +
       (t.requires_submission ? ' · Includes a submission step' : '') +
       (t.default_assignee_id ? ' · Default assignee: ' + profileName(t.default_assignee_id) : '') +
-      (t.internal_deadline_days != null ? ' · Internal due ' + t.internal_deadline_days + 'd after generation' : '') +
-      (t.filing_deadline_days != null ? ' · Filing due ' + t.filing_deadline_days + 'd after generation' : '');
+      (t.filing_deadline_day != null ? ' · Filing due on day ' + t.filing_deadline_day + ' of the month' : '') +
+      (t.filing_deadline_day != null && t.internal_offset_days != null ? ' · Internal due ' + t.internal_offset_days + 'd before filing' : '');
     card.appendChild(meta);
     if (t.description) { var d = el('p'); d.textContent = t.description; card.appendChild(d); }
     var items = t.service_template_items || [];
@@ -2143,10 +2165,10 @@
     // (not the period's calendar start, which this app can't safely
     // compute — see the migration note). Leave blank to keep due dates
     // manual, same as before this existed.
-    var internalDeadlineInput = el('input'); internalDeadlineInput.type = 'number'; internalDeadlineInput.min = '0'; internalDeadlineInput.placeholder = 'e.g. 20';
-    wrap.appendChild(field('Internal Deadline — days after generation (optional)', internalDeadlineInput));
-    var filingDeadlineInput = el('input'); filingDeadlineInput.type = 'number'; filingDeadlineInput.min = '0'; filingDeadlineInput.placeholder = 'e.g. 25';
-    wrap.appendChild(field('Filing/Client Deadline — days after generation (optional)', filingDeadlineInput));
+    var filingDayInput = el('input'); filingDayInput.type = 'number'; filingDayInput.min = '1'; filingDayInput.max = '31'; filingDayInput.placeholder = 'e.g. 25';
+    wrap.appendChild(field('Filing/Client Deadline — day of month (optional)', filingDayInput));
+    var internalOffsetInput = el('input'); internalOffsetInput.type = 'number'; internalOffsetInput.min = '0'; internalOffsetInput.placeholder = 'e.g. 3';
+    wrap.appendChild(field('Internal Deadline — days before filing (optional)', internalOffsetInput));
 
     var prepInput = el('textarea'); prepInput.rows = 3; prepInput.placeholder = 'One item per line';
     wrap.appendChild(field('Preparation Checklist (optional)', prepInput));
@@ -2167,8 +2189,8 @@
         requires_submission: submissionCb.checked,
         default_assignee_id: defaultAssigneeSel.value || null,
         default_reviewer_id: defaultReviewerSel.value || null,
-        internal_deadline_days: internalDeadlineInput.value.trim() ? parseInt(internalDeadlineInput.value, 10) : null,
-        filing_deadline_days: filingDeadlineInput.value.trim() ? parseInt(filingDeadlineInput.value, 10) : null,
+        filing_deadline_day: filingDayInput.value.trim() ? parseInt(filingDayInput.value, 10) : null,
+        internal_offset_days: internalOffsetInput.value.trim() ? parseInt(internalOffsetInput.value, 10) : null,
       }).select().single();
       if (res.error) { toast('Could not create template: ' + res.error.message, true); return; }
       var rows = [];

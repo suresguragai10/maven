@@ -33,12 +33,21 @@
 -- type, or does nothing for a type left null/blank.
 --
 -- Due dates are computed only when a template opts in via
--- internal_deadline_days / filing_deadline_days (added 2026-08-12, see
--- 20260811090300_service_templates.sql) -- both are a same-day offset
--- from the work item's own generation date, the only calendar-safe
--- anchor available without BS-conversion. A template that leaves both
--- null keeps the original behavior: due dates land blank for a human to
--- fill in per item afterward (Work Details → Edit).
+-- filing_deadline_day / internal_offset_days (see 20260811090300_
+-- service_templates.sql): filing_deadline_day is a day-of-month applied
+-- to the month the work item is actually generated in (English/Gregorian
+-- calendar -- the only thing this app can compute safely without a BS-
+-- calendar table), clamped to that month's last day if the configured
+-- day doesn't exist in it (e.g. 31 in a 30-day month). internal_due_date
+-- is then derived FROM that filing date minus internal_offset_days, not
+-- computed independently -- internal_due_date and external_due_date stay
+-- two separate columns and neither is ever written from the other's
+-- value at the UPDATE layer (see the Edit Work modal, which always
+-- allows overriding either independently), this is only how the initial
+-- automatic values are derived at generation time. A template that
+-- leaves filing_deadline_day null keeps the original behavior: both due
+-- dates land blank for a human to fill in per item afterward (Work
+-- Details → Edit).
 --
 -- Duplicate prevention for "same client + service + period" is enforced
 -- by a real unique constraint (see 20260811090400_work_items.sql,
@@ -82,6 +91,8 @@ declare
   new_work_id uuid;
   created_count integer := 0;
   fallback_admin uuid;
+  month_start date;
+  month_end date;
   calc_internal_due date;
   calc_filing_due date;
 begin
@@ -97,15 +108,25 @@ begin
   -- always satisfiable.
   select id into fallback_admin from public.profiles where role = 'admin' and is_active = true limit 1;
 
+  month_start := date_trunc('month', current_date)::date;
+  month_end := (month_start + interval '1 month - 1 day')::date;
+
   for svc in
-    select cs.*, st.title as template_title, st.internal_deadline_days, st.filing_deadline_days
+    select cs.*, st.title as template_title, st.filing_deadline_day, st.internal_offset_days
     from public.client_services cs
     join public.service_templates st on st.id = cs.service_template_id
     where cs.is_active = true and st.recurrence = p_period_type
   loop
     new_work_id := null;
-    calc_internal_due := case when svc.internal_deadline_days is not null then current_date + svc.internal_deadline_days else null end;
-    calc_filing_due := case when svc.filing_deadline_days is not null then current_date + svc.filing_deadline_days else null end;
+    -- Clamp to month_end so a configured day-of-month past this month's
+    -- actual length (e.g. 31 in a 30-day month) doesn't roll into next
+    -- month's date instead of landing on this month's last day.
+    calc_filing_due := case when svc.filing_deadline_day is not null
+      then least(month_start + (svc.filing_deadline_day - 1), month_end)
+      else null end;
+    calc_internal_due := case when calc_filing_due is not null and svc.internal_offset_days is not null
+      then calc_filing_due - svc.internal_offset_days
+      else null end;
 
     -- True idempotency: relies on the work_items_client_service_period_
     -- unique constraint, not a check-then-insert. A plain "select exists,
