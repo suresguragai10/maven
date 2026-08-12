@@ -1442,6 +1442,15 @@
   // needs its dates filled in — see "Generate Period Work") be fixed
   // without recreating the work item.
   function openEditWorkModal(work) {
+    // Same reassignment boundary as guard_work_item_update() itself
+    // (admin, or this item's own reviewer) -- matches who the DB will
+    // actually let change assignee_id/reviewer_id, so this never shows a
+    // control that would just fail on save. Reassigning/adding a reviewer
+    // had no UI path at all before this — the only way to set one was at
+    // creation — which also meant "reassigned" could never appear in the
+    // audit trail below since nothing ever produced it.
+    var canReassign = isAdmin() || (state.profile.role === 'reviewer' && work.reviewer_id === state.user.id);
+
     var wrap = el('div');
     var head = el('div', 'modal-head');
     var h2 = el('h2'); h2.textContent = 'Edit Work';
@@ -1459,17 +1468,40 @@
     var externalDueInput = el('input'); externalDueInput.type = 'date'; externalDueInput.value = work.external_due_date || '';
     wrap.appendChild(field('Filing / Client Due (optional)', externalDueInput));
 
+    var assigneeSel, reviewerSel;
+    if (canReassign) {
+      assigneeSel = el('select');
+      state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
+      assigneeSel.value = work.assignee_id;
+      wrap.appendChild(field('Assignee', assigneeSel));
+
+      reviewerSel = el('select');
+      reviewerSel.appendChild(new Option('— No reviewer —', ''));
+      state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
+      reviewerSel.value = work.reviewer_id || '';
+      wrap.appendChild(field('Reviewer', reviewerSel));
+    }
+
     var actions = el('div', 'modal-actions');
     var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
     saveBtn.addEventListener('click', async function () {
       if (!titleInput.value.trim()) { toast('Give the work a title.', true); return; }
       saveBtn.disabled = true;
-      var res = await sb.from('work_items').update({
+      var patch = {
         title: titleInput.value.trim(),
         period: periodInput.value.trim() || null,
         internal_due_date: internalDueInput.value || null,
         external_due_date: externalDueInput.value || null,
-      }).eq('id', work.id);
+      };
+      if (canReassign) {
+        patch.assignee_id = assigneeSel.value;
+        patch.reviewer_id = reviewerSel.value || null;
+      }
+      // Reassignment and due-date-change history is logged automatically
+      // by guard_work_item_update() itself (see supabase/migrations/
+      // 20260811090400_work_items.sql) — nothing to do here beyond the
+      // update; the trigger notices whatever actually changed.
+      var res = await sb.from('work_items').update(patch).eq('id', work.id);
       saveBtn.disabled = false;
       if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
       closeModal();

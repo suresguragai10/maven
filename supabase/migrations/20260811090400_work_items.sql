@@ -143,6 +143,20 @@ create policy "work_items_delete" on public.work_items
 -- assigned to them"). A reviewer who is neither the assignee nor this
 -- item's designated reviewer falls through to the same restrictions as
 -- a plain employee.
+--
+-- Audit trail (2026-08-12): once execution reaches the bottom, the
+-- update has already been authorized by one of the branches above, so
+-- this is also the one place that can reliably notice "an authorized
+-- reassignment or due-date change just happened" and log it -- no
+-- matter which UI path performed the update (Edit Work today, anything
+-- added later), and without needing work_activity's own RLS to somehow
+-- recognize every possible authorized-but-not-obviously-so caller (e.g.
+-- a reviewer editing a colleague's work they're the reviewer_id for
+-- isn't their own assigned work OR admin, so an app-level logActivity()
+-- call here could get silently rejected by RLS even though the update
+-- itself just succeeded). SECURITY DEFINER means these inserts bypass
+-- work_activity's RLS entirely, same reasoning as
+-- _generate_period_work_core writing work_checklist_items directly.
 create or replace function public.guard_work_item_update()
 returns trigger
 language plpgsql
@@ -163,21 +177,47 @@ begin
 
   role := public.current_user_role();
   if role = 'admin' then
-    return new;
+    null; -- unconditional bypass; falls through to the audit-log block below
+  elsif role = 'reviewer' and (old.reviewer_id = auth.uid() or new.reviewer_id = auth.uid()) then
+    null;
+  else
+    if old.assignee_id <> auth.uid() then
+      raise exception 'You can only update work assigned to you.';
+    end if;
+    if new.assignee_id <> old.assignee_id or new.reviewer_id is distinct from old.reviewer_id
+       or new.client_id <> old.client_id or new.service_template_id is distinct from old.service_template_id then
+      raise exception 'Only a reviewer or admin can reassign or rescope work.';
+    end if;
+    if new.status in ('approved', 'changes_required', 'ready_to_submit', 'completed') and new.status <> old.status then
+      raise exception 'Only a reviewer or admin can set that status.';
+    end if;
   end if;
-  if role = 'reviewer' and (old.reviewer_id = auth.uid() or new.reviewer_id = auth.uid()) then
-    return new;
+
+  if new.assignee_id <> old.assignee_id or new.reviewer_id is distinct from old.reviewer_id then
+    insert into public.work_activity (work_item_id, actor_id, action, detail) values (
+      new.id, auth.uid(), 'reassigned',
+      trim(
+        (case when new.assignee_id <> old.assignee_id then
+          'Assignee: ' || coalesce((select full_name from public.profiles where id = old.assignee_id), '—')
+          || ' → ' || coalesce((select full_name from public.profiles where id = new.assignee_id), '—') || '. '
+        else '' end)
+        ||
+        (case when new.reviewer_id is distinct from old.reviewer_id then
+          'Reviewer: ' || coalesce((select full_name from public.profiles where id = old.reviewer_id), '—')
+          || ' → ' || coalesce((select full_name from public.profiles where id = new.reviewer_id), '—')
+        else '' end)
+      )
+    );
   end if;
-  if old.assignee_id <> auth.uid() then
-    raise exception 'You can only update work assigned to you.';
+
+  if new.internal_due_date is distinct from old.internal_due_date or new.external_due_date is distinct from old.external_due_date then
+    insert into public.work_activity (work_item_id, actor_id, action, detail) values (
+      new.id, auth.uid(), 'due_date_changed',
+      'Internal: ' || coalesce(old.internal_due_date::text, '—') || ' → ' || coalesce(new.internal_due_date::text, '—')
+      || '. Filing: ' || coalesce(old.external_due_date::text, '—') || ' → ' || coalesce(new.external_due_date::text, '—')
+    );
   end if;
-  if new.assignee_id <> old.assignee_id or new.reviewer_id is distinct from old.reviewer_id
-     or new.client_id <> old.client_id or new.service_template_id is distinct from old.service_template_id then
-    raise exception 'Only a reviewer or admin can reassign or rescope work.';
-  end if;
-  if new.status in ('approved', 'changes_required', 'ready_to_submit', 'completed') and new.status <> old.status then
-    raise exception 'Only a reviewer or admin can set that status.';
-  end if;
+
   return new;
 end;
 $$;
@@ -185,3 +225,36 @@ $$;
 create trigger work_items_guard
   before update on public.work_items
   for each row execute function public.guard_work_item_update();
+
+-- Companion to the audit logging above: covers the OTHER end of a work
+-- item's life, creation. AFTER INSERT (not the BEFORE UPDATE trigger
+-- above, which only ever fires on UPDATE) so it fires uniformly for
+-- every creation path -- the New Work modal, "Create This Period's
+-- Work," and _generate_period_work_core's bulk generation -- without
+-- needing a matching logActivity() call added to each one individually
+-- (and risking a future path forgetting to). SECURITY DEFINER for the
+-- same RLS-bypass reason as the trigger above.
+create or replace function public.log_work_item_created()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  detail_text text;
+begin
+  detail_text := 'Created'
+    || (select case when full_name is not null then ' by ' || full_name else '' end from public.profiles where id = new.created_by)
+    || '. Assigned to ' || coalesce((select full_name from public.profiles where id = new.assignee_id), 'Unassigned');
+  if new.reviewer_id is not null then
+    detail_text := detail_text || '. Reviewer: ' || coalesce((select full_name from public.profiles where id = new.reviewer_id), 'Unknown');
+  end if;
+  insert into public.work_activity (work_item_id, actor_id, action, detail)
+  values (new.id, new.created_by, 'created', detail_text);
+  return new;
+end;
+$$;
+
+create trigger work_items_log_created
+  after insert on public.work_items
+  for each row execute function public.log_work_item_created();
