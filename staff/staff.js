@@ -951,6 +951,20 @@
       if (!clientSel.value) { toast('Choose a client.', true); return; }
       if (!titleInput.value.trim()) { toast('Give the work a title.', true); return; }
       if (!assigneeSel.value) { toast('No active staff available to assign — activate someone under Staff first.', true); return; }
+      // Fast, friendly check for the common case — the real guarantee is
+      // the work_items_client_service_period_unique DB constraint (same
+      // one the recurring-generation sweep relies on for idempotency), so
+      // this can't actually be bypassed even if this check were removed;
+      // it just avoids a raw constraint-violation error reaching the user.
+      if (templateSel.value && periodInput.value.trim()) {
+        var dupRes = await sb.from('work_items').select('id')
+          .eq('client_id', clientSel.value).eq('service_template_id', templateSel.value).eq('period', periodInput.value.trim()).limit(1);
+        if (dupRes.data && dupRes.data.length) {
+          var dupTmpl = templateById(templateSel.value);
+          toast('This client already has ' + (dupTmpl ? dupTmpl.title : 'this service') + ' for "' + periodInput.value.trim() + '".', true);
+          return;
+        }
+      }
       createBtn.disabled = true;
       var res = await sb.from('work_items').insert({
         client_id: clientSel.value,

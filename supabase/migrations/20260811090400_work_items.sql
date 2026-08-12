@@ -49,11 +49,31 @@ create index if not exists work_items_assignee_id_idx on public.work_items (assi
 create index if not exists work_items_client_id_idx on public.work_items (client_id);
 create index if not exists work_items_status_idx on public.work_items (status);
 create index if not exists work_items_internal_due_date_idx on public.work_items (internal_due_date);
--- Speeds up the "has this client+service already been generated for this
--- period?" check that both the manual and scheduled generation paths run
--- for every active client_service.
-create index if not exists work_items_period_lookup_idx
-  on public.work_items (client_id, service_template_id, period);
+
+-- The real duplicate-prevention boundary for recurring/template-generated
+-- work: the same client + service + period can exist at most once. This
+-- is what _generate_period_work_core's `on conflict ... do nothing` relies
+-- on for true idempotency (safe even if the manual button and the daily
+-- cron sweep ever ran concurrently — a plain "check then insert" isn't).
+-- NULLs never conflict with each other in a unique constraint, so ad-hoc
+-- work (service_template_id null) and work with no period set are
+-- correctly left unconstrained — this only applies to real recurring
+-- service + period combinations.
+--
+-- IMPORTANT: unlike a CHECK constraint, a UNIQUE constraint can't be added
+-- NOT VALID -- it must validate every existing row up front, so this will
+-- fail outright if a duplicate already exists in the live table. Run this
+-- first to check before applying:
+--   select client_id, service_template_id, period, count(*)
+--   from public.work_items
+--   where service_template_id is not null and period is not null
+--   group by client_id, service_template_id, period
+--   having count(*) > 1;
+-- If that returns any rows, resolve them (delete/merge) before adding
+-- this constraint.
+alter table public.work_items
+  add constraint work_items_client_service_period_unique
+  unique (client_id, service_template_id, period);
 
 -- A work item can't be sitting in the review queue with nobody assigned
 -- to review it — added NOT VALID since this table already has live data

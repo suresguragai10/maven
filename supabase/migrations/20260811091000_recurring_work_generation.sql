@@ -25,6 +25,13 @@
 -- Due dates are intentionally left blank on generated work items for the
 -- same reason — they need a human to fill in per item afterward (Work
 -- Details → Edit).
+--
+-- Duplicate prevention for "same client + service + period" is enforced
+-- by a real unique constraint (see 20260811090400_work_items.sql,
+-- work_items_client_service_period_unique), not application logic —
+-- _generate_period_work_core uses INSERT ... ON CONFLICT DO NOTHING, so
+-- it's genuinely idempotent even under concurrent execution, not just
+-- "correct as long as nothing runs at the same time."
 
 create or replace function public._generate_period_work_core(p_period text)
 returns integer
@@ -53,25 +60,27 @@ begin
     join public.service_templates st on st.id = cs.service_template_id
     where cs.is_active = true
   loop
-    -- Idempotency: skip anything already generated for this exact
-    -- client + service + period, so re-running (manually or via the
-    -- next day's sweep) never creates duplicates.
-    if exists (
-      select 1 from public.work_items
-      where client_id = svc.client_id
-        and service_template_id = svc.service_template_id
-        and period = p_period
-    ) then
-      continue;
-    end if;
+    new_work_id := null;
 
+    -- True idempotency: relies on the work_items_client_service_period_
+    -- unique constraint, not a check-then-insert. A plain "select exists,
+    -- then insert if not" has a race window between the check and the
+    -- insert -- fine for a single call, not safe if the manual button and
+    -- the daily cron sweep ever land at the same moment. ON CONFLICT DO
+    -- NOTHING is atomic: the database itself guarantees no duplicate can
+    -- be created no matter how many callers try at once.
     insert into public.work_items (client_id, service_template_id, title, period, assignee_id, reviewer_id, priority, status, created_by)
     values (
       svc.client_id, svc.service_template_id, svc.template_title, p_period,
       coalesce(svc.assignee_id, fallback_admin),
       svc.reviewer_id, 'normal', 'to_do', fallback_admin
     )
+    on conflict (client_id, service_template_id, period) do nothing
     returning id into new_work_id;
+
+    if new_work_id is null then
+      continue; -- already exists for this client + service + period
+    end if;
 
     insert into public.work_checklist_items (work_item_id, stage, title, sort_order)
     select new_work_id, sti.stage, sti.title, sti.sort_order
