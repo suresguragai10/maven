@@ -18,6 +18,12 @@
     ready_to_submit: 'Ready to Submit',
     completed: 'Completed',
   };
+  var SUBMISSION_STATUS_LABELS = {
+    not_ready: 'Not Ready',
+    ready_to_submit: 'Ready to Submit',
+    submitted: 'Submitted',
+    acknowledged: 'Acknowledged',
+  };
   // Statuses an employee may set themselves — always available regardless
   // of which service template a work item follows. Everything past
   // "Ready for Review" requires a reviewer/admin, enforced both here (UI)
@@ -1046,6 +1052,7 @@
         }
       }
       createBtn.disabled = true;
+      var chosenTmpl = templateSel.value ? templateById(templateSel.value) : null;
       var res = await sb.from('work_items').insert({
         client_id: clientSel.value,
         service_template_id: templateSel.value || null,
@@ -1057,6 +1064,10 @@
         external_due_date: externalDueInput.value || null,
         priority: prioritySel.value,
         description: descInput.value.trim() || null,
+        // Inherits the template's default; ad-hoc work (no template)
+        // starts false and can still be flipped on later via Edit Work
+        // if a specific engagement turns out to need filing after all.
+        submission_required: chosenTmpl ? chosenTmpl.requires_submission : false,
         created_by: state.user.id,
       }).select().single();
       if (res.error) { createBtn.disabled = false; toast('Could not create work: ' + res.error.message, true); return; }
@@ -1258,6 +1269,76 @@
         statusWrap.appendChild(hint);
       }
       overviewPane.appendChild(statusWrap);
+    }
+
+    // Submission tracking — hidden entirely for work that doesn't require
+    // formal filing (ad-hoc work, or a template with requires_submission
+    // false). Deliberately separate from the main status control above:
+    // an assignee may record submission for their OWN work once it's
+    // cleared review (status already ready_to_submit/completed) without
+    // needing a reviewer to do it for them — see guard_work_item_update()
+    // for the matching DB-level enforcement of that same rule.
+    if (work.submission_required) {
+      var canRecordSubmission = canEditFull || (isMine && (work.status === 'ready_to_submit' || work.status === 'completed'));
+      var subBox = el('div', 'action-box');
+      var subTitle = el('div', 'action-title'); subTitle.textContent = 'Submission'; subBox.appendChild(subTitle);
+
+      var subStatusWrap = el('div', 'f');
+      var subStatusLabel = el('label'); subStatusLabel.textContent = 'Submission Status'; subStatusWrap.appendChild(subStatusLabel);
+      var subStatusSel = el('select');
+      Object.keys(SUBMISSION_STATUS_LABELS).forEach(function (s) { subStatusSel.appendChild(new Option(SUBMISSION_STATUS_LABELS[s], s)); });
+      subStatusSel.value = work.submission_status || 'not_ready';
+      subStatusSel.disabled = !canRecordSubmission;
+      subStatusWrap.appendChild(subStatusSel);
+      subBox.appendChild(subStatusWrap);
+
+      var refInput = el('input'); refInput.type = 'text'; refInput.value = work.submission_reference || ''; refInput.placeholder = 'e.g. IRD acknowledgment no.';
+      refInput.disabled = !canRecordSubmission;
+      subBox.appendChild(field('Reference / Submission Number (optional)', refInput));
+
+      var subNoteInput = el('textarea'); subNoteInput.rows = 2; subNoteInput.value = work.submission_note || ''; subNoteInput.placeholder = 'Short note (optional)';
+      subNoteInput.disabled = !canRecordSubmission;
+      subBox.appendChild(field('Note (optional)', subNoteInput));
+
+      if (work.submitted_at) {
+        var submittedLine = el('div'); submittedLine.style.cssText = 'font-size:.85rem;color:var(--ink-soft);margin-top:6px;';
+        submittedLine.textContent = 'Submitted ' + fmtDate(work.submitted_at.slice(0, 10)) + (work.submitted_by ? ' by ' + profileName(work.submitted_by) : '');
+        subBox.appendChild(submittedLine);
+      }
+
+      if (canRecordSubmission) {
+        var subSaveBtn = el('button', 'btn btn-outline btn-sm'); subSaveBtn.type = 'button'; subSaveBtn.style.marginTop = '10px'; subSaveBtn.textContent = 'Save Submission Details';
+        subSaveBtn.addEventListener('click', async function () {
+          var newSubStatus = subStatusSel.value;
+          var patch = {
+            submission_status: newSubStatus,
+            submission_reference: refInput.value.trim() || null,
+            submission_note: subNoteInput.value.trim() || null,
+          };
+          // First time crossing into submitted/acknowledged: stamp who
+          // and when. Left alone on later saves so it keeps reflecting
+          // the original submission, not the most recent reference/note
+          // tweak.
+          if (!work.submitted_at && (newSubStatus === 'submitted' || newSubStatus === 'acknowledged')) {
+            patch.submitted_at = new Date().toISOString();
+            patch.submitted_by = state.user.id;
+          }
+          subSaveBtn.disabled = true;
+          var res = await sb.from('work_items').update(patch).eq('id', work.id);
+          subSaveBtn.disabled = false;
+          if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+          if (newSubStatus !== (work.submission_status || 'not_ready')) {
+            logActivity(work.id, 'submission_status_changed',
+              SUBMISSION_STATUS_LABELS[work.submission_status || 'not_ready'] + ' → ' + SUBMISSION_STATUS_LABELS[newSubStatus]
+              + (patch.submission_reference ? '. Reference: ' + patch.submission_reference : ''));
+          }
+          toast('Submission details saved.');
+          renderWorkDetail(id);
+        });
+        subBox.appendChild(subSaveBtn);
+      }
+
+      overviewPane.appendChild(subBox);
     }
 
     // Current action — status-dependent context box.
@@ -1482,6 +1563,18 @@
       wrap.appendChild(field('Reviewer', reviewerSel));
     }
 
+    var submissionReqCb;
+    if (canReassign) {
+      var submissionReqWrap = el('div', 'f');
+      var submissionReqLabel = el('label');
+      submissionReqCb = el('input'); submissionReqCb.type = 'checkbox'; submissionReqCb.style.width = 'auto'; submissionReqCb.style.marginRight = '8px';
+      submissionReqCb.checked = !!work.submission_required;
+      submissionReqLabel.appendChild(submissionReqCb);
+      submissionReqLabel.appendChild(document.createTextNode('Requires formal submission/filing'));
+      submissionReqWrap.appendChild(submissionReqLabel);
+      wrap.appendChild(submissionReqWrap);
+    }
+
     var actions = el('div', 'modal-actions');
     var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
     saveBtn.addEventListener('click', async function () {
@@ -1496,6 +1589,7 @@
       if (canReassign) {
         patch.assignee_id = assigneeSel.value;
         patch.reviewer_id = reviewerSel.value || null;
+        patch.submission_required = submissionReqCb.checked;
       }
       // Reassignment and due-date-change history is logged automatically
       // by guard_work_item_update() itself (see supabase/migrations/

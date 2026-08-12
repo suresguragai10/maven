@@ -35,11 +35,23 @@ create table if not exists public.work_items (
   -- field edit would bump and so can't answer "how long in review."
   ready_for_review_at timestamptz,
   description text,
-  -- Reserved for a future submission-tracking UI; not yet surfaced by the
-  -- frontend, but already part of the live schema.
+  -- Submission tracking, surfaced 2026-08-12 (was reserved but unused —
+  -- submission_reference/submitted_at already existed; submission_required/
+  -- submission_status/submitted_by/submission_note are new). Deliberately
+  -- separate from the main `status` workflow above: `status` tracks
+  -- Maven's own internal process (drafting → review → approval),
+  -- submission_status tracks the downstream filing lifecycle with the
+  -- client/authority once the work itself is approved -- a work item can
+  -- sit at status='ready_to_submit' for a while before submission_status
+  -- actually advances past 'not_ready', and the two are edited
+  -- independently on purpose.
+  submission_required boolean not null default false,
+  submission_status text not null default 'not_ready' check (submission_status in ('not_ready', 'ready_to_submit', 'submitted', 'acknowledged')),
   submission_reference text,
+  submission_note text,
   completed_at timestamptz,
   submitted_at timestamptz,
+  submitted_by uuid references public.profiles(id),
   created_by uuid references public.profiles(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -190,6 +202,20 @@ begin
     end if;
     if new.status in ('approved', 'changes_required', 'ready_to_submit', 'completed') and new.status <> old.status then
       raise exception 'Only a reviewer or admin can set that status.';
+    end if;
+    -- Submission fields: a plain assignee may record submission for their
+    -- OWN work, but only once it's actually cleared review (status
+    -- already ready_to_submit or completed) -- otherwise anyone could
+    -- self-certify their own unreviewed work as filed. Admin/reviewer
+    -- (the branches above this one) are exempt from this timing check
+    -- entirely, same as every other reviewer-gated field.
+    if (new.submission_status is distinct from old.submission_status
+        or new.submitted_at is distinct from old.submitted_at
+        or new.submitted_by is distinct from old.submitted_by
+        or new.submission_reference is distinct from old.submission_reference
+        or new.submission_note is distinct from old.submission_note)
+       and old.status not in ('ready_to_submit', 'completed') then
+      raise exception 'Submission can only be recorded once the work is ready to submit.';
     end if;
   end if;
 
