@@ -207,6 +207,20 @@
     if (w.external_due_date) return 'Filing ' + fmtDate(w.external_due_date);
     return 'No due date';
   }
+  // A waiting-on-client requirement counts as "waiting too long" once its
+  // own scheduled follow-up date has passed, or — if no follow-up was ever
+  // scheduled — once it's simply been sitting unreceived for a while.
+  // Shared between Work Details (per-item flag) and the Manager Dashboard
+  // (team-wide count) so the two can never disagree on the definition.
+  var WAITING_STALE_DAYS = 7;
+  function isStaleWaitingItem(wi) {
+    if (wi.is_received) return false;
+    var todayStr = new Date().toISOString().slice(0, 10);
+    if (wi.follow_up_date) return wi.follow_up_date < todayStr;
+    if (!wi.requested_date) return false;
+    var ageDays = (Date.now() - new Date(wi.requested_date + 'T00:00:00').getTime()) / 86400000;
+    return ageDays >= WAITING_STALE_DAYS;
+  }
   function clientName(id) {
     var c = state.clients.find(function (x) { return x.id === id; });
     return c ? c.name : '—';
@@ -868,8 +882,18 @@
       return ageDays > 2;
     }).length;
     var waitingClientIds = {};
-    open.filter(function (w) { return w.status === 'waiting_for_client'; }).forEach(function (w) { waitingClientIds[w.client_id] = true; });
+    var waitingWorkIds = [];
+    open.filter(function (w) { return w.status === 'waiting_for_client'; }).forEach(function (w) { waitingClientIds[w.client_id] = true; waitingWorkIds.push(w.id); });
     var waitingClientCount = Object.keys(waitingClientIds).length;
+    // Per-requirement, not per-work-item: a client can be "waiting" for
+    // weeks on paper while every individual document is actually fine
+    // except one nobody's chased — this is what actually needs a
+    // manager's attention, not just the client-level count above.
+    var staleRequirementCount = 0;
+    if (waitingWorkIds.length) {
+      var waitingItemsRes = await sb.from('work_waiting_items').select('*').in('work_item_id', waitingWorkIds);
+      staleRequirementCount = (waitingItemsRes.data || []).filter(isStaleWaitingItem).length;
+    }
 
     var attnCard = el('div', 'card');
     var aH2 = el('h2'); aH2.appendChild(icon('alert')); aH2.appendChild(document.createTextNode('Needs Manager Attention')); attnCard.appendChild(aH2);
@@ -877,6 +901,7 @@
     if (overdueCount) lines.push({ text: overdueCount + ' overdue work item' + (overdueCount === 1 ? '' : 's'), view: 'all-work' });
     if (staleReviews) lines.push({ text: staleReviews + ' review' + (staleReviews === 1 ? '' : 's') + ' older than 2 days', view: 'review' });
     if (waitingClientCount) lines.push({ text: waitingClientCount + ' client' + (waitingClientCount === 1 ? '' : 's') + ' waiting on documents', view: null });
+    if (staleRequirementCount) lines.push({ text: staleRequirementCount + ' requirement' + (staleRequirementCount === 1 ? '' : 's') + ' waiting ' + WAITING_STALE_DAYS + '+ days without follow-up', view: null });
     if (!lines.length) {
       var okLine = el('p', 'desc'); okLine.textContent = 'Nothing needs attention right now.'; attnCard.appendChild(okLine);
     } else {
@@ -1203,7 +1228,16 @@
         var res = await sb.from('work_items').update(patch).eq('id', work.id);
         if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = prevStatus; return; }
         if (newWaitingItemTitles && newWaitingItemTitles.length) {
-          var rows = newWaitingItemTitles.map(function (title, i) { return { work_item_id: work.id, title: title, sort_order: i }; });
+          var rows = newWaitingItemTitles.map(function (title, i) {
+            return {
+              work_item_id: work.id,
+              title: title,
+              sort_order: i,
+              requested_date: patch.waiting_since || new Date().toISOString().slice(0, 10),
+              requested_by: state.user.id,
+              follow_up_date: patch.follow_up_date || null,
+            };
+          });
           await sb.from('work_waiting_items').insert(rows);
         }
         // Leaving Waiting for Client through any path — not just "Mark
@@ -1236,24 +1270,45 @@
         var noWaitItems = el('div'); noWaitItems.style.cssText = 'font-size:.88rem;color:var(--ink-soft);'; noWaitItems.textContent = '—';
         actionBox.appendChild(noWaitItems);
       }
+      // Return-to-In-Progress CTA and "Mark Documents Received" are two
+      // different actions now: the CTA only ever appears once every item
+      // is ALREADY received (individually checked off, or via the force-
+      // mark button below), and just flips status — nothing is silently
+      // auto-completed the instant the last checkbox is ticked, per the
+      // explicit "do not automatically complete the work item" ask.
+      var allReceivedBanner = el('div');
+      allReceivedBanner.style.cssText = 'margin-top:12px;padding:10px 12px;background:var(--green-soft);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;';
+      var allReceivedText = el('span'); allReceivedText.style.cssText = 'color:var(--green);font-weight:700;font-size:.88rem;'; allReceivedText.textContent = 'All requirements received.';
+      var returnBtn = el('button', 'btn btn-sm'); returnBtn.type = 'button'; returnBtn.textContent = 'Return to In Progress';
+      returnBtn.addEventListener('click', async function () {
+        var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
+        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+        logActivity(work.id, 'waiting_resolved', 'All requirements received — returned to In Progress.');
+        toast('Back In Progress.');
+        renderWorkDetail(id);
+      });
+      allReceivedBanner.appendChild(allReceivedText); allReceivedBanner.appendChild(returnBtn);
+
+      var receivedBtn = el('button', 'btn btn-outline btn-sm'); receivedBtn.type = 'button'; receivedBtn.style.marginTop = '12px';
+      receivedBtn.appendChild(icon('check')); receivedBtn.appendChild(document.createTextNode('Mark Documents Received'));
+      receivedBtn.addEventListener('click', async function () {
+        await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
+        var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
+        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+        logActivity(work.id, 'waiting_resolved', 'All outstanding documents marked received.');
+        toast('Marked as received — back In Progress.');
+        renderWorkDetail(id);
+      });
+
+      function refreshWaitingCta() {
+        var allDone = waitingItems.length > 0 && waitingItems.every(function (wi) { return wi.is_received; });
+        var canAct = isMine || canEditFull;
+        allReceivedBanner.classList.toggle('hidden', !(allDone && canAct));
+        receivedBtn.classList.toggle('hidden', !(!allDone && canAct));
+      }
+
       waitingItems.forEach(function (wi) {
-        var row = el('label', 'checklist-item' + (wi.is_received ? ' done' : ''));
-        row.style.padding = '5px 0';
-        var cb = el('input'); cb.type = 'checkbox'; cb.checked = wi.is_received;
-        cb.disabled = !canToggleChildren;
-        cb.addEventListener('change', async function () {
-          var res = await sb.from('work_waiting_items').update({ is_received: cb.checked }).eq('id', wi.id);
-          if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
-          wi.is_received = cb.checked; // keep the in-memory copy in sync, not just the DOM/DB —
-          // "Mark Documents Received" below reads this same waitingItems array.
-          row.classList.toggle('done', cb.checked);
-          var detail = (cb.checked ? 'Received: ' : 'Un-received: ') + wi.title;
-          logActivity(work.id, 'waiting_item_toggled', detail);
-          prependActivityRow(activityPane, detail);
-        });
-        var span = el('span'); span.textContent = wi.title;
-        row.appendChild(cb); row.appendChild(span);
-        actionBox.appendChild(row);
+        actionBox.appendChild(waitingItemRow(wi, work.id, activityPane, canToggleChildren, refreshWaitingCta));
       });
       if (isMine || canEditFull) {
         var addWaitRow = el('div'); addWaitRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
@@ -1261,7 +1316,13 @@
         var addWaitBtn = el('button', 'btn btn-outline btn-sm'); addWaitBtn.type = 'button'; addWaitBtn.textContent = 'Add';
         addWaitBtn.addEventListener('click', async function () {
           if (!newWaitInput.value.trim()) return;
-          var res = await sb.from('work_waiting_items').insert({ work_item_id: work.id, title: newWaitInput.value.trim(), sort_order: waitingItems.length });
+          var res = await sb.from('work_waiting_items').insert({
+            work_item_id: work.id,
+            title: newWaitInput.value.trim(),
+            sort_order: waitingItems.length,
+            requested_date: new Date().toISOString().slice(0, 10),
+            requested_by: state.user.id,
+          });
           if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
           renderWorkDetail(id);
         });
@@ -1271,22 +1332,9 @@
       if (work.waiting_requested_by) { var reqByLine = el('div'); reqByLine.style.cssText = 'margin-top:10px;font-size:.85rem;'; reqByLine.textContent = 'Requested by: ' + profileName(work.waiting_requested_by); actionBox.appendChild(reqByLine); }
       if (work.waiting_since) { var reqLine = el('div'); reqLine.style.marginTop = '2px'; reqLine.style.fontSize = '.85rem'; reqLine.textContent = 'Requested: ' + fmtDate(work.waiting_since); actionBox.appendChild(reqLine); }
       if (work.follow_up_date) { var fuLine = el('div'); fuLine.style.marginTop = '2px'; fuLine.style.fontSize = '.85rem'; fuLine.textContent = 'Follow-up: ' + fmtDate(work.follow_up_date); actionBox.appendChild(fuLine); }
-      if (isMine || canEditFull) {
-        var receivedBtn = el('button', 'btn btn-outline btn-sm'); receivedBtn.type = 'button'; receivedBtn.style.marginTop = '12px';
-        receivedBtn.appendChild(icon('check')); receivedBtn.appendChild(document.createTextNode('Mark Documents Received'));
-        receivedBtn.addEventListener('click', async function () {
-          var outstanding = waitingItems.filter(function (wi) { return !wi.is_received; });
-          if (outstanding.length) {
-            await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
-          }
-          var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
-          if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-          logActivity(work.id, 'waiting_resolved', 'All outstanding documents marked received.');
-          toast('Marked as received — back In Progress.');
-          renderWorkDetail(id);
-        });
-        actionBox.appendChild(receivedBtn);
-      }
+      actionBox.appendChild(allReceivedBanner);
+      actionBox.appendChild(receivedBtn);
+      refreshWaitingCta();
       overviewPane.appendChild(actionBox);
     } else if (work.status === 'changes_required') {
       var cBox = el('div', 'action-box');
@@ -1439,6 +1487,110 @@
     var span = el('span'); span.textContent = item.title;
     row.appendChild(cb); row.appendChild(span);
     return row;
+  }
+
+  // A waiting-on-client requirement row: the checkbox is the same pattern
+  // as checklistRow, but each item now carries its own requested-by/date,
+  // follow-up history, and note — shown as a small detail line underneath
+  // rather than cluttering the checkbox row itself. onToggled lets the
+  // parent action box update its "all received" CTA the instant the last
+  // item is checked, without a full page re-render.
+  function waitingItemRow(wi, workId, activityPane, canToggle, onToggled) {
+    var row = el('div', 'checklist-item' + (wi.is_received ? ' done' : ''));
+    row.style.cssText = 'flex-direction:column;align-items:stretch;padding:8px 0;';
+    var topRow = el('label'); topRow.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    var cb = el('input'); cb.type = 'checkbox'; cb.checked = wi.is_received;
+    cb.disabled = !canToggle;
+    var followUpBtn = el('button', 'btn btn-outline btn-sm');
+    cb.addEventListener('change', async function () {
+      var res = await sb.from('work_waiting_items').update({ is_received: cb.checked }).eq('id', wi.id);
+      if (res.error) { toast('Could not update: ' + res.error.message, true); cb.checked = !cb.checked; return; }
+      wi.is_received = cb.checked;
+      row.classList.toggle('done', cb.checked);
+      followUpBtn.classList.toggle('hidden', cb.checked || !canToggle);
+      var detail = (cb.checked ? 'Received: ' : 'Un-received: ') + wi.title;
+      logActivity(workId, 'waiting_item_toggled', detail);
+      prependActivityRow(activityPane, detail);
+      onToggled();
+    });
+    var span = el('span'); span.textContent = wi.title;
+    topRow.appendChild(cb); topRow.appendChild(span);
+    row.appendChild(topRow);
+
+    var metaBits = ['Requested ' + fmtDate(wi.requested_date) + (wi.requested_by ? ' by ' + profileName(wi.requested_by) : '')];
+    if (wi.follow_up_date) metaBits.push('Next follow-up ' + fmtDate(wi.follow_up_date));
+    if (wi.follow_up_count) metaBits.push('Followed up ' + wi.follow_up_count + 'x' + (wi.last_followed_up_at ? ' (last ' + fmtDate(wi.last_followed_up_at.slice(0, 10)) + ')' : ''));
+    var metaLine = el('div'); metaLine.style.cssText = 'font-size:.78rem;color:var(--ink-soft);margin:2px 0 0 28px;';
+    metaLine.textContent = metaBits.join(' · ');
+    row.appendChild(metaLine);
+
+    if (isStaleWaitingItem(wi)) {
+      var staleTag = el('div'); staleTag.style.cssText = 'font-size:.78rem;color:var(--red);font-weight:700;margin:2px 0 0 28px;';
+      staleTag.textContent = 'Follow-up overdue';
+      row.appendChild(staleTag);
+    }
+    if (wi.note) {
+      var noteLine = el('div'); noteLine.style.cssText = 'font-size:.82rem;color:var(--ink-soft);font-style:italic;margin:2px 0 0 28px;';
+      noteLine.textContent = wi.note;
+      row.appendChild(noteLine);
+    }
+
+    followUpBtn.type = 'button'; followUpBtn.style.cssText = 'margin:6px 0 0 28px;';
+    followUpBtn.textContent = 'Record Follow-up';
+    if (wi.is_received || !canToggle) followUpBtn.classList.add('hidden');
+    followUpBtn.addEventListener('click', function () {
+      openFollowUpModal(wi, workId, function () { renderWorkDetail(workId); });
+    });
+    row.appendChild(followUpBtn);
+
+    return row;
+  }
+
+  // Records that someone followed up on a specific outstanding
+  // requirement — bumps follow_up_count, stamps last_followed_up_at, and
+  // lets the next follow-up date / a short note be updated at the same
+  // time, all in one action instead of separate edits per field. Always
+  // logged to Activity so there's a real history of chasing, not just
+  // whatever the item's current follow-up date happens to say.
+  function openFollowUpModal(wi, workId, onDone) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Record Follow-up';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var itemLine = el('p', 'desc'); itemLine.style.margin = '0 0 14px'; itemLine.textContent = 'Waiting on: ' + wi.title;
+    wrap.appendChild(itemLine);
+
+    var nextDateInput = el('input'); nextDateInput.type = 'date'; nextDateInput.value = wi.follow_up_date || '';
+    wrap.appendChild(field('Next Follow-up Date (optional)', nextDateInput));
+    var noteInput = el('textarea'); noteInput.rows = 2; noteInput.placeholder = 'Short note (optional)'; noteInput.value = wi.note || '';
+    wrap.appendChild(field('Note (optional)', noteInput));
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', async function () {
+      saveBtn.disabled = true;
+      var newCount = (wi.follow_up_count || 0) + 1;
+      var res = await sb.from('work_waiting_items').update({
+        follow_up_date: nextDateInput.value || null,
+        note: noteInput.value.trim() || null,
+        last_followed_up_at: new Date().toISOString(),
+        follow_up_count: newCount,
+      }).eq('id', wi.id);
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save follow-up: ' + res.error.message, true); return; }
+      var detail = 'Followed up on "' + wi.title + '" (#' + newCount + ')' + (noteInput.value.trim() ? ' — ' + noteInput.value.trim() : '');
+      logActivity(workId, 'follow_up_recorded', detail);
+      closeModal();
+      toast('Follow-up recorded.');
+      onDone();
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
   }
 
   // Small inline prompt for the structured "waiting for client" fields —

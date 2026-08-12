@@ -125,12 +125,29 @@ create policy "work_comments_insert" on public.work_comments
 -- specific thing being waited on (a document, a decision) is its own row,
 -- independently checkable off as it arrives — so "2 of 3 documents in" is
 -- visible mid-wait, not just an all-or-nothing status flip.
+--
+-- Per-item tracking fields added 2026-08-12 (V2 Task 3): requested_date/
+-- requested_by capture who asked for THIS specific item and when, rather
+-- than only a single work-item-level "requested" pair that couldn't tell
+-- items apart. follow_up_date/last_followed_up_at/follow_up_count/note
+-- support a real per-item follow-up history (see openFollowUpModal in
+-- staff.js) instead of one shared follow-up date for the whole wait.
+-- work_items.waiting_since/follow_up_date/waiting_requested_by are left
+-- as-is (still set from whatever was entered for the whole batch at the
+-- moment status flips to waiting_for_client) — a quick summary, not
+-- replaced by these more granular per-item fields.
 create table if not exists public.work_waiting_items (
   id uuid primary key default gen_random_uuid(),
   work_item_id uuid not null references public.work_items(id) on delete cascade,
   title text not null,
   is_received boolean not null default false,
   sort_order int not null default 0,
+  requested_date date not null default current_date,
+  requested_by uuid references public.profiles(id),
+  follow_up_date date,
+  last_followed_up_at timestamptz,
+  follow_up_count int not null default 0,
+  note text,
   created_at timestamptz not null default now()
 );
 create index if not exists work_waiting_items_work_item_id_idx
