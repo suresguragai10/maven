@@ -698,10 +698,13 @@
     }
   }
 
-  // "Who's overloaded this week" — the one thing a flat list can't answer
-  // at a glance. Counts open (non-completed) work per assignee, sorted
-  // busiest-first, with overdue count called out separately since that's
-  // the number that actually matters day to day.
+  // "Who has open work right now" — the one thing a flat list can't
+  // answer at a glance. Counts open (non-completed) work per assignee,
+  // with overdue count called out separately since that's the number
+  // that actually matters day to day. Alphabetical by name, same as the
+  // Manager Dashboard's Team Workload table -- no busiest-first ranking
+  // (fixed 2026-08-13; this used to sort by open count, which is exactly
+  // the kind of ranking that table was explicitly told not to do).
   function renderWorkloadSummary(main, items) {
     var open = items.filter(function (w) { return w.status !== 'completed'; });
     if (!open.length) return;
@@ -714,7 +717,7 @@
     });
     var rows = Object.keys(byAssignee).map(function (id) {
       return { id: id, name: id === 'unassigned' ? 'Unassigned' : profileName(id), open: byAssignee[id].open, overdue: byAssignee[id].overdue };
-    }).sort(function (a, b) { return b.open - a.open; });
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
 
     var card = el('div', 'card');
     var h2 = el('h2'); h2.appendChild(icon('users')); h2.appendChild(document.createTextNode('Team Workload')); card.appendChild(h2);
