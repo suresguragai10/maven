@@ -862,40 +862,85 @@
     var todayStr = localDateStr();
     var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
     var weekStr = localDateStr(weekOut);
+    var monthOut = new Date(); monthOut.setDate(monthOut.getDate() + 30);
+    var monthStr = localDateStr(monthOut);
 
-    // ---- Team Workload matrix ----
+    // ---- Team Workload matrix — workload balancing, not a leaderboard:
+    // staff stay in the order they were loaded (alphabetical by name, see
+    // loadProfiles()), never sorted or re-ordered by how much work
+    // someone has. Every number is a plain count of real work items —
+    // no derived "productivity" or completion-rate metric of any kind.
+    // 7 Days / 30 Days are cumulative (each includes Today's items, the
+    // way "due within a week" naturally would), not separate buckets.
     var matrixCard = el('div', 'card');
     var mH2 = el('h2'); mH2.appendChild(icon('users')); mH2.appendChild(document.createTextNode('Team Workload')); matrixCard.appendChild(mH2);
     var table = el('table');
     var thead = el('thead'); var trh = el('tr');
-    ['Staff', 'Overdue', 'Due 7d', 'Review', 'Waiting'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    ['Staff', 'Overdue', 'Today', '7 Days', '30 Days', 'Review', 'Waiting'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
     thead.appendChild(trh); table.appendChild(thead);
     var tbody = el('tbody');
+
+    var resultsCard = el('div', 'card hidden');
+    var resultsHead = el('div', 'page-head'); resultsHead.style.marginBottom = '10px';
+    var resultsH2 = el('h2'); resultsHead.appendChild(resultsH2);
+    var resultsCloseBtn = el('button', 'btn btn-outline btn-sm'); resultsCloseBtn.type = 'button'; resultsCloseBtn.textContent = 'Close';
+    resultsCloseBtn.addEventListener('click', function () { resultsCard.classList.add('hidden'); });
+    resultsHead.appendChild(resultsCloseBtn);
+    resultsCard.appendChild(resultsHead);
+    var resultsList = el('div');
+    resultsCard.appendChild(resultsList);
+
+    // Clicking a count shows the matching work items right on this page
+    // instead of just linking to a generic list — a manager should see
+    // exactly what's behind a number, not go hunting for it.
+    function showFiltered(title, matchingItems) {
+      resultsH2.textContent = title + ' (' + matchingItems.length + ')';
+      clear(resultsList);
+      matchingItems.slice().sort(compareByDue).forEach(function (w) { resultsList.appendChild(workRow(w)); });
+      resultsCard.classList.remove('hidden');
+      resultsCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function countCell(n, matchingItems, title, isOverdueColumn) {
+      var td = el('td'); td.textContent = String(n);
+      if (isOverdueColumn && n) td.style.cssText = 'color:var(--red);font-weight:700;';
+      if (n) {
+        td.style.cursor = 'pointer';
+        td.title = 'Show ' + title.toLowerCase();
+        td.addEventListener('click', function () { showFiltered(title, matchingItems); });
+      }
+      return td;
+    }
+
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) {
-      // Preparation/open workload (Overdue, Due 7d, Waiting) is the work
-      // this person is doing, so it's assignee-based. Review is work
-      // waiting on THEM to check someone else's, so it has to be counted
-      // against reviewer_id -- otherwise a reviewer's own submissions
-      // (awaiting someone else's review) would inflate their own Review
-      // column instead of showing up under whoever is actually reviewing.
+      // Preparation/open workload (Overdue, Today, 7/30 Days, Waiting) is
+      // the work this person is doing, so it's assignee-based. Review is
+      // work waiting on THEM to check someone else's, so it has to be
+      // counted against reviewer_id -- otherwise a reviewer's own
+      // submissions (awaiting someone else's review) would inflate their
+      // own Review column instead of showing up under whoever is
+      // actually reviewing.
       var assigned = open.filter(function (w) { return w.assignee_id === p.id; });
       var reviewing = open.filter(function (w) { return w.reviewer_id === p.id && w.status === 'ready_for_review'; });
+      var overdueItems = assigned.filter(isOverdue);
+      var todayItems = assigned.filter(function (w) { return !isOverdue(w) && effectiveDue(w) === todayStr; });
+      var days7Items = assigned.filter(function (w) { return !isOverdue(w) && effectiveDue(w) && effectiveDue(w) <= weekStr; });
+      var days30Items = assigned.filter(function (w) { return !isOverdue(w) && effectiveDue(w) && effectiveDue(w) <= monthStr; });
+      var waitingItems = assigned.filter(function (w) { return w.status === 'waiting_for_client'; });
+
       var tr = el('tr');
       var tdName = el('td'); tdName.textContent = p.full_name; tr.appendChild(tdName);
-      var overdueN = assigned.filter(isOverdue).length;
-      var due7 = assigned.filter(function (w) { return !isOverdue(w) && effectiveDue(w) && effectiveDue(w) <= weekStr; }).length;
-      var reviewN = reviewing.length;
-      var waitingN = assigned.filter(function (w) { return w.status === 'waiting_for_client'; }).length;
-      [overdueN, due7, reviewN, waitingN].forEach(function (n, i) {
-        var td = el('td'); td.textContent = String(n);
-        if (i === 0 && n) td.style.cssText = 'color:var(--red);font-weight:700;';
-        tr.appendChild(td);
-      });
+      tr.appendChild(countCell(overdueItems.length, overdueItems, p.full_name + ' — Overdue', true));
+      tr.appendChild(countCell(todayItems.length, todayItems, p.full_name + ' — Due Today', false));
+      tr.appendChild(countCell(days7Items.length, days7Items, p.full_name + ' — Due Within 7 Days', false));
+      tr.appendChild(countCell(days30Items.length, days30Items, p.full_name + ' — Due Within 30 Days', false));
+      tr.appendChild(countCell(reviewing.length, reviewing, p.full_name + ' — Review Queue', false));
+      tr.appendChild(countCell(waitingItems.length, waitingItems, p.full_name + ' — Waiting for Client', false));
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     matrixCard.appendChild(table);
     main.appendChild(matrixCard);
+    main.appendChild(resultsCard);
 
     // ---- Needs Attention — real exceptions, not a dashboard. Every
     // category lists the actual clickable work items (workRow(), same
