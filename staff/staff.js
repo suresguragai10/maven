@@ -38,6 +38,11 @@
   var STAGE_LABELS = { preparation: 'Preparation', review: 'Review', submission: 'Submission' };
   var STAGES = ['preparation', 'review', 'submission'];
   var TEMPLATE_CATEGORIES = ['Bookkeeping', 'Tax', 'Payroll', 'Reporting', 'Registration', 'Advisory', 'NFRS/IFRS'];
+  // Firm Work (work_scope='firm', see 20260816090000_firm_work_data_
+  // model.sql) — internal team work, no client. Matches firm_category's
+  // DB check constraint exactly; keep the two in sync if this ever changes.
+  var FIRM_CATEGORIES = ['Business Development', 'Marketing', 'Website / Digital', 'Administration', 'Firm Setup', 'Research', 'Other'];
+  var FIRM_STATUSES = ['to_do', 'in_progress', 'blocked', 'review', 'completed'];
   // 'normal' deliberately has no label here — it never renders a badge
   // anywhere (see attentionBadge()), only the two flagged states do.
   var ATTENTION_LABELS = { needs_attention: 'Needs Attention', high_attention: 'High Attention' };
@@ -118,6 +123,7 @@
     bell: '<path d="M12 3a5 5 0 0 0-5 5v3l-2 4h18l-2-4V8a5 5 0 0 0-5-5z"/><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0"/>',
     chart: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="3" width="3" height="17"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04z"/>',
+    briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="3" y1="13" x2="21" y2="13"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -697,7 +703,7 @@
       render();
       return;
     }
-    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'clients', 'templates', 'staff', 'settings'];
+    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -734,6 +740,14 @@
     if (isReviewerOrAdmin()) item('reports', 'Reports', 'chart');
     item('periods', 'Period Summary', 'calendar');
     item('todo', 'My To-Do List', 'list');
+    // Firm Work gets its own nav group, deliberately separate from
+    // "Work" (Client Work) — same "keep them visually separate"
+    // requirement as the list screen itself. Open to every active team
+    // member, not gated by role: matches work_items_read RLS, which
+    // grants unconditional read on work_scope='firm' rows to anyone.
+    var groupFirm = el('div', 'sidebar-group'); groupFirm.textContent = 'Firm';
+    nav.appendChild(groupFirm);
+    item('firm-work', 'Firm Work', 'briefcase');
     // Every active staff member can look clients up (name, contact info,
     // active work/services) — that's just read access the app already
     // grants via RLS for the New Work modal's client picker. Only admin
@@ -766,6 +780,7 @@
     if (state.view === 'reports') return renderReportsPage(main);
     if (state.view === 'periods') return renderPeriodSummaryPage(main);
     if (state.view === 'todo') return renderTodoPage(main);
+    if (state.view === 'firm-work') return renderFirmWorkPage(main);
     if (state.view === 'clients') return renderClients(main);
     if (state.view === 'templates') return renderTemplates(main);
     if (state.view === 'staff') return renderStaff(main);
@@ -4301,6 +4316,336 @@
       closeModal();
       toast(created + ' work item' + (created === 1 ? '' : 's') + ' created. Set due dates on each before assigning out.');
     });
+  }
+
+  // ============================================================
+  // Firm Work — internal team work (work_scope='firm'), deliberately
+  // kept visually and functionally separate from Client Work: its own
+  // nav group/icon, a dense table rather than the task-row cards Client
+  // Work uses, and none of Client Work's compliance-specific columns
+  // (client, period, filing deadline, reviewer, submission status) ever
+  // appear here. Open to every active team member — work_items_read RLS
+  // already grants unconditional read on work_scope='firm' rows to
+  // anyone (see 20260816090000_firm_work_data_model.sql) — so this page
+  // queries that scope directly rather than going through loadWork(),
+  // which is deliberately hard-scoped to work_scope='client' so Firm
+  // Work can never leak into a Client Work view.
+  //
+  // No new migration was needed for this task: work_comments' existing
+  // read/insert policies check `w.status <> 'ready_for_review'` as a
+  // catch-all visibility branch, which is trivially true for every Firm
+  // Work status (none of them is literally the string 'ready_for_review'
+  // — see Task 1's own note on why 'review' was chosen as a distinct
+  // value) — so Updates (work_comments) already work for any active
+  // user on any Firm Work item without touching RLS again.
+  // ============================================================
+  function truncateOneLine(s, n) {
+    if (!s) return '';
+    var oneLine = s.replace(/\s+/g, ' ').trim();
+    return oneLine.length > n ? oneLine.slice(0, n) + '…' : oneLine;
+  }
+
+  async function renderFirmWorkPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Firm Work'; head.appendChild(h1);
+    var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Firm Work'));
+    addBtn.addEventListener('click', function () { openFirmWorkModal(null, refresh); });
+    head.appendChild(addBtn);
+    main.appendChild(head);
+
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = 'Internal team work — business development, marketing, admin, and everything else that isn\'t client compliance work. Visible to the whole team.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
+
+    var filterCard = el('div', 'card');
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
+
+    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title or description…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
+    var ownerSel = el('select'); ownerSel.style.width = 'auto';
+    ownerSel.appendChild(new Option('All Owners', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
+    var categorySel = el('select'); categorySel.style.width = 'auto';
+    categorySel.appendChild(new Option('All Categories', ''));
+    FIRM_CATEGORIES.forEach(function (c) { categorySel.appendChild(new Option(c, c)); });
+    var statusSel = el('select'); statusSel.style.width = 'auto';
+    // Default ('') means "open" (not completed) — completed work stays
+    // reachable via the explicit "Completed" option or "All Statuses",
+    // per "default view should emphasize open work."
+    statusSel.appendChild(new Option('Open (default)', ''));
+    FIRM_STATUSES.forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
+    statusSel.appendChild(new Option('All Statuses', 'all'));
+    var prioritySel = el('select'); prioritySel.style.width = 'auto';
+    [['', 'All Priorities'], ['low', 'Low'], ['normal', 'Normal'], ['high', 'High']].forEach(function (p) { prioritySel.appendChild(new Option(p[1], p[0])); });
+    var dueFromInput = el('input'); dueFromInput.type = 'date'; dueFromInput.style.width = 'auto';
+    var dueToInput = el('input'); dueToInput.type = 'date'; dueToInput.style.width = 'auto';
+    var dueToLabel = el('span'); dueToLabel.textContent = 'to'; dueToLabel.style.cssText = 'font-size:.8rem;color:var(--ink-soft);';
+
+    [searchInput, ownerSel, categorySel, statusSel, prioritySel].forEach(function (elm) { filterRow.appendChild(elm); });
+    var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    dueWrap.appendChild(dueFromInput); dueWrap.appendChild(dueToLabel); dueWrap.appendChild(dueToInput);
+    filterRow.appendChild(dueWrap);
+    filterCard.appendChild(filterRow);
+
+    var statusLine = el('div'); statusLine.style.cssText = 'margin-top:12px;font-size:.85rem;color:var(--ink-soft);display:flex;align-items:center;gap:10px;';
+    var statusText = el('span');
+    var clearBtn = el('button', 'btn btn-outline btn-sm'); clearBtn.type = 'button'; clearBtn.textContent = 'Clear Filters';
+    statusLine.appendChild(statusText); statusLine.appendChild(clearBtn);
+    filterCard.appendChild(statusLine);
+    main.appendChild(filterCard);
+
+    var resultsWrap = el('div');
+    main.appendChild(resultsWrap);
+
+    var debounceTimer = null;
+    function onFilterChange(immediate) {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (immediate) { refresh(); return; }
+      debounceTimer = setTimeout(refresh, 300);
+    }
+    searchInput.addEventListener('input', function () { onFilterChange(false); });
+    ownerSel.addEventListener('change', function () { onFilterChange(true); });
+    categorySel.addEventListener('change', function () { onFilterChange(true); });
+    statusSel.addEventListener('change', function () { onFilterChange(true); });
+    prioritySel.addEventListener('change', function () { onFilterChange(true); });
+    dueFromInput.addEventListener('change', function () { onFilterChange(true); });
+    dueToInput.addEventListener('change', function () { onFilterChange(true); });
+    clearBtn.addEventListener('click', function () {
+      searchInput.value = ''; ownerSel.value = ''; categorySel.value = ''; statusSel.value = ''; prioritySel.value = '';
+      dueFromInput.value = ''; dueToInput.value = '';
+      onFilterChange(true);
+    });
+
+    async function refresh() {
+      clear(resultsWrap);
+      var loading = el('div', 'empty-note'); loading.textContent = 'Loading…'; resultsWrap.appendChild(loading);
+
+      var query = sb.from('work_items').select('*').eq('work_scope', 'firm').order('internal_due_date', { ascending: true, nullsFirst: false });
+      if (statusSel.value === '') query = query.neq('status', 'completed');
+      else if (statusSel.value !== 'all') query = query.eq('status', statusSel.value);
+      if (ownerSel.value) query = query.eq('assignee_id', ownerSel.value);
+      if (categorySel.value) query = query.eq('firm_category', categorySel.value);
+      if (prioritySel.value) query = query.eq('priority', prioritySel.value);
+      if (dueFromInput.value) query = query.gte('internal_due_date', dueFromInput.value);
+      if (dueToInput.value) query = query.lte('internal_due_date', dueToInput.value);
+      var term = searchInput.value.trim().replace(/[,()]/g, ' ');
+      if (term) query = query.or('title.ilike.%' + term + '%,description.ilike.%' + term + '%');
+
+      var res = await query;
+      clear(resultsWrap);
+      if (res.error) {
+        var errBox = el('div', 'empty-note'); errBox.textContent = 'Could not load Firm Work: ' + res.error.message;
+        resultsWrap.appendChild(errBox);
+        return;
+      }
+      var items = res.data || [];
+      statusText.textContent = items.length + ' item' + (items.length === 1 ? '' : 's') + '.';
+
+      if (!items.length) {
+        var empty = el('div', 'empty-note'); empty.appendChild(icon('briefcase'));
+        empty.appendChild(document.createTextNode('No Firm Work matches these filters.'));
+        resultsWrap.appendChild(empty);
+        return;
+      }
+
+      // One extra query for the latest update per item — same "load
+      // once, cheap at this org's size" pattern as loadWaitingSummaries().
+      var commentsRes = await sb.from('work_comments').select('*').in('work_item_id', items.map(function (w) { return w.id; })).order('created_at', { ascending: false });
+      var latestByItem = {};
+      (commentsRes.data || []).forEach(function (c) { if (!latestByItem[c.work_item_id]) latestByItem[c.work_item_id] = c; });
+
+      var card = el('div', 'card');
+      var table = el('table');
+      var thead = el('thead'); var trh = el('tr');
+      ['Title', 'Category', 'Owner', 'Status', 'Due Date', 'Priority', 'Latest Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+      thead.appendChild(trh); table.appendChild(thead);
+      var tbody = el('tbody');
+      items.forEach(function (w) {
+        var tr = el('tr'); tr.style.cursor = 'pointer';
+        tr.addEventListener('click', function () { openFirmWorkModal(w, refresh); });
+        var tdTitle = el('td'); tdTitle.style.fontWeight = '700'; tdTitle.style.color = 'var(--navy-950)'; tdTitle.textContent = w.title; tr.appendChild(tdTitle);
+        var tdCat = el('td'); tdCat.textContent = w.firm_category || '—'; tr.appendChild(tdCat);
+        var tdOwner = el('td'); tdOwner.textContent = profileName(w.assignee_id); tr.appendChild(tdOwner);
+        var tdStatus = el('td'); var badge = el('span', 'badge badge-' + w.status); badge.textContent = STATUS_LABELS[w.status] || w.status; tdStatus.appendChild(badge); tr.appendChild(tdStatus);
+        // Plain date only — no "Internal"/"Filing" framing (that's
+        // Client Work's two-due-date vocabulary; Firm Work has one).
+        var tdDue = el('td'); if (isOverdue(w)) tdDue.style.cssText = 'color:var(--red);font-weight:700;';
+        tdDue.textContent = w.internal_due_date ? fmtDate(w.internal_due_date) : '—';
+        tr.appendChild(tdDue);
+        var tdPriority = el('td');
+        var dot = el('span', 'priority-dot priority-dot-' + w.priority); dot.style.cssText = 'display:inline-block;margin-right:6px;';
+        tdPriority.appendChild(dot);
+        tdPriority.appendChild(document.createTextNode(w.priority.charAt(0).toUpperCase() + w.priority.slice(1)));
+        tr.appendChild(tdPriority);
+        var tdUpdate = el('td'); tdUpdate.style.cssText = 'color:var(--ink-soft);font-size:.85rem;max-width:220px;';
+        var latest = latestByItem[w.id];
+        tdUpdate.textContent = latest ? truncateOneLine(latest.body, 60) : '—';
+        tr.appendChild(tdUpdate);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      card.appendChild(table);
+      resultsWrap.appendChild(card);
+    }
+
+    await refresh();
+  }
+
+  // isEdit=false (existing=null): New Firm Work — open to anyone, owner
+  // defaults to self but any active team member can be chosen (matches
+  // "any active team member may create Firm Work and assign it to
+  // another active team member").
+  // isEdit=true: editing is gated to admin or the item's own owner —
+  // guard_work_item_update() enforces this at the DB layer regardless
+  // (a non-owner's update would be rejected there even if these disabled
+  // attributes were somehow bypassed); reassignment specifically stays
+  // admin-only, same as Client Work's Edit Work modal.
+  function openFirmWorkModal(existing, onDone) {
+    var isEdit = !!existing;
+    var canEditFull = isAdmin();
+    var isMine = isEdit && existing.assignee_id === state.user.id;
+    var canEdit = !isEdit || canEditFull || isMine;
+
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = isEdit ? 'Firm Work' : 'New Firm Work';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    if (isEdit && !canEdit) {
+      var readOnlyNote = el('p', 'desc'); readOnlyNote.textContent = 'Only the owner or an admin can edit this item.';
+      wrap.appendChild(readOnlyNote);
+    }
+
+    var titleInput = el('input'); titleInput.type = 'text'; titleInput.disabled = isEdit && !canEdit;
+    if (isEdit) titleInput.value = existing.title;
+    wrap.appendChild(field('Title', titleInput));
+
+    var categorySel = el('select'); categorySel.disabled = isEdit && !canEdit;
+    categorySel.appendChild(new Option('— No category —', ''));
+    FIRM_CATEGORIES.forEach(function (c) { categorySel.appendChild(new Option(c, c)); });
+    if (isEdit) categorySel.value = existing.firm_category || '';
+    wrap.appendChild(field('Category (optional)', categorySel));
+
+    var ownerSel = el('select'); ownerSel.disabled = isEdit && !canEditFull;
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
+    if (isEdit) ownerSel.value = existing.assignee_id;
+    else ownerSel.value = state.user.id; // default to self, freely changeable to any active colleague
+    wrap.appendChild(field('Owner', ownerSel));
+
+    var statusSel = null;
+    if (isEdit) {
+      statusSel = el('select'); statusSel.disabled = !canEdit;
+      FIRM_STATUSES.forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
+      statusSel.value = existing.status;
+      wrap.appendChild(field('Status', statusSel));
+    }
+    // (new items always start at To Do — no status field on create,
+    // same convention as Client Work's New Work modal.)
+
+    var prioritySel = el('select'); prioritySel.disabled = isEdit && !canEdit;
+    [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']].forEach(function (p) { prioritySel.appendChild(new Option(p[1], p[0])); });
+    prioritySel.value = isEdit ? existing.priority : 'normal';
+    wrap.appendChild(field('Priority', prioritySel));
+
+    var dueInput = el('input'); dueInput.type = 'date'; dueInput.disabled = isEdit && !canEdit;
+    if (isEdit) dueInput.value = existing.internal_due_date || '';
+    wrap.appendChild(field('Due Date (optional)', dueInput));
+
+    var descInput = el('textarea'); descInput.rows = 3; descInput.disabled = isEdit && !canEdit;
+    if (isEdit) descInput.value = existing.description || '';
+    wrap.appendChild(field('Description (optional)', descInput));
+
+    if (!isEdit || canEdit) {
+      var actions = el('div', 'modal-actions');
+      var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Firm Work';
+      saveBtn.addEventListener('click', async function () {
+        if (!titleInput.value.trim()) { toast('Give it a title.', true); return; }
+        if (!ownerSel.value) { toast('Choose an owner.', true); return; }
+        saveBtn.disabled = true;
+        var res;
+        if (isEdit) {
+          res = await sb.from('work_items').update({
+            title: titleInput.value.trim(),
+            firm_category: categorySel.value || null,
+            assignee_id: ownerSel.value,
+            status: statusSel.value,
+            priority: prioritySel.value,
+            internal_due_date: dueInput.value || null,
+            description: descInput.value.trim() || null,
+          }).eq('id', existing.id);
+        } else {
+          res = await sb.from('work_items').insert({
+            work_scope: 'firm',
+            title: titleInput.value.trim(),
+            firm_category: categorySel.value || null,
+            assignee_id: ownerSel.value,
+            priority: prioritySel.value,
+            internal_due_date: dueInput.value || null,
+            description: descInput.value.trim() || null,
+            created_by: state.user.id,
+          });
+        }
+        saveBtn.disabled = false;
+        if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+        closeModal();
+        toast(isEdit ? 'Firm Work updated.' : 'Firm Work created.');
+        onDone();
+      });
+      actions.appendChild(saveBtn);
+      wrap.appendChild(actions);
+    }
+
+    // ---- Updates — short progress/status notes, newest first. Reuses
+    // work_comments exactly as Client Work does; posting stays open to
+    // anyone who can see the item (see this section's own header
+    // comment on why that's already true for every Firm Work status
+    // with no new RLS needed) — a teammate chiming in on someone else's
+    // Firm Work is normal collaboration, not something to lock down.
+    if (isEdit) {
+      var updatesHead = el('div', 'checklist-stage'); updatesHead.style.marginTop = '18px'; updatesHead.textContent = 'Updates';
+      wrap.appendChild(updatesHead);
+      var updatesList = el('div');
+      wrap.appendChild(updatesList);
+      async function refreshUpdates() {
+        clear(updatesList);
+        var res = await sb.from('work_comments').select('*').eq('work_item_id', existing.id).order('created_at', { ascending: false });
+        var comments = res.data || [];
+        if (!comments.length) {
+          var noneP = el('p', 'desc'); noneP.style.margin = '4px 0'; noneP.textContent = 'No updates yet.';
+          updatesList.appendChild(noneP);
+        } else {
+          comments.forEach(function (c) {
+            var row = el('div', 'comment');
+            var who = el('span'); who.style.cssText = 'font-size:.8rem;font-weight:700;color:var(--navy-900);'; who.textContent = profileName(c.author_id);
+            var when = el('span'); when.style.cssText = 'font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;'; when.textContent = fmtDateTime(c.created_at);
+            who.appendChild(when);
+            var body = el('p'); body.style.cssText = 'margin:5px 0 0;font-size:.9rem;white-space:pre-wrap;'; body.textContent = c.body;
+            row.appendChild(who); row.appendChild(body);
+            updatesList.appendChild(row);
+          });
+        }
+      }
+      var updateInput = el('textarea'); updateInput.rows = 2; updateInput.placeholder = 'Post a short update…';
+      wrap.appendChild(field('Post an update', updateInput));
+      var updateBtn = el('button', 'btn btn-outline btn-sm'); updateBtn.type = 'button'; updateBtn.textContent = 'Post Update';
+      updateBtn.addEventListener('click', async function () {
+        if (!updateInput.value.trim()) return;
+        updateBtn.disabled = true;
+        var res = await sb.from('work_comments').insert({ work_item_id: existing.id, author_id: state.user.id, body: updateInput.value.trim() });
+        updateBtn.disabled = false;
+        if (res.error) { toast('Could not post: ' + res.error.message, true); return; }
+        updateInput.value = '';
+        refreshUpdates();
+      });
+      wrap.appendChild(updateBtn);
+      refreshUpdates();
+    }
+
+    openModal(wrap);
   }
 
   // ============================================================
