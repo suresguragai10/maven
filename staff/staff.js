@@ -75,6 +75,7 @@
     idcard: '<rect x="2" y="5" width="20" height="14" rx="1"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="19" y2="10"/><line x1="13" y1="14" x2="18" y2="14"/>',
     list: '<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><path d="M4 6l1 1 2-2"/><path d="M4 12l1 1 2-2"/><path d="M4 18l1 1 2-2"/>',
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"/>',
+    search: '<circle cx="10" cy="10" r="7"/><line x1="20" y1="20" x2="15.2" y2="15.2"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -446,6 +447,17 @@
       renderClientDetail(state.clientDetailId);
       return;
     }
+    // Search keeps its filters in the URL as a query string (?q=...&status=
+    // ...) so a search is a shareable/reloadable link, not just in-memory
+    // state — but renderSearchPage writes to it via history.replaceState
+    // (see there), not by setting location.hash, so filtering doesn't
+    // re-trigger this whole-page route/render on every keystroke.
+    if (hash === 'search' || hash.indexOf('search?') === 0) {
+      state.view = 'search';
+      state.searchQuery = hash.indexOf('?') !== -1 ? hash.slice(hash.indexOf('?') + 1) : '';
+      render();
+      return;
+    }
     var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'periods', 'todo', 'clients', 'templates', 'staff'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
@@ -472,6 +484,7 @@
     var group1 = el('div', 'sidebar-group'); group1.textContent = 'Work';
     nav.appendChild(group1);
     item('today', 'Today', 'sun');
+    item('search', 'Search', 'search');
     item('my-work', 'My Work', 'clipboard');
     if (isReviewerOrAdmin()) {
       item('review', 'Review', 'check');
@@ -503,6 +516,7 @@
     var main = qs('#main');
     clear(main);
     if (state.view === 'today') return renderTodayPage(main);
+    if (state.view === 'search') return renderSearchPage(main, state.searchQuery || '');
     if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
     if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
     if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
@@ -1243,6 +1257,255 @@
     });
 
     refresh();
+  }
+
+  // ============================================================
+  // Search — a dedicated, server-filtered search across work items:
+  // client/service/period/staff/status/submission reference in one free-
+  // text box, plus structured filters (status/client/service/assignee/
+  // reviewer/period/deadline range/Waiting for Client). Deliberately
+  // queries Supabase directly here instead of reusing loadWork() (which
+  // pulls every work item for a mode, unbounded, then filters in memory —
+  // fine for the small per-view lists elsewhere in this app, but
+  // work_items has no natural cap on how large it grows over years of
+  // history, so a real search has to let Postgres do the filtering
+  // instead of shipping the whole table to the browser first). Free-text
+  // name matching (client/staff/service) still resolves against
+  // state.clients/state.profiles/state.templates in memory — those stay
+  // small forever (headcount/client/template count), so matching them
+  // client-side to get an id list, then querying work_items with that
+  // list, is the same "small lookup lists loaded once" pattern already
+  // used everywhere else in this app, just applied to build a query
+  // instead of a dropdown.
+  // ============================================================
+  // Strips PostgREST's or=(...) filter syntax characters ( , ( ) ) out of
+  // free-text input before it's spliced into a raw filter string — not a
+  // security boundary (RLS still applies regardless of what this query
+  // returns), just avoids a stray character silently breaking the filter
+  // into a malformed query that returns confusing/empty results.
+  function stripOrSyntax(s) { return s.replace(/[,()]/g, ' ').trim(); }
+
+  async function renderSearchPage(main, initialQuery) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Search'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var initial = new URLSearchParams(initialQuery || '');
+    var filters = {
+      q: initial.get('q') || '',
+      status: initial.get('status') || '',
+      client: initial.get('client') || '',
+      service: initial.get('service') || '',
+      assignee: initial.get('assignee') || '',
+      reviewer: initial.get('reviewer') || '',
+      period: initial.get('period') || '',
+      dueFrom: initial.get('dueFrom') || '',
+      dueTo: initial.get('dueTo') || '',
+      waitingOnly: initial.get('waiting') === '1',
+    };
+
+    var card = el('div', 'card');
+    var qInput = el('input'); qInput.type = 'text';
+    qInput.placeholder = 'Search client, service, period, staff, status, or reference number…';
+    qInput.value = filters.q;
+    card.appendChild(field('Search', qInput));
+
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px;';
+
+    var statusSel = el('select'); statusSel.style.width = 'auto';
+    statusSel.appendChild(new Option('All Statuses', ''));
+    Object.keys(STATUS_LABELS).forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
+    statusSel.value = filters.status;
+
+    var clientSel = el('select'); clientSel.style.width = 'auto';
+    clientSel.appendChild(new Option('All Clients', ''));
+    state.clients.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
+      .forEach(function (c) { clientSel.appendChild(new Option(c.name, c.id)); });
+    clientSel.value = filters.client;
+
+    var serviceSel = el('select'); serviceSel.style.width = 'auto';
+    serviceSel.appendChild(new Option('All Services', ''));
+    state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+      .forEach(function (t) { serviceSel.appendChild(new Option(t.title, t.id)); });
+    serviceSel.value = filters.service;
+
+    var assigneeSel = el('select'); assigneeSel.style.width = 'auto';
+    assigneeSel.appendChild(new Option('All Assignees', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    assigneeSel.value = filters.assignee;
+
+    var reviewerSel = el('select'); reviewerSel.style.width = 'auto';
+    reviewerSel.appendChild(new Option('All Reviewers', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    reviewerSel.value = filters.reviewer;
+
+    var periodInput = el('input'); periodInput.type = 'text'; periodInput.placeholder = 'Period, e.g. Shrawan 2083'; periodInput.style.cssText = 'width:170px;';
+    periodInput.value = filters.period;
+
+    var dueFromInput = el('input'); dueFromInput.type = 'date'; dueFromInput.style.width = 'auto'; dueFromInput.value = filters.dueFrom;
+    var dueToInput = el('input'); dueToInput.type = 'date'; dueToInput.style.width = 'auto'; dueToInput.value = filters.dueTo;
+    var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    var dueToLabel = el('span'); dueToLabel.textContent = 'to'; dueToLabel.style.cssText = 'font-size:.8rem;color:var(--ink-soft);';
+    dueWrap.appendChild(dueFromInput); dueWrap.appendChild(dueToLabel); dueWrap.appendChild(dueToInput);
+
+    var waitingLabel = el('label'); waitingLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-soft);white-space:nowrap;';
+    var waitingCb = el('input'); waitingCb.type = 'checkbox'; waitingCb.style.width = 'auto'; waitingCb.checked = filters.waitingOnly;
+    waitingLabel.appendChild(waitingCb); waitingLabel.appendChild(document.createTextNode('Waiting for Client only'));
+    if (filters.waitingOnly) statusSel.disabled = true;
+
+    [statusSel, clientSel, serviceSel, assigneeSel, reviewerSel, periodInput].forEach(function (elm) { filterRow.appendChild(elm); });
+    filterRow.appendChild(dueWrap);
+    filterRow.appendChild(waitingLabel);
+    card.appendChild(filterRow);
+
+    var statusLine = el('div'); statusLine.style.cssText = 'margin-top:12px;font-size:.85rem;color:var(--ink-soft);display:flex;align-items:center;gap:10px;';
+    var statusText = el('span'); statusText.textContent = 'Searching…';
+    var clearBtn = el('button', 'btn btn-outline btn-sm'); clearBtn.type = 'button'; clearBtn.textContent = 'Clear Filters';
+    statusLine.appendChild(statusText); statusLine.appendChild(clearBtn);
+    card.appendChild(statusLine);
+    main.appendChild(card);
+
+    var resultsWrap = el('div');
+    main.appendChild(resultsWrap);
+
+    var RESULT_CAP = 200;
+    // Debounced free-text input can fire out of order (a fast typer's
+    // earlier keystroke's query resolving after a later one's) — this
+    // sequence guard drops the result of any search that isn't the most
+    // recent one requested, so the list always reflects the latest input.
+    var requestSeq = 0;
+
+    function syncUrl() {
+      var p = new URLSearchParams();
+      if (filters.q) p.set('q', filters.q);
+      if (filters.status) p.set('status', filters.status);
+      if (filters.client) p.set('client', filters.client);
+      if (filters.service) p.set('service', filters.service);
+      if (filters.assignee) p.set('assignee', filters.assignee);
+      if (filters.reviewer) p.set('reviewer', filters.reviewer);
+      if (filters.period) p.set('period', filters.period);
+      if (filters.dueFrom) p.set('dueFrom', filters.dueFrom);
+      if (filters.dueTo) p.set('dueTo', filters.dueTo);
+      if (filters.waitingOnly) p.set('waiting', '1');
+      var str = p.toString();
+      // history.replaceState, not location.hash= — setting location.hash
+      // fires hashchange -> routeFromHash -> a full render() that would
+      // rebuild this exact form (and drop input focus) on every keystroke.
+      history.replaceState(null, '', '#search' + (str ? '?' + str : ''));
+    }
+
+    async function runSearch() {
+      var seq = ++requestSeq;
+      clear(resultsWrap);
+      var anyFilterActive = !!(filters.q || filters.status || filters.client || filters.service || filters.assignee || filters.reviewer || filters.period || filters.dueFrom || filters.dueTo || filters.waitingOnly);
+      // No query at all until there's something to filter by — an unbounded
+      // select() the moment the page loads would be exactly the "download
+      // the whole table just to search" this feature is meant to avoid.
+      if (!anyFilterActive) {
+        statusText.textContent = '';
+        var prompt = el('div', 'empty-note'); prompt.appendChild(icon('search'));
+        prompt.appendChild(document.createTextNode('Type a search term or choose a filter above.'));
+        resultsWrap.appendChild(prompt);
+        return;
+      }
+      var loading = el('div', 'empty-note'); loading.textContent = 'Searching…'; resultsWrap.appendChild(loading);
+
+      var query = sb.from('work_items').select('*').order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
+      if (filters.status) query = query.eq('status', filters.status);
+      if (filters.client) query = query.eq('client_id', filters.client);
+      if (filters.service) query = query.eq('service_template_id', filters.service);
+      if (filters.assignee) query = query.eq('assignee_id', filters.assignee);
+      if (filters.reviewer) query = query.eq('reviewer_id', filters.reviewer);
+      if (filters.period) query = query.ilike('period', '%' + stripOrSyntax(filters.period) + '%');
+      if (filters.waitingOnly) query = query.eq('status', 'waiting_for_client');
+      // Filtered against internal_due_date only (the primary due date
+      // used everywhere else in this app) — a work item with only an
+      // external_due_date set won't match a deadline range here. That's
+      // a deliberate simplification: a true either-column range needs a
+      // nested and/or PostgREST expression, which isn't worth the
+      // complexity for a range filter most templates won't even need
+      // (see 20260811090300_service_templates.sql's own filing_deadline_
+      // day comment on why external is the exception, not the rule).
+      if (filters.dueFrom) query = query.gte('internal_due_date', filters.dueFrom);
+      if (filters.dueTo) query = query.lte('internal_due_date', filters.dueTo);
+
+      var term = stripOrSyntax(filters.q);
+      if (term) {
+        var lowerTerm = term.toLowerCase();
+        var matchingClientIds = state.clients.filter(function (c) { return c.name.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (c) { return c.id; });
+        var matchingStaffIds = state.profiles.filter(function (p) { return (p.full_name || '').toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (p) { return p.id; });
+        var matchingStatuses = Object.keys(STATUS_LABELS).filter(function (s) { return STATUS_LABELS[s].toLowerCase().indexOf(lowerTerm) !== -1; });
+        var matchingTemplateIds = state.templates.filter(function (t) { return t.title.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (t) { return t.id; });
+
+        var orParts = ['title.ilike.%' + term + '%', 'period.ilike.%' + term + '%', 'submission_reference.ilike.%' + term + '%'];
+        if (matchingClientIds.length) orParts.push('client_id.in.(' + matchingClientIds.join(',') + ')');
+        if (matchingStaffIds.length) {
+          orParts.push('assignee_id.in.(' + matchingStaffIds.join(',') + ')');
+          orParts.push('reviewer_id.in.(' + matchingStaffIds.join(',') + ')');
+        }
+        if (matchingStatuses.length) orParts.push('status.in.(' + matchingStatuses.join(',') + ')');
+        if (matchingTemplateIds.length) orParts.push('service_template_id.in.(' + matchingTemplateIds.join(',') + ')');
+        query = query.or(orParts.join(','));
+      }
+
+      var res = await query;
+      if (seq !== requestSeq) return; // superseded by a newer search
+      clear(resultsWrap);
+      if (res.error) {
+        var errBox = el('div', 'empty-note'); errBox.textContent = 'Search failed: ' + res.error.message;
+        resultsWrap.appendChild(errBox);
+        statusText.textContent = '';
+        return;
+      }
+      var items = (res.data || []).slice().sort(compareByDue);
+      statusText.textContent = items.length >= RESULT_CAP
+        ? 'Showing the first ' + RESULT_CAP + ' matches — narrow your search to see more precisely.'
+        : items.length + ' match' + (items.length === 1 ? '' : 'es') + '.';
+      if (!items.length) {
+        var empty = el('div', 'empty-note'); empty.appendChild(icon('folder'));
+        empty.appendChild(document.createTextNode('No work items match your search.'));
+        resultsWrap.appendChild(empty);
+        return;
+      }
+      items.forEach(function (w) { resultsWrap.appendChild(workRow(w)); });
+    }
+
+    var debounceTimer = null;
+    function onFilterChange(immediate) {
+      syncUrl();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (immediate) { runSearch(); return; }
+      debounceTimer = setTimeout(runSearch, 300);
+    }
+
+    qInput.addEventListener('input', function () { filters.q = qInput.value; onFilterChange(false); });
+    periodInput.addEventListener('input', function () { filters.period = periodInput.value; onFilterChange(false); });
+    statusSel.addEventListener('change', function () { filters.status = statusSel.value; onFilterChange(true); });
+    clientSel.addEventListener('change', function () { filters.client = clientSel.value; onFilterChange(true); });
+    serviceSel.addEventListener('change', function () { filters.service = serviceSel.value; onFilterChange(true); });
+    assigneeSel.addEventListener('change', function () { filters.assignee = assigneeSel.value; onFilterChange(true); });
+    reviewerSel.addEventListener('change', function () { filters.reviewer = reviewerSel.value; onFilterChange(true); });
+    dueFromInput.addEventListener('change', function () { filters.dueFrom = dueFromInput.value; onFilterChange(true); });
+    dueToInput.addEventListener('change', function () { filters.dueTo = dueToInput.value; onFilterChange(true); });
+    waitingCb.addEventListener('change', function () {
+      filters.waitingOnly = waitingCb.checked;
+      // "Waiting for Client only" is a shortcut for Status = Waiting for
+      // Client, not an independent second status filter — kept mutually
+      // exclusive with the Status dropdown so the two can't silently
+      // contradict each other (e.g. Status=Completed + Waiting checked).
+      if (waitingCb.checked) { filters.status = ''; statusSel.value = ''; statusSel.disabled = true; } else { statusSel.disabled = false; }
+      onFilterChange(true);
+    });
+    clearBtn.addEventListener('click', function () {
+      filters = { q: '', status: '', client: '', service: '', assignee: '', reviewer: '', period: '', dueFrom: '', dueTo: '', waitingOnly: false };
+      qInput.value = ''; periodInput.value = ''; dueFromInput.value = ''; dueToInput.value = '';
+      statusSel.value = ''; clientSel.value = ''; serviceSel.value = ''; assigneeSel.value = ''; reviewerSel.value = '';
+      waitingCb.checked = false; statusSel.disabled = false;
+      onFilterChange(true);
+    });
+
+    syncUrl();
+    await runSearch();
   }
 
   // ============================================================
