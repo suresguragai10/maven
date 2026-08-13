@@ -36,12 +36,42 @@
   // anywhere (see attentionBadge()), only the two flagged states do.
   var ATTENTION_LABELS = { needs_attention: 'Needs Attention', high_attention: 'High Attention' };
 
+  // Workflow Settings (V2 Task 18) — day-count thresholds an admin can
+  // tune from the Settings page instead of them being buried as literals
+  // in this file. Defaults here are what a brand-new install falls back
+  // to if app_settings doesn't have a row yet (shouldn't happen once the
+  // migration has run, but loadWorkflowSettings() stays defensive about
+  // it — a missing/blank/non-numeric setting silently falls back to its
+  // default rather than breaking whatever reads it).
+  var WORKFLOW_SETTING_DEFAULTS = {
+    default_internal_offset_days: 3,
+    waiting_followup_default_days: 2,
+    waiting_stale_days: 7,
+    review_attention_days: 2,
+    upcoming_deadline_warning_days: 3,
+  };
+  var WORKFLOW_SETTING_LABELS = {
+    default_internal_offset_days: 'Default Internal Deadline (days before filing deadline)',
+    waiting_followup_default_days: 'Waiting-for-Client Follow-up Default (days after request)',
+    waiting_stale_days: 'Waiting-for-Client Stale Threshold (days)',
+    review_attention_days: 'Review Attention Threshold (days pending)',
+    upcoming_deadline_warning_days: 'Upcoming Deadline Warning (days ahead)',
+  };
+  var WORKFLOW_SETTING_HELP = {
+    default_internal_offset_days: 'Pre-fills a new template’s internal-offset field. Existing templates and already-generated work are never changed by this.',
+    waiting_followup_default_days: 'Pre-fills the follow-up date when marking work Waiting for Client. Always editable per item.',
+    waiting_stale_days: 'How long something can sit Waiting for Client before Manager Dashboard flags it as stale.',
+    review_attention_days: 'How long something can sit in Ready for Review before Manager Dashboard flags it as taking too long.',
+    upcoming_deadline_warning_days: 'How many days ahead Manager Dashboard’s "Due Within N Days" exception looks.',
+  };
+
   var state = {
     user: null,
     profile: null,
     profiles: [],
     clients: [],
     templates: [],
+    settings: Object.assign({}, WORKFLOW_SETTING_DEFAULTS),
     view: 'today',
     workId: null,
   };
@@ -81,6 +111,7 @@
     search: '<circle cx="10" cy="10" r="7"/><line x1="20" y1="20" x2="15.2" y2="15.2"/>',
     bell: '<path d="M12 3a5 5 0 0 0-5 5v3l-2 4h18l-2-4V8a5 5 0 0 0-5-5z"/><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0"/>',
     chart: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="3" width="3" height="17"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04z"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -251,14 +282,13 @@
   // scheduled — once it's simply been sitting unreceived for a while.
   // Shared between Work Details (per-item flag) and the Manager Dashboard
   // (team-wide count) so the two can never disagree on the definition.
-  var WAITING_STALE_DAYS = 7;
   function isStaleWaitingItem(wi) {
     if (wi.is_received) return false;
     var todayStr = localDateStr();
     if (wi.follow_up_date) return wi.follow_up_date < todayStr;
     if (!wi.requested_date) return false;
     var ageDays = (Date.now() - new Date(wi.requested_date + 'T00:00:00').getTime()) / 86400000;
-    return ageDays >= WAITING_STALE_DAYS;
+    return ageDays >= state.settings.waiting_stale_days;
   }
   function clientName(id) {
     var c = state.clients.find(function (x) { return x.id === id; });
@@ -362,7 +392,7 @@
     // otherwise fail silently (the header renders, then nothing) — this
     // surfaces it instead of leaving a blank page with no clue why.
     try {
-      await Promise.all([loadProfiles(), loadClients(), loadTemplates()]);
+      await Promise.all([loadProfiles(), loadClients(), loadTemplates(), loadWorkflowSettings()]);
       renderSidebar();
       routeFromHash();
       if (isAdmin()) runAutoGenerateOnOpen();
@@ -397,6 +427,20 @@
     var res = await sb.from('service_templates').select('*').order('title');
     if (res.error) { toast('Could not load service templates: ' + res.error.message, true); return; }
     state.templates = res.data || [];
+  }
+  // Loads into state.settings on top of WORKFLOW_SETTING_DEFAULTS (not
+  // replacing it), so a missing row, a blank value, or a non-numeric
+  // value left over from manual DB editing all silently fall back to a
+  // safe default instead of producing NaN somewhere a threshold is used.
+  async function loadWorkflowSettings() {
+    state.settings = Object.assign({}, WORKFLOW_SETTING_DEFAULTS);
+    var keys = Object.keys(WORKFLOW_SETTING_DEFAULTS);
+    var res = await sb.from('app_settings').select('*').in('key', keys);
+    if (res.error) { toast('Could not load workflow settings: ' + res.error.message, true); return; }
+    (res.data || []).forEach(function (row) {
+      var n = parseInt(row.value, 10);
+      if (!isNaN(n) && n >= 0) state.settings[row.key] = n;
+    });
   }
   // Runs when an admin opens Work Desk instead of a background scheduler —
   // no paid/external automation, and it's provably safe to run on every
@@ -640,7 +684,7 @@
       render();
       return;
     }
-    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'clients', 'templates', 'staff'];
+    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'clients', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -691,6 +735,7 @@
       nav.appendChild(group3);
       item('templates', 'Templates', 'flag');
       item('staff', 'Staff', 'users');
+      item('settings', 'Settings', 'settings');
     }
   }
 
@@ -711,6 +756,7 @@
     if (state.view === 'clients') return renderClients(main);
     if (state.view === 'templates') return renderTemplates(main);
     if (state.view === 'staff') return renderStaff(main);
+    if (state.view === 'settings') return renderSettingsPage(main);
   }
 
   // ============================================================
@@ -1260,28 +1306,34 @@
     // are omitted so a healthy day shows almost nothing. "No assignee"
     // is deliberately not a category: assignee_id is NOT NULL at the
     // schema level, so it can never be true.
-    var todayPlus3 = new Date(); todayPlus3.setDate(todayPlus3.getDate() + 3);
-    var todayPlus3Str = localDateStr(todayPlus3);
+    // Both thresholds below come from Workflow Settings (V2 Task 18),
+    // not a literal — an admin can tune them from the Settings page
+    // without touching code, and this dashboard just re-reads
+    // state.settings on every render, so a changed setting takes effect
+    // on next load without rewriting any work_items row.
+    var upcomingWarnDays = state.settings.upcoming_deadline_warning_days;
+    var todayPlusWarn = new Date(); todayPlusWarn.setDate(todayPlusWarn.getDate() + upcomingWarnDays);
+    var todayPlusWarnStr = localDateStr(todayPlusWarn);
     var EXCEPTION_CAP = 5;
     var exceptionCategories = [
       { label: 'Overdue', items: open.filter(isOverdue) },
       { label: 'Due Today', items: open.filter(function (w) { return !isOverdue(w) && effectiveDue(w) === todayStr; }) },
-      { label: 'Due Within 3 Days', items: open.filter(function (w) { var due = effectiveDue(w); return !!due && due > todayStr && due <= todayPlus3Str; }) },
+      { label: 'Due Within ' + upcomingWarnDays + ' Days', items: open.filter(function (w) { var due = effectiveDue(w); return !!due && due > todayStr && due <= todayPlusWarnStr; }) },
       {
         label: 'Review Pending Too Long', items: open.filter(function (w) {
           if (w.status !== 'ready_for_review' || !w.ready_for_review_at) return false;
-          return (Date.now() - new Date(w.ready_for_review_at).getTime()) / 86400000 > 2;
+          return (Date.now() - new Date(w.ready_for_review_at).getTime()) / 86400000 > state.settings.review_attention_days;
         }),
       },
       { label: 'Changes Required', items: open.filter(function (w) { return w.status === 'changes_required'; }) },
       {
         // Work-item-level (waiting_since), not per-requirement — a
         // single consolidated "this has been waiting too long" signal,
-        // reusing the same WAITING_STALE_DAYS threshold the per-item
+        // reusing the same waiting_stale_days threshold the per-item
         // "Follow-up overdue" flag on Work Details already uses.
         label: 'Waiting for Client Too Long', items: open.filter(function (w) {
           if (w.status !== 'waiting_for_client' || !w.waiting_since) return false;
-          return (Date.now() - new Date(w.waiting_since + 'T00:00:00').getTime()) / 86400000 >= WAITING_STALE_DAYS;
+          return (Date.now() - new Date(w.waiting_since + 'T00:00:00').getTime()) / 86400000 >= state.settings.waiting_stale_days;
         }),
       },
       { label: 'No Reviewer Assigned', items: open.filter(function (w) { return !w.reviewer_id; }) },
@@ -2957,6 +3009,11 @@
     var itemsInput = el('textarea'); itemsInput.rows = 3; itemsInput.placeholder = 'One item per line, e.g.\nPurchase invoices\nBank statement';
     wrap.appendChild(field('Waiting for', itemsInput));
     var followUpInput = el('input'); followUpInput.type = 'date';
+    // Pre-filled from Workflow Settings (V2 Task 18) — "N days after
+    // request" is just a starting suggestion, still fully editable or
+    // clearable per item before Save.
+    var suggestedFollowUp = new Date(); suggestedFollowUp.setDate(suggestedFollowUp.getDate() + state.settings.waiting_followup_default_days);
+    followUpInput.value = localDateStr(suggestedFollowUp);
     wrap.appendChild(field('Follow-up date (optional)', followUpInput));
 
     var actions = el('div', 'modal-actions');
@@ -3985,6 +4042,12 @@
     var filingDayInput = el('input'); filingDayInput.type = 'number'; filingDayInput.min = '1'; filingDayInput.max = '31'; filingDayInput.placeholder = 'e.g. 25';
     wrap.appendChild(field('Filing/Client Deadline — day of month (optional)', filingDayInput));
     var internalOffsetInput = el('input'); internalOffsetInput.type = 'number'; internalOffsetInput.min = '0'; internalOffsetInput.placeholder = 'e.g. 3';
+    // Pre-filled from Workflow Settings (V2 Task 18) as a starting
+    // suggestion for a BRAND NEW template only — still fully editable/
+    // clearable per template, and never touches any existing template's
+    // own already-set internal_offset_days (Edit Template pre-fills from
+    // the template's own value instead, unaffected by this setting).
+    internalOffsetInput.value = String(state.settings.default_internal_offset_days);
     wrap.appendChild(field('Internal Deadline — days before filing (optional)', internalOffsetInput));
 
     var checklistEditor = buildChecklistEditor([]);
@@ -4358,6 +4421,77 @@
     });
     table.appendChild(tbody);
     card.appendChild(table);
+    main.appendChild(card);
+  }
+
+  // ============================================================
+  // Settings — a small, flat list of day-count thresholds (Workflow
+  // Settings, V2 Task 18), not a general-purpose settings framework.
+  // Every field here already existed as a hardcoded number somewhere in
+  // this file; this page just gives an admin a place to change it
+  // without editing code. All five are either read-time thresholds
+  // (Manager Dashboard's exceptions) or one-time form pre-fills (New
+  // Template, Waiting for Client) — none of them are ever copied onto an
+  // existing work_items/service_templates row, so changing a value here
+  // never rewrites anything that already exists, only what a live
+  // computation flags or a NEW form starts pre-filled with from now on.
+  // ============================================================
+  function renderSettingsPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Settings'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = 'Workflow defaults used across Work Desk. Changing a value here never rewrites existing work — only what counts as an exception going forward, or what a new form starts pre-filled with.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
+
+    var card = el('div', 'card');
+    var keys = Object.keys(WORKFLOW_SETTING_DEFAULTS);
+    var inputs = {};
+    keys.forEach(function (key) {
+      var input = el('input'); input.type = 'number'; input.min = '0'; input.step = '1';
+      input.value = String(state.settings[key]);
+      inputs[key] = input;
+      var fieldWrap = field(WORKFLOW_SETTING_LABELS[key], input);
+      var help = el('p', 'f-hint'); help.style.marginTop = '2px'; help.textContent = WORKFLOW_SETTING_HELP[key];
+      fieldWrap.appendChild(help);
+      card.appendChild(fieldWrap);
+    });
+
+    var actions = el('div', 'modal-actions'); actions.style.marginTop = '6px';
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Settings';
+    saveBtn.addEventListener('click', async function () {
+      // Validate every field before saving any of them — a partial save
+      // (some thresholds updated, others rejected) would leave Settings
+      // showing values that don't match what's actually in the database.
+      var parsed = {};
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var raw = inputs[key].value.trim();
+        var n = Number(raw);
+        if (raw === '' || !Number.isInteger(n) || n < 0) {
+          toast(WORKFLOW_SETTING_LABELS[key] + ' must be a whole number, 0 or greater.', true);
+          return;
+        }
+        parsed[key] = n;
+      }
+      saveBtn.disabled = true;
+      // upsert, not update: an UPDATE ... WHERE key = X silently touches
+      // zero rows (no error) if that key's row is somehow missing —
+      // e.g. the seed migration hasn't run yet, or a row was deleted by
+      // hand — which would show "Settings saved" while one value quietly
+      // never persisted. Upsert self-heals that instead of failing silent.
+      var rows = keys.map(function (key) { return { key: key, value: String(parsed[key]) }; });
+      var res = await sb.from('app_settings').upsert(rows, { onConflict: 'key' });
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save settings: ' + res.error.message, true); return; }
+      state.settings = Object.assign({}, state.settings, parsed);
+      toast('Settings saved.');
+    });
+    actions.appendChild(saveBtn);
+    card.appendChild(actions);
     main.appendChild(card);
   }
 
