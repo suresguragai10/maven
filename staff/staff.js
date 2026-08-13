@@ -32,6 +32,9 @@
   var STAGE_LABELS = { preparation: 'Preparation', review: 'Review', submission: 'Submission' };
   var STAGES = ['preparation', 'review', 'submission'];
   var TEMPLATE_CATEGORIES = ['Bookkeeping', 'Tax', 'Payroll', 'Reporting', 'Registration', 'Advisory', 'NFRS/IFRS'];
+  // 'normal' deliberately has no label here — it never renders a badge
+  // anywhere (see attentionBadge()), only the two flagged states do.
+  var ATTENTION_LABELS = { needs_attention: 'Needs Attention', high_attention: 'High Attention' };
 
   var state = {
     user: null,
@@ -98,6 +101,18 @@
     a.textContent = initials(name);
     a.title = name || '';
     return a;
+  }
+
+  // A human-set client flag, never algorithmically derived (see the
+  // set_client_attention() migration note) — Normal renders nothing at
+  // all, keeping the common case visually quiet; only an actual flag
+  // shows a badge, wherever a client is referenced.
+  function attentionBadge(c) {
+    if (!c || !c.attention_level || c.attention_level === 'normal') return null;
+    var b = el('span', 'badge badge-attention-' + c.attention_level);
+    b.appendChild(icon('alert'));
+    b.appendChild(document.createTextNode(ATTENTION_LABELS[c.attention_level] || c.attention_level));
+    return b;
   }
 
   var toastTimer = null;
@@ -1295,6 +1310,38 @@
       });
     }
     main.appendChild(attnCard);
+
+    // ---- Clients Needing Attention — a human-set flag (see
+    // set_client_attention()), never algorithmically derived from
+    // overdue counts or anything else. state.clients already carries
+    // the attention_* columns (loaded once at login like every other
+    // small lookup list in this app), so this needs no extra query.
+    // High Attention sorts first — a severity order, not a staff ranking.
+    var flaggedClients = state.clients.filter(function (c) { return c.is_active && c.attention_level && c.attention_level !== 'normal'; })
+      .sort(function (a, b) {
+        var order = { high_attention: 0, needs_attention: 1 };
+        return order[a.attention_level] - order[b.attention_level];
+      });
+    var clientAttnCard = el('div', 'card');
+    var caH2 = el('h2'); caH2.appendChild(icon('alert')); caH2.appendChild(document.createTextNode('Clients Needing Attention')); clientAttnCard.appendChild(caH2);
+    if (!flaggedClients.length) {
+      var caOk = el('p', 'desc'); caOk.textContent = 'No clients currently flagged.'; clientAttnCard.appendChild(caOk);
+    } else {
+      flaggedClients.forEach(function (c) {
+        var row = el('div', 'attention-row' + (c.attention_level === 'needs_attention' ? ' reason-waiting' : ''));
+        row.addEventListener('click', function () { gotoClient(c.id); });
+        var body = el('div', 'body');
+        var nameEl = el('div', 'client'); nameEl.textContent = c.name;
+        var reasonEl = el('div', 'reason');
+        reasonEl.textContent = (ATTENTION_LABELS[c.attention_level] || c.attention_level) + (c.attention_reason ? ' — ' + c.attention_reason : '');
+        body.appendChild(nameEl); body.appendChild(reasonEl);
+        row.appendChild(body);
+        var action = el('div', 'action'); action.textContent = 'Open →';
+        row.appendChild(action);
+        clientAttnCard.appendChild(row);
+      });
+    }
+    main.appendChild(clientAttnCard);
   }
 
   // ============================================================
@@ -2976,6 +3023,8 @@
       h3.appendChild(nameBtn);
       nameWrap.appendChild(h3);
       if (c.pan_vat) { var pv = el('div', 'pan-vat'); pv.textContent = 'PAN/VAT: ' + c.pan_vat; nameWrap.appendChild(pv); }
+      var cardAttnBadge = attentionBadge(c);
+      if (cardAttnBadge) { cardAttnBadge.style.marginTop = '6px'; nameWrap.appendChild(cardAttnBadge); }
       headRow.appendChild(nameWrap);
       if (c.business_type) { var typeBadge = el('span', 'badge badge-type'); typeBadge.textContent = c.business_type; headRow.appendChild(typeBadge); }
       card.appendChild(headRow);
@@ -3077,10 +3126,25 @@
     var card = el('div', 'card');
     var head = el('div', 'detail-head');
     var titleWrap = el('div');
+    var nameRow = el('div'); nameRow.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
     var h1 = el('h1'); h1.style.fontSize = '1.25rem'; h1.textContent = c.name;
+    nameRow.appendChild(h1);
+    var attnBadge = attentionBadge(c);
+    if (attnBadge) nameRow.appendChild(attnBadge);
+    titleWrap.appendChild(nameRow);
     var sub = el('div'); sub.style.cssText = 'color:var(--ink-soft);font-size:.88rem;margin-top:2px;';
     sub.textContent = (c.pan_vat ? 'PAN/VAT ' + c.pan_vat : 'No PAN/VAT on file') + (c.contact_person ? ' · ' + c.contact_person : '');
-    titleWrap.appendChild(h1); titleWrap.appendChild(sub);
+    titleWrap.appendChild(sub);
+    // The reason plus who/when — visible to every staff member (not just
+    // the manager/admin who can change it), same "staff can see the flag"
+    // requirement the badge itself satisfies.
+    if (c.attention_level !== 'normal' && c.attention_reason) {
+      var attnNote = el('div'); attnNote.style.cssText = 'margin-top:8px;font-size:.85rem;color:var(--ink-soft);';
+      attnNote.textContent = '"' + c.attention_reason + '"' +
+        (c.attention_set_by ? ' — set by ' + profileName(c.attention_set_by) : '') +
+        (c.attention_set_at ? ' on ' + fmtDateTime(c.attention_set_at) : '');
+      titleWrap.appendChild(attnNote);
+    }
     head.appendChild(titleWrap);
     if (c.business_type) { var typeBadge = el('span', 'badge badge-type'); typeBadge.textContent = c.business_type; head.appendChild(typeBadge); }
     card.appendChild(head);
@@ -3105,6 +3169,11 @@
       credBtn.appendChild(icon('idcard')); credBtn.appendChild(document.createTextNode('Credentials'));
       credBtn.addEventListener('click', function () { openClientCredentialsModal(c); });
       headActions.appendChild(credBtn);
+
+      var attnBtn = el('button', 'btn btn-outline btn-sm'); attnBtn.type = 'button';
+      attnBtn.appendChild(icon('alert')); attnBtn.appendChild(document.createTextNode('Change Flag'));
+      attnBtn.addEventListener('click', function () { openClientAttentionModal(c, function () { renderClientDetail(id); }); });
+      headActions.appendChild(attnBtn);
     }
     if (isAdmin()) {
       var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
@@ -3513,6 +3582,61 @@
 
   // existing (optional): a client row to edit in place instead of creating
   // a new one — used by the "Edit" button on the Client Detail screen.
+  // Human-controlled only — nothing here is computed from overdue counts,
+  // waiting-too-long items, or any other metric. Reason is required for
+  // either flagged level and cleared automatically when set back to
+  // Normal; who/when is recorded on every save via set_client_attention()
+  // regardless of direction (flagging OR clearing), not just the first.
+  function openClientAttentionModal(c, onDone) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Change Attention Flag — ' + c.name;
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var levelSel = el('select');
+    levelSel.appendChild(new Option('Normal', 'normal'));
+    levelSel.appendChild(new Option('Needs Attention', 'needs_attention'));
+    levelSel.appendChild(new Option('High Attention', 'high_attention'));
+    levelSel.value = c.attention_level || 'normal';
+    wrap.appendChild(field('Attention Level', levelSel));
+
+    var reasonInput = el('textarea'); reasonInput.rows = 3;
+    reasonInput.value = c.attention_reason || '';
+    reasonInput.placeholder = 'Short reason (required unless Normal)';
+    var reasonField = field('Reason', reasonInput);
+    wrap.appendChild(reasonField);
+    function syncReasonRequired() { reasonField.classList.toggle('hidden', levelSel.value === 'normal'); }
+    levelSel.addEventListener('change', syncReasonRequired);
+    syncReasonRequired();
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', async function () {
+      if (levelSel.value !== 'normal' && !reasonInput.value.trim()) {
+        toast('Give a short reason for this flag.', true);
+        return;
+      }
+      saveBtn.disabled = true;
+      var res = await sb.rpc('set_client_attention', {
+        p_client_id: c.id,
+        p_level: levelSel.value,
+        p_reason: reasonInput.value.trim() || null,
+      });
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not update flag: ' + res.error.message, true); return; }
+      await loadClients();
+      closeModal();
+      toast('Attention flag updated.');
+      onDone();
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
   function openClientFormModal(existing) {
     var isEdit = !!existing;
     var wrap = el('div');
