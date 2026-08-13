@@ -77,6 +77,7 @@
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"/>',
     search: '<circle cx="10" cy="10" r="7"/><line x1="20" y1="20" x2="15.2" y2="15.2"/>',
     bell: '<path d="M12 3a5 5 0 0 0-5 5v3l-2 4h18l-2-4V8a5 5 0 0 0-5-5z"/><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0"/>',
+    chart: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="3" width="3" height="17"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -624,7 +625,7 @@
       render();
       return;
     }
-    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'periods', 'todo', 'clients', 'templates', 'staff'];
+    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'clients', 'templates', 'staff'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -658,6 +659,7 @@
     }
     item('deadlines', 'Deadlines', 'calendar');
     if (isReviewerOrAdmin()) item('manager', 'Manager Dashboard', 'users');
+    if (isReviewerOrAdmin()) item('reports', 'Reports', 'chart');
     item('periods', 'Period Summary', 'calendar');
     item('todo', 'My To-Do List', 'list');
     // Every active staff member can look clients up (name, contact info,
@@ -688,6 +690,7 @@
     if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
     if (state.view === 'deadlines') return renderDeadlinesPage(main);
     if (state.view === 'manager') return renderManagerDashboard(main);
+    if (state.view === 'reports') return renderReportsPage(main);
     if (state.view === 'periods') return renderPeriodSummaryPage(main);
     if (state.view === 'todo') return renderTodoPage(main);
     if (state.view === 'clients') return renderClients(main);
@@ -1292,6 +1295,342 @@
       });
     }
     main.appendChild(attnCard);
+  }
+
+  // ============================================================
+  // Reports — admin/manager only. Firm operations and compliance
+  // visibility, not staff surveillance: every report here breaks work
+  // down by service/status/period/month, and NONE of them break it down
+  // or rank by staff member — that's a deliberate, explicit omission
+  // (same principle as Team Workload's "do not rank staff"), not an
+  // oversight. No new SQL functions/views/paid BI tooling — every field
+  // used below already exists on work_items; each report is a plain,
+  // date-bounded Supabase query aggregated client-side, the same pattern
+  // Period Summary/Manager Dashboard/Deadlines already use elsewhere in
+  // this app. Three query shapes cover all 8 reports:
+  //   - "active" (status <> completed): naturally small and always
+  //     current regardless of the firm's total historical volume, used
+  //     for the 4 reports that are inherently about right-now/right-
+  //     ahead (Overdue, Waiting for Client, Review Wait, Upcoming).
+  //   - "created in range": everything opened within the selected
+  //     window, used for Work by Service / Work by Status — "of what we
+  //     opened in this window, how does it break down."
+  //   - "completed in range": status = completed AND completed_at within
+  //     the window, used for Work Completed by Month / Completed Work by
+  //     Period. Depends on completed_at actually being set — see the fix
+  //     alongside this task in the status-change handler above; historical
+  //     items completed before that fix shipped won't have a completed_at
+  //     and so won't appear here until backfilled (see the SQL note).
+  // ============================================================
+  var REPORT_RANGE_PRESETS = [
+    ['this_month', 'This Month'],
+    ['last_3', 'Last 3 Months'],
+    ['last_12', 'Last 12 Months'],
+    ['all_time', 'All Time'],
+  ];
+  function reportRangeFor(preset) {
+    var now = new Date();
+    var to = localDateStr(now);
+    if (preset === 'all_time') return { from: null, to: null };
+    var from;
+    if (preset === 'this_month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (preset === 'last_3') from = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    else from = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    return { from: localDateStr(from), to: to };
+  }
+  // A plain, dependency-free horizontal bar list — "using existing/free
+  // code" per the task's own instruction, not a new charting library.
+  // Deliberately just this one shape (no pie/line charts) everywhere a
+  // report benefits from an at-a-glance comparison alongside its table.
+  function simpleBarChart(rows) {
+    var wrap = el('div');
+    var max = Math.max.apply(null, rows.map(function (r) { return r.value; }).concat([1]));
+    rows.forEach(function (r) {
+      var line = el('div'); line.style.marginBottom = '8px';
+      var labelRow = el('div'); labelRow.style.cssText = 'display:flex;justify-content:space-between;gap:10px;font-size:.82rem;margin-bottom:3px;';
+      var labelEl = el('span'); labelEl.textContent = r.label; labelEl.style.color = 'var(--ink-soft)';
+      var valEl = el('span'); valEl.style.fontWeight = '700'; valEl.style.color = 'var(--navy-950)'; valEl.textContent = String(r.value);
+      labelRow.appendChild(labelEl); labelRow.appendChild(valEl);
+      var track = el('div'); track.style.cssText = 'background:var(--mist-dark);border-radius:6px;height:8px;overflow:hidden;';
+      var bar = el('div'); bar.style.cssText = 'background:var(--gold-500);height:100%;width:' + Math.round(r.value / max * 100) + '%;';
+      track.appendChild(bar);
+      line.appendChild(labelRow); line.appendChild(track);
+      wrap.appendChild(line);
+    });
+    return wrap;
+  }
+  function reportCard(iconName, titleText) {
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.appendChild(icon(iconName)); h2.appendChild(document.createTextNode(titleText));
+    card.appendChild(h2);
+    return card;
+  }
+
+  async function renderReportsPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Reports'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = 'Firm operations and compliance visibility — totals and breakdowns only, not a staff performance leaderboard.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
+
+    var filterCard = el('div', 'card');
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+    var currentPreset = 'last_12';
+    var presetBtns = {};
+    REPORT_RANGE_PRESETS.forEach(function (pair) {
+      var btn = el('button', 'btn btn-outline btn-sm'); btn.type = 'button'; btn.textContent = pair[1];
+      btn.addEventListener('click', function () { currentPreset = pair[0]; syncPresetButtons(); syncCustomInputs(); refresh(); });
+      presetBtns[pair[0]] = btn;
+      filterRow.appendChild(btn);
+    });
+    function syncPresetButtons() {
+      // 'btn' is the base class every button needs regardless of state;
+      // only 'btn-outline' toggles, to switch the active preset from
+      // outlined to filled without losing its base padding/shape.
+      Object.keys(presetBtns).forEach(function (k) { presetBtns[k].classList.toggle('btn-outline', k !== currentPreset); });
+    }
+    var fromInput = el('input'); fromInput.type = 'date'; fromInput.style.width = 'auto';
+    var toInput = el('input'); toInput.type = 'date'; toInput.style.width = 'auto';
+    var toLabel = el('span'); toLabel.textContent = 'to'; toLabel.style.cssText = 'font-size:.8rem;color:var(--ink-soft);';
+    function syncCustomInputs() {
+      var range = reportRangeFor(currentPreset);
+      fromInput.value = range.from || ''; toInput.value = range.to || '';
+    }
+    fromInput.addEventListener('change', function () { currentPreset = null; syncPresetButtons(); refresh(); });
+    toInput.addEventListener('change', function () { currentPreset = null; syncPresetButtons(); refresh(); });
+    filterRow.appendChild(fromInput); filterRow.appendChild(toLabel); filterRow.appendChild(toInput);
+    filterCard.appendChild(filterRow);
+    var rangeNote = el('p', 'desc'); rangeNote.style.cssText = 'margin:8px 0 0;';
+    filterCard.appendChild(rangeNote);
+    main.appendChild(filterCard);
+    syncPresetButtons(); syncCustomInputs();
+
+    var resultsWrap = el('div');
+    main.appendChild(resultsWrap);
+
+    async function refresh() {
+      clear(resultsWrap);
+      var loading = el('div', 'empty-note'); loading.textContent = 'Loading…'; resultsWrap.appendChild(loading);
+
+      var fromISO = fromInput.value || null;
+      var toISO = toInput.value || null;
+      rangeNote.textContent = fromISO || toISO
+        ? 'Showing activity from ' + (fromISO ? fmtDate(fromISO) : 'the beginning') + ' to ' + (toISO ? fmtDate(toISO) : 'now') + '.'
+        : 'Showing all-time activity.';
+
+      var activeQ = sb.from('work_items').select('*').neq('status', 'completed');
+      var createdQ = sb.from('work_items').select('*');
+      if (fromISO) createdQ = createdQ.gte('created_at', fromISO);
+      if (toISO) createdQ = createdQ.lte('created_at', toISO + 'T23:59:59');
+      var completedQ = sb.from('work_items').select('*').eq('status', 'completed').not('completed_at', 'is', null);
+      if (fromISO) completedQ = completedQ.gte('completed_at', fromISO);
+      if (toISO) completedQ = completedQ.lte('completed_at', toISO + 'T23:59:59');
+
+      var all = await Promise.all([activeQ, createdQ, completedQ]);
+      clear(resultsWrap);
+      if (all.some(function (r) { return r.error; })) {
+        var errBox = el('div', 'empty-note'); errBox.textContent = 'Could not load reports.';
+        resultsWrap.appendChild(errBox);
+        return;
+      }
+      var activeItems = all[0].data || [];
+      var createdItems = all[1].data || [];
+      var completedItems = all[2].data || [];
+
+      resultsWrap.appendChild(buildOverdueReport(activeItems));
+      resultsWrap.appendChild(buildWaitingReport(activeItems));
+      resultsWrap.appendChild(buildReviewWaitReport(activeItems));
+      resultsWrap.appendChild(buildUpcomingReport(activeItems));
+      resultsWrap.appendChild(buildCompletedByMonthReport(completedItems));
+      resultsWrap.appendChild(buildCompletedByPeriodReport(completedItems));
+      resultsWrap.appendChild(buildByServiceReport(createdItems));
+      resultsWrap.appendChild(buildByStatusReport(createdItems));
+    }
+
+    function buildOverdueReport(activeItems) {
+      var overdue = activeItems.filter(isOverdue).sort(compareByDue);
+      var card = reportCard('alert', 'Overdue Work Items');
+      var desc = el('p', 'desc'); desc.textContent = overdue.length + ' item' + (overdue.length === 1 ? '' : 's') + ' currently overdue.'; card.appendChild(desc);
+      var CAP = 25;
+      overdue.slice(0, CAP).forEach(function (w) { card.appendChild(workRow(w)); });
+      if (overdue.length > CAP) {
+        var more = el('p', 'desc'); more.style.margin = '8px 0 0'; more.textContent = '+' + (overdue.length - CAP) + ' more — see Search.';
+        card.appendChild(more);
+      }
+      if (!overdue.length) { var ok = el('p', 'desc'); ok.style.margin = '0'; ok.textContent = 'Nothing overdue right now.'; card.appendChild(ok); }
+      return card;
+    }
+
+    function buildWaitingReport(activeItems) {
+      var waiting = activeItems.filter(function (w) { return w.status === 'waiting_for_client'; });
+      var withAge = waiting.filter(function (w) { return !!w.waiting_since; })
+        .map(function (w) { return (Date.now() - new Date(w.waiting_since + 'T00:00:00').getTime()) / 86400000; });
+      var avgDays = withAge.length ? Math.round(withAge.reduce(function (a, b) { return a + b; }, 0) / withAge.length) : 0;
+      var card = reportCard('clipboard', 'Waiting for Client');
+      var strip = el('div', 'today-strip'); strip.style.marginBottom = '0';
+      function tile(n, label) {
+        var s = el('div', 'today-stat'); var num = el('div', 'n'); num.textContent = String(n); var l = el('div', 'l'); l.textContent = label;
+        s.appendChild(num); s.appendChild(l); strip.appendChild(s);
+      }
+      tile(waiting.length, 'Currently Waiting');
+      tile(avgDays, 'Avg. Days Waiting');
+      card.appendChild(strip);
+      return card;
+    }
+
+    function buildReviewWaitReport(activeItems) {
+      var pending = activeItems.filter(function (w) { return w.status === 'ready_for_review' && w.ready_for_review_at; });
+      var days = pending.map(function (w) { return (Date.now() - new Date(w.ready_for_review_at).getTime()) / 86400000; });
+      var avgDays = days.length ? (days.reduce(function (a, b) { return a + b; }, 0) / days.length) : 0;
+      var card = reportCard('check', 'Average Review Waiting Time');
+      var strip = el('div', 'today-strip'); strip.style.marginBottom = '0';
+      function tile(text, label, colorCls) {
+        var s = el('div', 'today-stat'); var num = el('div', 'n' + (colorCls ? ' ' + colorCls : '')); num.textContent = text; var l = el('div', 'l'); l.textContent = label;
+        s.appendChild(num); s.appendChild(l); strip.appendChild(s);
+      }
+      tile(avgDays.toFixed(1) + 'd', 'Avg. Wait (Pending Reviews)');
+      tile(String(pending.length), 'Currently In Review');
+      card.appendChild(strip);
+      var note = el('p', 'desc'); note.style.cssText = 'margin:8px 0 0;';
+      note.textContent = 'Measures how long items currently sitting in review have been waiting so far — not a historical average across completed reviews.';
+      card.appendChild(note);
+      return card;
+    }
+
+    function buildUpcomingReport(activeItems) {
+      var todayStr = localDateStr();
+      var d7 = new Date(); d7.setDate(d7.getDate() + 7); var d7Str = localDateStr(d7);
+      var d14 = new Date(); d14.setDate(d14.getDate() + 14); var d14Str = localDateStr(d14);
+      var d30 = new Date(); d30.setDate(d30.getDate() + 30); var d30Str = localDateStr(d30);
+      var open = activeItems.filter(function (w) { return effectiveDue(w) && effectiveDue(w) >= todayStr; });
+      var buckets = [
+        { label: 'This Week', items: open.filter(function (w) { return effectiveDue(w) <= d7Str; }) },
+        { label: 'Next 2 Weeks', items: open.filter(function (w) { return effectiveDue(w) > d7Str && effectiveDue(w) <= d14Str; }) },
+        { label: 'Rest of Month', items: open.filter(function (w) { return effectiveDue(w) > d14Str && effectiveDue(w) <= d30Str; }) },
+      ];
+      var card = reportCard('calendar', 'Upcoming Workload');
+      var desc = el('p', 'desc'); desc.textContent = 'Work not yet completed, due in the next 30 days.'; card.appendChild(desc);
+      var strip = el('div', 'today-strip'); strip.style.marginBottom = '10px';
+      var revealWrap = el('div');
+      buckets.forEach(function (b) {
+        var s = el('div', 'today-stat'); s.style.cursor = 'pointer';
+        var num = el('div', 'n'); num.textContent = String(b.items.length); var l = el('div', 'l'); l.textContent = b.label;
+        s.appendChild(num); s.appendChild(l);
+        s.addEventListener('click', function () {
+          clear(revealWrap);
+          if (!b.items.length) return;
+          b.items.slice().sort(compareByDue).forEach(function (w) { revealWrap.appendChild(workRow(w)); });
+        });
+        strip.appendChild(s);
+      });
+      card.appendChild(strip);
+      card.appendChild(revealWrap);
+      return card;
+    }
+
+    function buildCompletedByMonthReport(completedItems) {
+      var byMonth = {};
+      completedItems.forEach(function (w) {
+        var d = new Date(w.completed_at);
+        var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        byMonth[key] = (byMonth[key] || 0) + 1;
+      });
+      var keys = Object.keys(byMonth).sort();
+      var rows = keys.map(function (k) {
+        var parts = k.split('-'); var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+        return { label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), value: byMonth[k] };
+      });
+      var card = reportCard('chart', 'Work Completed by Month');
+      if (!rows.length) { var empty = el('p', 'desc'); empty.style.margin = '0'; empty.textContent = 'No completed work with a completion date in this range.'; card.appendChild(empty); }
+      else card.appendChild(simpleBarChart(rows));
+      return card;
+    }
+
+    function buildCompletedByPeriodReport(completedItems) {
+      var byPeriod = {};
+      completedItems.forEach(function (w) {
+        var key = w.period || 'No period set';
+        byPeriod[key] = (byPeriod[key] || 0) + 1;
+      });
+      var keys = Object.keys(byPeriod).sort();
+      var card = reportCard('flag', 'Completed Work by Period');
+      if (!keys.length) { var empty = el('p', 'desc'); empty.style.margin = '0'; empty.textContent = 'No completed work with a completion date in this range.'; card.appendChild(empty); }
+      else {
+        var table = el('table');
+        var thead = el('thead'); var trh = el('tr');
+        ['Period', 'Completed'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+        thead.appendChild(trh); table.appendChild(thead);
+        var tbody = el('tbody');
+        keys.forEach(function (k) {
+          var tr = el('tr'); tr.style.cursor = 'pointer';
+          var tdP = el('td'); tdP.textContent = k; tr.appendChild(tdP);
+          var tdC = el('td'); tdC.textContent = String(byPeriod[k]); tr.appendChild(tdC);
+          tr.addEventListener('click', function () {
+            if (k === 'No period set') return;
+            location.hash = 'search?period=' + encodeURIComponent(k) + '&status=completed';
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        card.appendChild(table);
+      }
+      return card;
+    }
+
+    function buildByServiceReport(createdItems) {
+      var byService = {};
+      createdItems.forEach(function (w) {
+        var key = w.service_template_id || '__adhoc__';
+        byService[key] = (byService[key] || 0) + 1;
+      });
+      var rows = Object.keys(byService).map(function (key) {
+        var tmpl = key === '__adhoc__' ? null : templateById(key);
+        return { key: key, label: tmpl ? tmpl.title : 'Ad-hoc (no template)', value: byService[key] };
+      }).sort(function (a, b) { return b.value - a.value; });
+      var card = reportCard('idcard', 'Work by Service');
+      var desc = el('p', 'desc'); desc.textContent = 'Of work opened in this range.'; card.appendChild(desc);
+      if (!rows.length) { var empty = el('p', 'desc'); empty.style.margin = '0'; empty.textContent = 'No work opened in this range.'; card.appendChild(empty); }
+      else {
+        var chartRows = rows.map(function (r) { return { label: r.label, value: r.value }; });
+        var chartEl = simpleBarChart(chartRows);
+        Array.from(chartEl.children).forEach(function (line, i) {
+          line.style.cursor = 'pointer';
+          line.addEventListener('click', function () {
+            var r = rows[i];
+            location.hash = r.key === '__adhoc__' ? 'search' : 'search?service=' + encodeURIComponent(r.key);
+          });
+        });
+        card.appendChild(chartEl);
+      }
+      return card;
+    }
+
+    function buildByStatusReport(createdItems) {
+      var byStatus = {};
+      createdItems.forEach(function (w) { byStatus[w.status] = (byStatus[w.status] || 0) + 1; });
+      // Pipeline order (STATUS_LABELS' own key order), not sorted by
+      // count — this is a workflow snapshot, not a ranking of any kind.
+      var rows = Object.keys(STATUS_LABELS).filter(function (s) { return byStatus[s]; })
+        .map(function (s) { return { key: s, label: STATUS_LABELS[s], value: byStatus[s] }; });
+      var card = reportCard('list', 'Work by Status');
+      var desc = el('p', 'desc'); desc.textContent = 'Of work opened in this range, current status.'; card.appendChild(desc);
+      if (!rows.length) { var empty = el('p', 'desc'); empty.style.margin = '0'; empty.textContent = 'No work opened in this range.'; card.appendChild(empty); }
+      else {
+        var chartEl = simpleBarChart(rows.map(function (r) { return { label: r.label, value: r.value }; }));
+        Array.from(chartEl.children).forEach(function (line, i) {
+          line.style.cursor = 'pointer';
+          line.addEventListener('click', function () { location.hash = 'search?status=' + encodeURIComponent(rows[i].key); });
+        });
+        card.appendChild(chartEl);
+      }
+      return card;
+    }
+
+    await refresh();
   }
 
   // ============================================================
@@ -1989,6 +2328,13 @@
         // separate from updated_at, which any field change would bump —
         // so the Manager Dashboard can flag reviews that are going stale.
         patch.ready_for_review_at = newStatus === 'ready_for_review' ? new Date().toISOString() : null;
+        // completed_at was a reserved-but-unset column until the Reports
+        // page (V2 Task 16) needed a real completion timestamp for "Work
+        // Completed by Month"/"Completed Work by Period" — set it the same
+        // way ready_for_review_at is set here, and clear it if a status
+        // correction moves an item back out of Completed.
+        if (newStatus === 'completed') patch.completed_at = new Date().toISOString();
+        else if (prevStatus === 'completed') patch.completed_at = null;
         applyStatusChange(newStatus, patch);
       });
       async function applyStatusChange(newStatus, patch, newWaitingItemTitles) {
