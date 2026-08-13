@@ -2368,11 +2368,26 @@
       row.appendChild(cb);
       var body = el('div', 'body');
       var title = el('div', 'title'); title.textContent = tmpl ? tmpl.title : 'Unknown service';
+      body.appendChild(title);
+      // Template-derived configuration (frequency/submission/deadline
+      // rule) — not independently settable per client-service, so shown
+      // read-only here; edit the template itself to change these.
+      if (tmpl) {
+        var tmplMeta = el('div', 'meta');
+        var tmplBits = [tmpl.category, tmpl.recurrence === 'none' ? 'One-off' : tmpl.recurrence.charAt(0).toUpperCase() + tmpl.recurrence.slice(1)];
+        if (tmpl.requires_submission) tmplBits.push('Requires submission');
+        if (tmpl.filing_deadline_day != null) tmplBits.push('Filing day ' + tmpl.filing_deadline_day + (tmpl.internal_offset_days != null ? ' (internal -' + tmpl.internal_offset_days + 'd)' : ''));
+        tmplMeta.textContent = tmplBits.join(' · ');
+        body.appendChild(tmplMeta);
+      }
       var meta = el('div', 'meta');
-      meta.textContent = (tmpl ? tmpl.category : '') +
-        (s.assignee_id ? ' · Assignee: ' + profileName(s.assignee_id) : '') +
-        (s.reviewer_id ? ' · Reviewer: ' + profileName(s.reviewer_id) : '');
-      body.appendChild(title); body.appendChild(meta);
+      var metaBits = [];
+      metaBits.push(s.assignee_id ? 'Assignee: ' + profileName(s.assignee_id) : 'No assignee');
+      metaBits.push(s.reviewer_id ? 'Reviewer: ' + profileName(s.reviewer_id) : 'No reviewer');
+      if (s.start_period) metaBits.push('Since ' + s.start_period);
+      if (s.end_period) metaBits.push('Until ' + s.end_period);
+      meta.textContent = metaBits.join(' · ');
+      body.appendChild(meta);
       row.appendChild(body);
       // Creating this period's work is ordinary work-creation, not a
       // service-management action — openNewWorkModal already locks the
@@ -2383,6 +2398,11 @@
         openNewWorkModal({ clientId: id, templateId: s.service_template_id, assigneeId: s.assignee_id, reviewerId: s.reviewer_id });
       });
       row.appendChild(createBtn);
+      if (canManageServices) {
+        var editSvcBtn = el('button', 'btn btn-outline btn-sm'); editSvcBtn.type = 'button'; editSvcBtn.textContent = 'Edit';
+        editSvcBtn.addEventListener('click', function () { openEditServiceModal(s, function () { renderClientDetail(id); }); });
+        row.appendChild(editSvcBtn);
+      }
       svcCard.appendChild(row);
     });
 
@@ -2397,15 +2417,31 @@
       var svcReviewerSel = el('select'); svcReviewerSel.style.width = 'auto';
       svcReviewerSel.appendChild(new Option('— Reviewer —', ''));
       state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { svcReviewerSel.appendChild(new Option(p.full_name, p.id)); });
+      var svcStartInput = el('input'); svcStartInput.type = 'text'; svcStartInput.placeholder = 'Start period (optional)'; svcStartInput.style.width = 'auto';
+      var svcEndInput = el('input'); svcEndInput.type = 'text'; svcEndInput.placeholder = 'End period (optional)'; svcEndInput.style.width = 'auto';
       var addSvcBtn = el('button', 'btn btn-outline btn-sm'); addSvcBtn.type = 'button'; addSvcBtn.textContent = 'Add Service';
       addSvcBtn.addEventListener('click', async function () {
         if (!svcTemplateSel.value) { toast('Create a template first under Templates.', true); return; }
+        // Fast, friendly check for the common case — the real guarantee
+        // is the client_services_active_unique partial index (same
+        // pattern as the work_items duplicate-period constraint), so
+        // this can't actually be bypassed even if this check were
+        // removed; it just avoids a raw constraint-violation error.
+        var dupRes = await sb.from('client_services').select('id')
+          .eq('client_id', id).eq('service_template_id', svcTemplateSel.value).eq('is_active', true).limit(1);
+        if (dupRes.data && dupRes.data.length) {
+          var dupTmpl = templateById(svcTemplateSel.value);
+          toast('This client already has an active ' + (dupTmpl ? dupTmpl.title : 'service') + ' subscription.', true);
+          return;
+        }
         addSvcBtn.disabled = true;
         var res = await sb.from('client_services').insert({
           client_id: id,
           service_template_id: svcTemplateSel.value,
           assignee_id: svcAssigneeSel.value || null,
           reviewer_id: svcReviewerSel.value || null,
+          start_period: svcStartInput.value.trim() || null,
+          end_period: svcEndInput.value.trim() || null,
         });
         addSvcBtn.disabled = false;
         if (res.error) { toast('Could not add service: ' + res.error.message, true); return; }
@@ -2415,7 +2451,8 @@
       if (!state.templates.length) {
         var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create a service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
       } else {
-        addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel); addSvcRow.appendChild(addSvcBtn);
+        addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel);
+        addSvcRow.appendChild(svcStartInput); addSvcRow.appendChild(svcEndInput); addSvcRow.appendChild(addSvcBtn);
         svcCard.appendChild(addSvcRow);
       }
     }
@@ -2507,6 +2544,59 @@
       var notesP = el('p', 'desc'); notesP.textContent = c.notes || 'No notes.'; notesCard.appendChild(notesP);
     }
     main.appendChild(notesCard);
+  }
+
+  // Admin-only (matches canManageServices in renderClientDetail — this is
+  // only ever opened from a button that's already gated). Deliberately
+  // doesn't allow changing the service template itself: that's really
+  // "a different service," not an edit — deactivate this one and add a
+  // fresh one instead, same as how switching a work item's template
+  // isn't supported either.
+  function openEditServiceModal(s, onDone) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Edit Service';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var assigneeSel = el('select');
+    assigneeSel.appendChild(new Option('— No assignee —', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    assigneeSel.value = s.assignee_id || '';
+    wrap.appendChild(field('Default Assignee', assigneeSel));
+
+    var reviewerSel = el('select');
+    reviewerSel.appendChild(new Option('— No reviewer —', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    reviewerSel.value = s.reviewer_id || '';
+    wrap.appendChild(field('Default Reviewer', reviewerSel));
+
+    var startInput = el('input'); startInput.type = 'text'; startInput.value = s.start_period || ''; startInput.placeholder = 'e.g. Shrawan 2083';
+    wrap.appendChild(field('Start Period (optional)', startInput));
+    var endInput = el('input'); endInput.type = 'text'; endInput.value = s.end_period || ''; endInput.placeholder = 'e.g. Ashad 2084 — leave blank if ongoing';
+    wrap.appendChild(field('End Period (optional)', endInput));
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
+    saveBtn.addEventListener('click', async function () {
+      saveBtn.disabled = true;
+      var res = await sb.from('client_services').update({
+        assignee_id: assigneeSel.value || null,
+        reviewer_id: reviewerSel.value || null,
+        start_period: startInput.value.trim() || null,
+        end_period: endInput.value.trim() || null,
+      }).eq('id', s.id);
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      closeModal();
+      toast('Service updated.');
+      onDone();
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
   }
 
   // Passwords are fetched decrypted from the get_client_credentials RPC

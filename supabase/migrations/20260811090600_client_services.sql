@@ -15,6 +15,18 @@ create table if not exists public.client_services (
   reviewer_id uuid references public.profiles(id),
   is_active boolean not null default true,
   notes text,
+  -- Record-keeping only, added 2026-08-13 (Client Service Setup task) --
+  -- NOT compared against the period being generated. Nepali period
+  -- labels ("Shrawan 2083", "Q1 2083/84") don't sort or compare
+  -- chronologically as plain strings, and this app has no verified BS-
+  -- calendar table to convert them into something that does -- the same
+  -- reason due dates are never computed from a period label anywhere
+  -- else in this schema. `is_active` remains the actual, DB-enforced
+  -- switch that stops a service from generating new work; start_period/
+  -- end_period just document when that happened for a human reading the
+  -- Active Services list, e.g. "Since Shrawan 2083" / "Until Ashad 2084".
+  start_period text,
+  end_period text,
   created_at timestamptz not null default now()
 );
 
@@ -24,6 +36,26 @@ create index if not exists client_services_client_id_idx
 -- both generation paths run.
 create index if not exists client_services_active_idx
   on public.client_services (is_active) where is_active = true;
+
+-- Prevents the same client from having the same service active twice at
+-- once (e.g. two live "VAT Return" subscriptions both feeding
+-- generation and silently doubling up work every period). Deliberately
+-- a partial index, not a plain unique constraint: a client can still
+-- have a DEACTIVATED "VAT Return" service (old engagement, historical
+-- record) alongside a fresh ACTIVE one (restarted engagement) -- only
+-- two simultaneously-active rows for the same client+service are
+-- blocked. Run this first to check for existing duplicates before
+-- applying, since a unique index (like a unique constraint) can't skip
+-- validating existing rows:
+--   select client_id, service_template_id, count(*)
+--   from public.client_services
+--   where is_active = true
+--   group by client_id, service_template_id
+--   having count(*) > 1;
+-- Resolve any results (deactivate one of the pair) before running this.
+create unique index if not exists client_services_active_unique
+  on public.client_services (client_id, service_template_id)
+  where is_active;
 
 alter table public.client_services enable row level security;
 
