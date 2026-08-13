@@ -160,6 +160,21 @@
     return wrap;
   }
 
+  // "Today" (or any date) as a plain YYYY-MM-DD string in the LOCAL
+  // calendar day — new Date().toISOString() reports the UTC date, which
+  // silently lands on the wrong day for any timezone ahead of UTC (e.g.
+  // Nepal, UTC+5:45) during the first ~6 hours of each local day. That
+  // made "Due Today"/"This Week"-style string-equality comparisons
+  // miss or misfire right when someone opens the app first thing in the
+  // morning — found while building the Manager Dashboard's Due Today/
+  // Due Within 3 Days exceptions. effectiveDue()/isOverdue() already
+  // sidestepped this by comparing via toDateString() instead; every
+  // OTHER date-range comparison in this file should use this helper for
+  // the same reason, not toISOString().
+  function localDateStr(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
   function fmtDate(d) {
     if (!d) return '—';
     var dt = new Date(d + 'T00:00:00');
@@ -221,7 +236,7 @@
   var WAITING_STALE_DAYS = 7;
   function isStaleWaitingItem(wi) {
     if (wi.is_received) return false;
-    var todayStr = new Date().toISOString().slice(0, 10);
+    var todayStr = localDateStr();
     if (wi.follow_up_date) return wi.follow_up_date < todayStr;
     if (!wi.requested_date) return false;
     var ageDays = (Date.now() - new Date(wi.requested_date + 'T00:00:00').getTime()) / 86400000;
@@ -527,7 +542,7 @@
 
     var open = mine.filter(function (w) { return w.status !== 'completed'; });
     var overdue = open.filter(isOverdue);
-    var todayStr = new Date().toISOString().slice(0, 10);
+    var todayStr = localDateStr();
     var dueToday = open.filter(function (w) { return effectiveDue(w) === todayStr && !isOverdue(w); });
     var waiting = open.filter(function (w) { return w.status === 'waiting_for_client'; });
 
@@ -795,9 +810,9 @@
       if (serviceSel.value) items = items.filter(function (w) { return w.service_template_id === serviceSel.value; });
       items.sort(compareByDue);
 
-      var todayStr = new Date().toISOString().slice(0, 10);
+      var todayStr = localDateStr();
       var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
-      var weekStr = weekOut.toISOString().slice(0, 10);
+      var weekStr = localDateStr(weekOut);
       var groups = [
         { key: 'overdue', label: 'Overdue', filter: function (w) { return isOverdue(w); } },
         { key: 'today', label: 'Today', filter: function (w) { return !isOverdue(w) && effectiveDue(w) === todayStr; } },
@@ -844,9 +859,9 @@
     main.removeChild(loading);
 
     var open = items.filter(function (w) { return w.status !== 'completed'; });
-    var todayStr = new Date().toISOString().slice(0, 10);
+    var todayStr = localDateStr();
     var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
-    var weekStr = weekOut.toISOString().slice(0, 10);
+    var weekStr = localDateStr(weekOut);
 
     // ---- Team Workload matrix ----
     var matrixCard = el('div', 'card');
@@ -882,47 +897,63 @@
     matrixCard.appendChild(table);
     main.appendChild(matrixCard);
 
-    // ---- Needs Manager Attention ----
-    var overdueCount = open.filter(isOverdue).length;
-    var staleReviews = open.filter(function (w) {
-      if (w.status !== 'ready_for_review' || !w.ready_for_review_at) return false;
-      var ageDays = (Date.now() - new Date(w.ready_for_review_at).getTime()) / 86400000;
-      return ageDays > 2;
-    }).length;
-    var waitingClientIds = {};
-    var waitingWorkIds = [];
-    open.filter(function (w) { return w.status === 'waiting_for_client'; }).forEach(function (w) { waitingClientIds[w.client_id] = true; waitingWorkIds.push(w.id); });
-    var waitingClientCount = Object.keys(waitingClientIds).length;
-    // Per-requirement, not per-work-item: a client can be "waiting" for
-    // weeks on paper while every individual document is actually fine
-    // except one nobody's chased — this is what actually needs a
-    // manager's attention, not just the client-level count above.
-    var staleRequirementCount = 0;
-    if (waitingWorkIds.length) {
-      var waitingItemsRes = await sb.from('work_waiting_items').select('*').in('work_item_id', waitingWorkIds);
-      staleRequirementCount = (waitingItemsRes.data || []).filter(isStaleWaitingItem).length;
-    }
+    // ---- Needs Attention — real exceptions, not a dashboard. Every
+    // category lists the actual clickable work items (workRow(), same
+    // component every other list view already uses), capped at a
+    // handful each, instead of a bare count linking to a generic page —
+    // a manager should be able to click straight to the thing that needs
+    // fixing. Computed entirely from `items`/`open`, already loaded
+    // above — no extra queries, no charts. Categories with zero matches
+    // are omitted so a healthy day shows almost nothing. "No assignee"
+    // is deliberately not a category: assignee_id is NOT NULL at the
+    // schema level, so it can never be true.
+    var todayPlus3 = new Date(); todayPlus3.setDate(todayPlus3.getDate() + 3);
+    var todayPlus3Str = localDateStr(todayPlus3);
+    var EXCEPTION_CAP = 5;
+    var exceptionCategories = [
+      { label: 'Overdue', items: open.filter(isOverdue) },
+      { label: 'Due Today', items: open.filter(function (w) { return !isOverdue(w) && effectiveDue(w) === todayStr; }) },
+      { label: 'Due Within 3 Days', items: open.filter(function (w) { var due = effectiveDue(w); return !!due && due > todayStr && due <= todayPlus3Str; }) },
+      {
+        label: 'Review Pending Too Long', items: open.filter(function (w) {
+          if (w.status !== 'ready_for_review' || !w.ready_for_review_at) return false;
+          return (Date.now() - new Date(w.ready_for_review_at).getTime()) / 86400000 > 2;
+        }),
+      },
+      { label: 'Changes Required', items: open.filter(function (w) { return w.status === 'changes_required'; }) },
+      {
+        // Work-item-level (waiting_since), not per-requirement — a
+        // single consolidated "this has been waiting too long" signal,
+        // reusing the same WAITING_STALE_DAYS threshold the per-item
+        // "Follow-up overdue" flag on Work Details already uses.
+        label: 'Waiting for Client Too Long', items: open.filter(function (w) {
+          if (w.status !== 'waiting_for_client' || !w.waiting_since) return false;
+          return (Date.now() - new Date(w.waiting_since + 'T00:00:00').getTime()) / 86400000 >= WAITING_STALE_DAYS;
+        }),
+      },
+      { label: 'No Reviewer Assigned', items: open.filter(function (w) { return !w.reviewer_id; }) },
+      { label: 'Missing Deadline', items: open.filter(function (w) { return !effectiveDue(w); }) },
+      {
+        label: 'Ready to Submit but Not Submitted', items: open.filter(function (w) {
+          return w.submission_required && (w.status === 'ready_to_submit' || w.status === 'completed')
+            && w.submission_status !== 'submitted' && w.submission_status !== 'acknowledged';
+        }),
+      },
+    ];
 
     var attnCard = el('div', 'card');
-    var aH2 = el('h2'); aH2.appendChild(icon('alert')); aH2.appendChild(document.createTextNode('Needs Manager Attention')); attnCard.appendChild(aH2);
-    var lines = [];
-    if (overdueCount) lines.push({ text: overdueCount + ' overdue work item' + (overdueCount === 1 ? '' : 's'), view: 'all-work' });
-    if (staleReviews) lines.push({ text: staleReviews + ' review' + (staleReviews === 1 ? '' : 's') + ' older than 2 days', view: 'review' });
-    if (waitingClientCount) lines.push({ text: waitingClientCount + ' client' + (waitingClientCount === 1 ? '' : 's') + ' waiting on documents', view: null });
-    if (staleRequirementCount) lines.push({ text: staleRequirementCount + ' requirement' + (staleRequirementCount === 1 ? '' : 's') + ' waiting ' + WAITING_STALE_DAYS + '+ days without follow-up', view: null });
-    if (!lines.length) {
+    var aH2 = el('h2'); aH2.appendChild(icon('alert')); aH2.appendChild(document.createTextNode('Needs Attention')); attnCard.appendChild(aH2);
+    if (!exceptionCategories.some(function (c) { return c.items.length; })) {
       var okLine = el('p', 'desc'); okLine.textContent = 'Nothing needs attention right now.'; attnCard.appendChild(okLine);
     } else {
-      lines.forEach(function (l) {
-        var p = el('p');
-        p.style.cssText = 'font-size:.92rem;margin:6px 0;';
-        if (l.view) {
-          var a = el('a'); a.href = '#' + l.view; a.textContent = l.text;
-          p.appendChild(a);
-        } else {
-          p.textContent = l.text;
+      exceptionCategories.forEach(function (cat) {
+        if (!cat.items.length) return;
+        var catLabel = el('div', 'checklist-stage'); catLabel.textContent = cat.label + ' (' + cat.items.length + ')'; attnCard.appendChild(catLabel);
+        cat.items.slice(0, EXCEPTION_CAP).forEach(function (w) { attnCard.appendChild(workRow(w)); });
+        if (cat.items.length > EXCEPTION_CAP) {
+          var moreLine = el('p', 'desc'); moreLine.style.margin = '4px 0 0'; moreLine.textContent = '+' + (cat.items.length - EXCEPTION_CAP) + ' more — see All Work.';
+          attnCard.appendChild(moreLine);
         }
-        attnCard.appendChild(p);
       });
     }
     main.appendChild(attnCard);
@@ -1138,12 +1169,12 @@
       var now = new Date();
       var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       var d = new Date(now.getFullYear(), now.getMonth(), Math.min(dayOfMonth, lastDay));
-      return d.toISOString().slice(0, 10);
+      return localDateStr(d);
     }
     function subtractDays(dateStr, n) {
       var d = new Date(dateStr + 'T00:00:00');
       d.setDate(d.getDate() - n);
-      return d.toISOString().slice(0, 10);
+      return localDateStr(d);
     }
     function applyTemplate(id) {
       var t = templateById(id);
@@ -1377,7 +1408,7 @@
               work_item_id: work.id,
               title: title,
               sort_order: i,
-              requested_date: patch.waiting_since || new Date().toISOString().slice(0, 10),
+              requested_date: patch.waiting_since || localDateStr(),
               requested_by: state.user.id,
               follow_up_date: patch.follow_up_date || null,
             };
@@ -1543,7 +1574,7 @@
             work_item_id: work.id,
             title: newWaitInput.value.trim(),
             sort_order: waitingItems.length,
-            requested_date: new Date().toISOString().slice(0, 10),
+            requested_date: localDateStr(),
             requested_by: state.user.id,
           });
           if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
@@ -1951,7 +1982,7 @@
       closeModal();
       onSave({
         status: 'waiting_for_client',
-        waiting_since: new Date().toISOString().slice(0, 10),
+        waiting_since: localDateStr(),
         follow_up_date: followUpInput.value || null,
         waiting_requested_by: state.user.id,
         ready_for_review_at: null,
