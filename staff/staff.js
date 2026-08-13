@@ -17,6 +17,12 @@
     approved: 'Approved',
     ready_to_submit: 'Ready to Submit',
     completed: 'Completed',
+    // Firm Work's own two states (work_scope='firm') — added here for
+    // forward compatibility (labels only) so a badge never falls back to
+    // raw "blocked"/"review" text; no Firm Work UI reads/writes these
+    // yet, that's a later task.
+    blocked: 'Blocked',
+    review: 'Review',
   };
   var SUBMISSION_STATUS_LABELS = {
     not_ready: 'Not Ready',
@@ -617,7 +623,14 @@
   }
 
   async function loadWork(mode) {
-    var q = sb.from('work_items').select('*').order('internal_due_date', { ascending: true, nullsFirst: false });
+    // Every caller of loadWork() is a Client Work view (My Work, Review,
+    // All Work, Today, Deadlines, Manager Dashboard, Period Summary,
+    // notification generation) — Firm Work (work_scope='firm', added
+    // alongside Client Work in the same work_items table) must never
+    // silently show up in any of them, per the explicit "must not
+    // contaminate client compliance reporting" requirement. This one
+    // filter covers all of those call sites at once.
+    var q = sb.from('work_items').select('*').eq('work_scope', 'client').order('internal_due_date', { ascending: true, nullsFirst: false });
     if (mode === 'mine') q = q.eq('assignee_id', state.user.id);
     if (mode === 'review') {
       q = q.eq('status', 'ready_for_review');
@@ -1521,11 +1534,13 @@
         ? 'Showing activity from ' + (fromISO ? fmtDate(fromISO) : 'the beginning') + ' to ' + (toISO ? fmtDate(toISO) : 'now') + '.'
         : 'Showing all-time activity.';
 
-      var activeQ = sb.from('work_items').select('*').neq('status', 'completed');
-      var createdQ = sb.from('work_items').select('*');
+      // Firm Work (work_scope='firm') must never enter a compliance
+      // report — explicit requirement from the Firm Work data-model task.
+      var activeQ = sb.from('work_items').select('*').eq('work_scope', 'client').neq('status', 'completed');
+      var createdQ = sb.from('work_items').select('*').eq('work_scope', 'client');
       if (fromISO) createdQ = createdQ.gte('created_at', fromISO);
       if (toISO) createdQ = createdQ.lte('created_at', toISO + 'T23:59:59');
-      var completedQ = sb.from('work_items').select('*').eq('status', 'completed').not('completed_at', 'is', null);
+      var completedQ = sb.from('work_items').select('*').eq('work_scope', 'client').eq('status', 'completed').not('completed_at', 'is', null);
       if (fromISO) completedQ = completedQ.gte('completed_at', fromISO);
       if (toISO) completedQ = completedQ.lte('completed_at', toISO + 'T23:59:59');
 
@@ -2014,7 +2029,12 @@
       }
       var loading = el('div', 'empty-note'); loading.textContent = 'Searching…'; resultsWrap.appendChild(loading);
 
-      var query = sb.from('work_items').select('*').order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
+      // Search is a Client Work tool (its own filter set is client/
+      // service/period/staff/status/submission reference — nothing
+      // Firm-Work-shaped like firm_category) — excluded here for the
+      // same "must not contaminate client compliance reporting" reason
+      // as loadWork() and Reports.
+      var query = sb.from('work_items').select('*').eq('work_scope', 'client').order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.client) query = query.eq('client_id', filters.client);
       if (filters.service) query = query.eq('service_template_id', filters.service);
