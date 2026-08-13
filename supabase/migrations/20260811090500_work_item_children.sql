@@ -36,7 +36,12 @@ create table if not exists public.work_checklist_items (
   stage text not null default 'preparation' check (stage in ('preparation', 'review', 'submission')),
   title text not null,
   is_done boolean not null default false,
-  sort_order int not null default 0
+  sort_order int not null default 0,
+  -- Copied from service_template_items.is_required at generation time
+  -- (Work Templates task, 2026-08-13) -- a snapshot, like the title/
+  -- stage/sort_order already were, not a live reference. Display-only:
+  -- nothing enforces it against a status change.
+  is_required boolean not null default true
 );
 create index if not exists work_checklist_items_work_item_id_idx
   on public.work_checklist_items (work_item_id);

@@ -1270,8 +1270,16 @@
 
     var templateSel = el('select');
     templateSel.appendChild(new Option('— No template (ad-hoc) —', ''));
-    state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+    // Inactive templates are excluded here (they're retired for anything
+    // NEW) but templateById() itself stays unfiltered — a prefill that
+    // names an already-inactive template (e.g. re-running a client
+    // service whose template was later retired) still needs to resolve.
+    state.templates.filter(function (t) { return t.is_active; }).slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
       .forEach(function (t) { templateSel.appendChild(new Option(t.title + ' (' + t.category + ')', t.id)); });
+    if (prefill.templateId && templateById(prefill.templateId) && !templateById(prefill.templateId).is_active) {
+      var retired = templateById(prefill.templateId);
+      templateSel.appendChild(new Option(retired.title + ' (' + retired.category + ') — Inactive', retired.id));
+    }
     wrap.appendChild(field('Service Template', templateSel));
 
     var titleInput = el('input'); titleInput.type = 'text';
@@ -1395,7 +1403,7 @@
         var itemsRes = await sb.from('service_template_items').select('*').eq('template_id', templateSel.value);
         var items = (itemsRes.data || []);
         if (items.length) {
-          var rows = items.map(function (it) { return { work_item_id: res.data.id, stage: it.stage, title: it.title, sort_order: it.sort_order }; });
+          var rows = items.map(function (it) { return { work_item_id: res.data.id, stage: it.stage, title: it.title, sort_order: it.sort_order, is_required: it.is_required }; });
           var clRes = await sb.from('work_checklist_items').insert(rows);
           if (clRes.error) toast('Work created, but checklist items failed: ' + clRes.error.message, true);
         }
@@ -1938,7 +1946,7 @@
       logActivity(workId, 'checklist_toggled', detail);
       prependActivityRow(activityPane, detail);
     });
-    var span = el('span'); span.textContent = item.title;
+    var span = el('span'); span.textContent = item.title + (item.is_required === false ? ' (Optional)' : '');
     row.appendChild(cb); row.appendChild(span);
     return row;
   }
@@ -2409,7 +2417,8 @@
     if (canManageServices) {
       var addSvcRow = el('div'); addSvcRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:flex-end;';
       var svcTemplateSel = el('select'); svcTemplateSel.style.flex = '1'; svcTemplateSel.style.minWidth = '160px';
-      state.templates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
+      var activeTemplates = state.templates.filter(function (t) { return t.is_active; });
+      activeTemplates.slice().sort(function (a, b) { return a.title.localeCompare(b.title); })
         .forEach(function (t) { svcTemplateSel.appendChild(new Option(t.title, t.id)); });
       var svcAssigneeSel = el('select'); svcAssigneeSel.style.width = 'auto';
       svcAssigneeSel.appendChild(new Option('— Assignee —', ''));
@@ -2448,8 +2457,8 @@
         toast('Service added.');
         renderClientDetail(id);
       });
-      if (!state.templates.length) {
-        var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create a service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
+      if (!activeTemplates.length) {
+        var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create an active service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
       } else {
         addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel);
         addSvcRow.appendChild(svcStartInput); addSvcRow.appendChild(svcEndInput); addSvcRow.appendChild(addSvcBtn);
@@ -2896,8 +2905,8 @@
   }
 
   function templateCard(t) {
-    var card = el('div', 'card');
-    var h2 = el('h2'); h2.textContent = t.title; card.appendChild(h2);
+    var card = el('div', 'card' + (t.is_active ? '' : ' is-inactive'));
+    var h2 = el('h2'); h2.textContent = t.title + (t.is_active ? '' : ' — Inactive'); card.appendChild(h2);
     var meta = el('p', 'desc');
     meta.textContent = (t.recurrence !== 'none' ? 'Recurs ' + t.recurrence : 'One-off') +
       (t.requires_submission ? ' · Includes a submission step' : '') +
@@ -2912,7 +2921,11 @@
       if (!stageItems.length) return;
       var stageLabel = el('div', 'checklist-stage'); stageLabel.textContent = STAGE_LABELS[stage]; card.appendChild(stageLabel);
       var ul = el('ul'); ul.style.paddingLeft = '18px'; ul.style.listStyle = 'disc'; ul.style.margin = '0';
-      stageItems.forEach(function (it) { var li = el('li'); li.textContent = it.title; ul.appendChild(li); });
+      stageItems.forEach(function (it) {
+        var li = el('li');
+        li.textContent = it.title + (it.is_required === false ? ' (Optional)' : '');
+        ul.appendChild(li);
+      });
       card.appendChild(ul);
     });
     var useBtn = el('button', 'btn btn-outline btn-sm');
@@ -2922,7 +2935,106 @@
     useBtn.appendChild(document.createTextNode('Use This Template'));
     useBtn.addEventListener('click', function () { openNewWorkModal({ templateId: t.id }); });
     card.appendChild(useBtn);
+    if (isAdmin()) {
+      var editBtn = el('button', 'btn btn-outline btn-sm'); editBtn.type = 'button';
+      editBtn.style.marginTop = '14px'; editBtn.style.marginLeft = '8px'; editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', function () { openEditTemplateModal(t); });
+      card.appendChild(editBtn);
+
+      var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
+      toggleBtn.style.marginTop = '14px'; toggleBtn.style.marginLeft = '8px';
+      toggleBtn.textContent = t.is_active ? 'Deactivate' : 'Reactivate';
+      toggleBtn.addEventListener('click', async function () {
+        toggleBtn.disabled = true;
+        var res = await sb.from('service_templates').update({ is_active: !t.is_active }).eq('id', t.id);
+        toggleBtn.disabled = false;
+        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+        toast(t.is_active ? 'Template deactivated — it will no longer be offered for new work.' : 'Template reactivated.');
+        render();
+      });
+      card.appendChild(toggleBtn);
+    }
     return card;
+  }
+
+  // Reusable checklist editor shared by New/Edit Template — one section per
+  // stage (Preparation/Review/Submission), each item an editable title +
+  // Required checkbox + Up/Down reorder + delete. Up/Down (not drag-and-
+  // drop) per the task's own instruction: "Do not build drag-and-drop
+  // unless already easy to support" — it wasn't, so this is the simple
+  // alternative that still gives real reordering. getRows() reads the
+  // live DOM order back out, so reordering needs no separate index state.
+  function buildChecklistEditor(existingItems) {
+    var wrap = el('div');
+    var stageLists = {};
+    STAGES.forEach(function (stage) {
+      var stageWrap = el('div'); stageWrap.style.marginBottom = '14px';
+      var label = el('div', 'checklist-stage'); label.textContent = STAGE_LABELS[stage];
+      stageWrap.appendChild(label);
+      var list = el('div');
+      stageWrap.appendChild(list);
+      stageLists[stage] = list;
+
+      function addRow(title, isRequired) {
+        var row = el('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:6px;';
+        var titleInput = el('input'); titleInput.type = 'text'; titleInput.value = title || ''; titleInput.style.flex = '1';
+        var reqLabel = el('label'); reqLabel.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:.8rem;white-space:nowrap;width:auto;margin:0;';
+        var reqCb = el('input'); reqCb.type = 'checkbox'; reqCb.checked = isRequired !== false; reqCb.style.width = 'auto';
+        reqLabel.appendChild(reqCb); reqLabel.appendChild(document.createTextNode('Required'));
+        var upBtn = el('button', 'btn btn-outline btn-sm'); upBtn.type = 'button'; upBtn.textContent = '↑'; upBtn.title = 'Move up';
+        var downBtn = el('button', 'btn btn-outline btn-sm'); downBtn.type = 'button'; downBtn.textContent = '↓'; downBtn.title = 'Move down';
+        var delBtn = el('button', 'btn btn-outline btn-sm'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Remove';
+        upBtn.addEventListener('click', function () {
+          var prev = row.previousElementSibling;
+          if (prev) list.insertBefore(row, prev);
+        });
+        downBtn.addEventListener('click', function () {
+          var next = row.nextElementSibling;
+          if (next) list.insertBefore(next, row);
+        });
+        delBtn.addEventListener('click', function () { list.removeChild(row); });
+        row.appendChild(titleInput); row.appendChild(reqLabel);
+        row.appendChild(upBtn); row.appendChild(downBtn); row.appendChild(delBtn);
+        row._titleInput = titleInput; row._reqCb = reqCb;
+        list.appendChild(row);
+      }
+
+      (existingItems || []).filter(function (i) { return i.stage === stage; })
+        .sort(function (a, b) { return a.sort_order - b.sort_order; })
+        .forEach(function (i) { addRow(i.title, i.is_required); });
+
+      var addRowWrap = el('div'); addRowWrap.style.cssText = 'display:flex;gap:6px;margin-top:4px;';
+      var newInput = el('input'); newInput.type = 'text'; newInput.placeholder = 'Add item…'; newInput.style.flex = '1';
+      var addBtn = el('button', 'btn btn-outline btn-sm'); addBtn.type = 'button'; addBtn.textContent = 'Add';
+      function commitAdd() {
+        var v = newInput.value.trim();
+        if (!v) return;
+        addRow(v, true);
+        newInput.value = '';
+        newInput.focus();
+      }
+      addBtn.addEventListener('click', commitAdd);
+      newInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); commitAdd(); } });
+      addRowWrap.appendChild(newInput); addRowWrap.appendChild(addBtn);
+      stageWrap.appendChild(addRowWrap);
+
+      wrap.appendChild(stageWrap);
+    });
+
+    function getRows() {
+      var rows = [];
+      STAGES.forEach(function (stage) {
+        Array.prototype.forEach.call(stageLists[stage].children, function (row, i) {
+          var title = row._titleInput.value.trim();
+          if (!title) return;
+          rows.push({ stage: stage, title: title, is_required: row._reqCb.checked, sort_order: i });
+        });
+      });
+      return rows;
+    }
+
+    return { element: wrap, getRows: getRows };
   }
 
   function openNewTemplateModal() {
@@ -2976,12 +3088,8 @@
     var internalOffsetInput = el('input'); internalOffsetInput.type = 'number'; internalOffsetInput.min = '0'; internalOffsetInput.placeholder = 'e.g. 3';
     wrap.appendChild(field('Internal Deadline — days before filing (optional)', internalOffsetInput));
 
-    var prepInput = el('textarea'); prepInput.rows = 3; prepInput.placeholder = 'One item per line';
-    wrap.appendChild(field('Preparation Checklist (optional)', prepInput));
-    var reviewInput = el('textarea'); reviewInput.rows = 2; reviewInput.placeholder = 'One item per line';
-    wrap.appendChild(field('Review Checklist (optional)', reviewInput));
-    var submissionInput = el('textarea'); submissionInput.rows = 2; submissionInput.placeholder = 'One item per line';
-    wrap.appendChild(field('Submission Checklist (optional)', submissionInput));
+    var checklistEditor = buildChecklistEditor([]);
+    wrap.appendChild(field('Checklist (optional)', checklistEditor.element));
 
     var actions = el('div', 'modal-actions');
     var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Template';
@@ -2999,10 +3107,8 @@
         internal_offset_days: internalOffsetInput.value.trim() ? parseInt(internalOffsetInput.value, 10) : null,
       }).select().single();
       if (res.error) { toast('Could not create template: ' + res.error.message, true); return; }
-      var rows = [];
-      [['preparation', prepInput], ['review', reviewInput], ['submission', submissionInput]].forEach(function (pair) {
-        var lines = pair[1].value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-        lines.forEach(function (title, i) { rows.push({ template_id: res.data.id, stage: pair[0], title: title, sort_order: i }); });
+      var rows = checklistEditor.getRows().map(function (r) {
+        return { template_id: res.data.id, stage: r.stage, title: r.title, sort_order: r.sort_order, is_required: r.is_required };
       });
       if (rows.length) {
         var itemsRes = await sb.from('service_template_items').insert(rows);
@@ -3013,6 +3119,118 @@
       render();
     });
     actions.appendChild(createBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
+  // Mirrors openNewTemplateModal's fields exactly (same six core fields
+  // plus the shared checklist editor), pre-filled from an existing
+  // template, plus an Active checkbox. Saving never touches already-
+  // generated work_items/work_checklist_items rows — those were copied at
+  // generation time (see _generate_period_work_core), not a live
+  // reference — so editing a template here cannot rewrite historical
+  // Work, only what gets generated from this point on. The checklist is
+  // saved by replacing service_template_items wholesale (delete all rows
+  // for this template, insert the current editor state) rather than
+  // diffing — simpler, and safe because the copy already happened for any
+  // past work item.
+  function openEditTemplateModal(t) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Edit Template';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var titleInput = el('input'); titleInput.type = 'text'; titleInput.value = t.title;
+    wrap.appendChild(field('Title', titleInput));
+
+    var catSel = el('select');
+    TEMPLATE_CATEGORIES.forEach(function (c) { catSel.appendChild(new Option(c, c)); });
+    catSel.value = t.category;
+    wrap.appendChild(field('Category', catSel));
+
+    var descInput = el('textarea'); descInput.rows = 2; descInput.value = t.description || '';
+    wrap.appendChild(field('Description (optional)', descInput));
+
+    var recurSel = el('select');
+    [['none', 'One-off'], ['monthly', 'Monthly'], ['quarterly', 'Quarterly'], ['yearly', 'Yearly']]
+      .forEach(function (r) { recurSel.appendChild(new Option(r[1], r[0])); });
+    recurSel.value = t.recurrence;
+    wrap.appendChild(field('Recurrence', recurSel));
+
+    var activeWrap = el('div', 'f');
+    var activeLabel = el('label');
+    var activeCb = el('input'); activeCb.type = 'checkbox'; activeCb.checked = t.is_active; activeCb.style.width = 'auto'; activeCb.style.marginRight = '8px';
+    activeLabel.appendChild(activeCb);
+    activeLabel.appendChild(document.createTextNode('Active (offered for new Work and Client Services)'));
+    activeWrap.appendChild(activeLabel);
+    wrap.appendChild(activeWrap);
+
+    var submissionWrap = el('div', 'f');
+    var submissionLabel = el('label');
+    var submissionCb = el('input'); submissionCb.type = 'checkbox'; submissionCb.checked = t.requires_submission; submissionCb.style.width = 'auto'; submissionCb.style.marginRight = '8px';
+    submissionLabel.appendChild(submissionCb);
+    submissionLabel.appendChild(document.createTextNode('Requires a submission step (adds "Ready to Submit" before Completed)'));
+    submissionWrap.appendChild(submissionLabel);
+    wrap.appendChild(submissionWrap);
+
+    var defaultAssigneeSel = el('select');
+    defaultAssigneeSel.appendChild(new Option('— No default —', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { defaultAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    defaultAssigneeSel.value = t.default_assignee_id || '';
+    wrap.appendChild(field('Default Assignee (optional)', defaultAssigneeSel));
+
+    var defaultReviewerSel = el('select');
+    defaultReviewerSel.appendChild(new Option('— No default —', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { defaultReviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    defaultReviewerSel.value = t.default_reviewer_id || '';
+    wrap.appendChild(field('Default Reviewer (optional)', defaultReviewerSel));
+
+    var filingDayInput = el('input'); filingDayInput.type = 'number'; filingDayInput.min = '1'; filingDayInput.max = '31'; filingDayInput.placeholder = 'e.g. 25';
+    filingDayInput.value = t.filing_deadline_day != null ? t.filing_deadline_day : '';
+    wrap.appendChild(field('Filing/Client Deadline — day of month (optional)', filingDayInput));
+    var internalOffsetInput = el('input'); internalOffsetInput.type = 'number'; internalOffsetInput.min = '0'; internalOffsetInput.placeholder = 'e.g. 3';
+    internalOffsetInput.value = t.internal_offset_days != null ? t.internal_offset_days : '';
+    wrap.appendChild(field('Internal Deadline — days before filing (optional)', internalOffsetInput));
+
+    var checklistEditor = buildChecklistEditor(t.service_template_items || []);
+    wrap.appendChild(field('Checklist (optional)', checklistEditor.element));
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
+    saveBtn.addEventListener('click', async function () {
+      if (!titleInput.value.trim()) { toast('Give the template a title.', true); return; }
+      saveBtn.disabled = true;
+      var res = await sb.from('service_templates').update({
+        title: titleInput.value.trim(),
+        category: catSel.value,
+        description: descInput.value.trim() || null,
+        recurrence: recurSel.value,
+        is_active: activeCb.checked,
+        requires_submission: submissionCb.checked,
+        default_assignee_id: defaultAssigneeSel.value || null,
+        default_reviewer_id: defaultReviewerSel.value || null,
+        filing_deadline_day: filingDayInput.value.trim() ? parseInt(filingDayInput.value, 10) : null,
+        internal_offset_days: internalOffsetInput.value.trim() ? parseInt(internalOffsetInput.value, 10) : null,
+      }).eq('id', t.id);
+      if (res.error) { saveBtn.disabled = false; toast('Could not save: ' + res.error.message, true); return; }
+      var delRes = await sb.from('service_template_items').delete().eq('template_id', t.id);
+      if (delRes.error) { saveBtn.disabled = false; toast('Template saved, but checklist could not be updated: ' + delRes.error.message, true); return; }
+      var rows = checklistEditor.getRows().map(function (r) {
+        return { template_id: t.id, stage: r.stage, title: r.title, sort_order: r.sort_order, is_required: r.is_required };
+      });
+      if (rows.length) {
+        var itemsRes = await sb.from('service_template_items').insert(rows);
+        if (itemsRes.error) { saveBtn.disabled = false; toast('Template saved, but checklist could not be updated: ' + itemsRes.error.message, true); return; }
+      }
+      saveBtn.disabled = false;
+      closeModal();
+      toast('Template updated.');
+      render();
+    });
+    actions.appendChild(saveBtn);
     wrap.appendChild(actions);
     openModal(wrap);
   }

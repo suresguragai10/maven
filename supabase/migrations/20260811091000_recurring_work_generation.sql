@@ -115,7 +115,11 @@ begin
     select cs.*, st.title as template_title, st.filing_deadline_day, st.internal_offset_days
     from public.client_services cs
     join public.service_templates st on st.id = cs.service_template_id
-    where cs.is_active = true and st.recurrence = p_period_type
+    -- st.is_active added 2026-08-13 (Work Templates task): a retired
+    -- template stops generating new work even if the client's own
+    -- subscription (cs.is_active) is still on -- deactivating the
+    -- template is the higher-level "we don't do this anymore" switch.
+    where cs.is_active = true and st.is_active = true and st.recurrence = p_period_type
   loop
     new_work_id := null;
     -- Clamp to month_end so a configured day-of-month past this month's
@@ -148,8 +152,8 @@ begin
       continue; -- already exists for this client + service + period
     end if;
 
-    insert into public.work_checklist_items (work_item_id, stage, title, sort_order)
-    select new_work_id, sti.stage, sti.title, sti.sort_order
+    insert into public.work_checklist_items (work_item_id, stage, title, sort_order, is_required)
+    select new_work_id, sti.stage, sti.title, sti.sort_order, sti.is_required
     from public.service_template_items sti
     where sti.template_id = svc.service_template_id;
 
