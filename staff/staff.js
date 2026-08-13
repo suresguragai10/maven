@@ -76,6 +76,7 @@
     list: '<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><path d="M4 6l1 1 2-2"/><path d="M4 12l1 1 2-2"/><path d="M4 18l1 1 2-2"/>',
     sun: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"/>',
     search: '<circle cx="10" cy="10" r="7"/><line x1="20" y1="20" x2="15.2" y2="15.2"/>',
+    bell: '<path d="M12 3a5 5 0 0 0-5 5v3l-2 4h18l-2-4V8a5 5 0 0 0-5-5z"/><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -268,6 +269,21 @@
   });
   qs('#logoutBtn').addEventListener('click', handleLogout);
 
+  qs('#notifBellIconSlot').appendChild(icon('bell'));
+  qs('#notifBellBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    var panel = qs('#notifPanel');
+    if (panel.classList.contains('hidden')) openNotifPanel(); else panel.classList.add('hidden');
+  });
+  // Click-outside-to-close, same convention as #modalOverlay's own
+  // click-to-close handler above.
+  document.addEventListener('click', function (e) {
+    var panel = qs('#notifPanel');
+    if (panel.classList.contains('hidden')) return;
+    if (panel.contains(e.target) || qs('#notifBellBtn').contains(e.target)) return;
+    panel.classList.add('hidden');
+  });
+
   async function handleLogin() {
     var email = qs('#in-email').value.trim();
     var password = qs('#in-password').value;
@@ -334,6 +350,7 @@
       renderSidebar();
       routeFromHash();
       if (isAdmin()) runAutoGenerateOnOpen();
+      initNotifications();
     } catch (err) {
       toast('Something went wrong loading the portal: ' + err.message, true);
       var main = qs('#main');
@@ -390,6 +407,155 @@
       if (totalCreated > 0) toast(totalCreated + ' work item' + (totalCreated === 1 ? '' : 's') + ' auto-generated for the current period.');
     })();
   }
+
+  // ============================================================
+  // Notifications — computed from current work_items/work_waiting_items
+  // state at login (no scheduler, no email/SMS/push/WhatsApp, zero
+  // external cost), scoped entirely to the logged-in user's own work
+  // (mirrors Today's own "mine"/"review" scoping — a notification is a
+  // personal nudge, not a broadcast). Two shapes: a per-day SUMMARY row
+  // ("3 work items are due today") deduped by day, and a per-item row
+  // ("VAT Return for XYZ is overdue") deduped by the specific work item
+  // (and, for follow-ups, the specific follow-up date) so the same
+  // condition doesn't keep re-notifying every single login. The database
+  // is the actual duplicate-prevention boundary (a unique index on
+  // (user_id, dedup_key), same "let Postgres guarantee it" pattern as
+  // recurring work generation's ON CONFLICT DO NOTHING) — upsert with
+  // ignoreDuplicates just lets the app not care whether a given
+  // notification already exists.
+  // ============================================================
+  function initNotifications() {
+    refreshNotifBadge();
+    // Fire-and-forget, same reasoning as runAutoGenerateOnOpen — never
+    // delay the page someone actually opened Work Desk to look at.
+    generateNotifications().then(function () {
+      refreshNotifBadge();
+      if (!qs('#notifPanel').classList.contains('hidden')) renderNotifPanel();
+    });
+  }
+
+  async function generateNotifications() {
+    var todayStr = localDateStr();
+    var mine = await loadWork('mine');
+    var open = mine.filter(function (w) { return w.status !== 'completed'; });
+    var dueToday = open.filter(function (w) { return effectiveDue(w) === todayStr && !isOverdue(w); });
+    var overdueItems = open.filter(isOverdue);
+    var waitingItems = open.filter(function (w) { return w.status === 'waiting_for_client'; });
+    var reviewItems = (await loadWork('review')).filter(function (w) { return w.reviewer_id === state.user.id; });
+
+    var rows = [];
+    if (dueToday.length) {
+      rows.push({
+        user_id: state.user.id, kind: 'due_today_summary', work_item_id: null,
+        title: dueToday.length + ' work item' + (dueToday.length === 1 ? ' is' : 's are') + ' due today',
+        dedup_key: 'due_today_summary:' + todayStr,
+      });
+    }
+    if (reviewItems.length) {
+      rows.push({
+        user_id: state.user.id, kind: 'review_summary', work_item_id: null,
+        title: reviewItems.length + ' review' + (reviewItems.length === 1 ? '' : 's') + ' assigned to you',
+        dedup_key: 'review_summary:' + todayStr,
+      });
+    }
+    overdueItems.forEach(function (w) {
+      var tmpl = templateById(w.service_template_id);
+      rows.push({
+        user_id: state.user.id, kind: 'overdue_item', work_item_id: w.id,
+        title: (tmpl ? tmpl.title : w.title) + ' for ' + clientName(w.client_id) + ' is overdue',
+        dedup_key: 'overdue_item:' + w.id,
+      });
+    });
+    if (waitingItems.length) {
+      var waitRes = await sb.from('work_waiting_items').select('*')
+        .in('work_item_id', waitingItems.map(function (w) { return w.id; }))
+        .eq('follow_up_date', todayStr).eq('is_received', false);
+      var seenWork = {};
+      (waitRes.data || []).forEach(function (wi) {
+        // One notification per work item's follow-up, not one per
+        // still-outstanding requirement line on that item.
+        if (seenWork[wi.work_item_id]) return;
+        seenWork[wi.work_item_id] = true;
+        var w = waitingItems.find(function (x) { return x.id === wi.work_item_id; });
+        rows.push({
+          user_id: state.user.id, kind: 'followup_item', work_item_id: w.id,
+          title: clientName(w.client_id) + ' follow-up is due today',
+          dedup_key: 'followup_item:' + w.id + ':' + wi.follow_up_date,
+        });
+      });
+    }
+
+    if (!rows.length) return;
+    await sb.from('notifications').upsert(rows, { onConflict: 'user_id,dedup_key', ignoreDuplicates: true });
+  }
+
+  async function refreshNotifBadge() {
+    var res = await sb.from('notifications').select('id').eq('user_id', state.user.id).eq('is_read', false);
+    var n = (res.data || []).length;
+    var badge = qs('#notifBadge');
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.classList.toggle('hidden', n === 0);
+  }
+
+  async function openNotifPanel() {
+    qs('#notifPanel').classList.remove('hidden');
+    await renderNotifPanel();
+  }
+
+  async function renderNotifPanel() {
+    var panel = qs('#notifPanel');
+    clear(panel);
+    var head = el('div', 'notif-head');
+    var strong = el('strong'); strong.textContent = 'Notifications';
+    var markAllBtn = el('button', 'btn btn-outline btn-sm'); markAllBtn.type = 'button'; markAllBtn.textContent = 'Mark all read';
+    markAllBtn.addEventListener('click', async function () {
+      markAllBtn.disabled = true;
+      await sb.from('notifications').update({ is_read: true }).eq('user_id', state.user.id).eq('is_read', false);
+      await renderNotifPanel();
+      refreshNotifBadge();
+    });
+    head.appendChild(strong); head.appendChild(markAllBtn);
+    panel.appendChild(head);
+
+    var res = await sb.from('notifications').select('*').eq('user_id', state.user.id).order('created_at', { ascending: false }).limit(30);
+    var items = res.data || [];
+    if (!items.length) {
+      var empty = el('div', 'notif-empty'); empty.textContent = 'No notifications yet.';
+      panel.appendChild(empty);
+    } else {
+      items.forEach(function (n) { panel.appendChild(notifRow(n)); });
+    }
+  }
+
+  function notifRow(n) {
+    var row = el('div', 'notif-row' + (n.is_read ? ' is-read' : ''));
+    row.addEventListener('click', function () {
+      if (!n.work_item_id) return;
+      qs('#notifPanel').classList.add('hidden');
+      gotoWork(n.work_item_id);
+    });
+    var body = el('div', 'notif-body');
+    var title = el('div', 'notif-title'); title.textContent = n.title;
+    var when = el('div', 'notif-when'); when.textContent = fmtDateTime(n.created_at);
+    body.appendChild(title); body.appendChild(when);
+    row.appendChild(body);
+    var dismissBtn = el('button', 'notif-dismiss'); dismissBtn.type = 'button';
+    dismissBtn.textContent = '×'; dismissBtn.title = 'Mark read';
+    dismissBtn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+      if (n.is_read) return;
+      dismissBtn.disabled = true;
+      var res = await sb.from('notifications').update({ is_read: true }).eq('id', n.id);
+      dismissBtn.disabled = false;
+      if (res.error) { toast('Could not update notification: ' + res.error.message, true); return; }
+      n.is_read = true;
+      row.classList.add('is-read');
+      refreshNotifBadge();
+    });
+    row.appendChild(dismissBtn);
+    return row;
+  }
+
   async function loadWork(mode) {
     var q = sb.from('work_items').select('*').order('internal_due_date', { ascending: true, nullsFirst: false });
     if (mode === 'mine') q = q.eq('assignee_id', state.user.id);
