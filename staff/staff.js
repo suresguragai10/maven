@@ -661,7 +661,7 @@
     if (mode === 'mine') {
       renderGroupedWork(main, items);
     } else {
-      renderFlatWorkList(main, items);
+      renderFlatWorkList(main, items, mode === 'all' && isReviewerOrAdmin());
     }
   }
 
@@ -736,15 +736,122 @@
     main.appendChild(card);
   }
 
-  function renderFlatWorkList(main, items) {
+  // enableBulkReassign is only ever true for mode==='all' + a reviewer/
+  // admin viewer (see renderWorkListView) -- staff never see this, and a
+  // plain reviewer only gets a checkbox on rows where they're ALREADY
+  // the reviewer (matches guard_work_item_update()'s own bypass
+  // condition exactly, so nothing selectable here could ever be
+  // rejected by the DB). Admin gets a checkbox on every row.
+  function renderFlatWorkList(main, items, enableBulkReassign) {
     if (!items.length) {
       var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No work here yet.'));
       main.appendChild(empty);
       return;
     }
+    var selected = {};
+    var reassignBtn, selectAllCb;
+    if (enableBulkReassign) {
+      var toolbar = el('div'); toolbar.style.cssText = 'display:flex;align-items:center;gap:14px;margin-bottom:10px;';
+      var selectAllLabel = el('label'); selectAllLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-soft);cursor:pointer;';
+      selectAllCb = el('input'); selectAllCb.type = 'checkbox'; selectAllCb.style.width = 'auto';
+      selectAllLabel.appendChild(selectAllCb); selectAllLabel.appendChild(document.createTextNode('Select all eligible'));
+      reassignBtn = el('button', 'btn btn-sm'); reassignBtn.type = 'button'; reassignBtn.textContent = 'Reassign Selected'; reassignBtn.disabled = true;
+      toolbar.appendChild(selectAllLabel); toolbar.appendChild(reassignBtn);
+      main.appendChild(toolbar);
+    }
     var wrap = el('div', 'task-group');
-    items.forEach(function (w) { wrap.appendChild(workRow(w)); });
+    items.forEach(function (w) {
+      var eligible = enableBulkReassign && (isAdmin() || w.reviewer_id === state.user.id);
+      if (!eligible) { wrap.appendChild(workRow(w)); return; }
+      var rowWrap = el('div'); rowWrap.style.cssText = 'display:flex;align-items:center;gap:10px;';
+      var cb = el('input'); cb.type = 'checkbox'; cb.style.cssText = 'width:auto;flex:0 0 auto;';
+      cb.addEventListener('change', function () {
+        if (cb.checked) selected[w.id] = w; else delete selected[w.id];
+        reassignBtn.textContent = 'Reassign Selected' + (Object.keys(selected).length ? ' (' + Object.keys(selected).length + ')' : '');
+        reassignBtn.disabled = !Object.keys(selected).length;
+      });
+      var rowInner = el('div'); rowInner.style.flex = '1'; rowInner.appendChild(workRow(w));
+      rowWrap.appendChild(cb); rowWrap.appendChild(rowInner);
+      wrap.appendChild(rowWrap);
+    });
     main.appendChild(wrap);
+    if (enableBulkReassign) {
+      selectAllCb.addEventListener('change', function () {
+        Array.from(wrap.querySelectorAll('input[type=checkbox]')).forEach(function (cb) {
+          cb.checked = selectAllCb.checked;
+          cb.dispatchEvent(new Event('change'));
+        });
+      });
+      reassignBtn.addEventListener('click', function () {
+        var list = Object.keys(selected).map(function (id) { return selected[id]; });
+        if (!list.length) return;
+        openBulkReassignModal(list, function () { render(); });
+      });
+    }
+  }
+
+  // Bulk reassignment: staff never reach this (no bulk-select UI is ever
+  // shown to them); a reviewer could only have selected items where
+  // they're already the reviewer (see renderFlatWorkList's eligibility
+  // check above), so the loop below should never actually hit the DB's
+  // own permission check -- but it's handled gracefully (partial
+  // success reported) rather than assumed, since selection state is
+  // just a client-side snapshot that could theoretically go stale
+  // (e.g. someone else reassigns the reviewer mid-session). Reassignment
+  // itself and its activity-log entry are both handled entirely by
+  // guard_work_item_update() (see 20260811090400_work_items.sql) --
+  // this is just a loop of ordinary work_items.update() calls, nothing
+  // new to log or authorize here.
+  function openBulkReassignModal(selectedItems, onDone) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Reassign ' + selectedItems.length + ' Work Item' + (selectedItems.length === 1 ? '' : 's');
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Cancel';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var preview = el('p', 'desc');
+    var names = selectedItems.slice(0, 5).map(function (w) { return w.title + (w.period ? ' (' + w.period + ')' : ''); });
+    preview.textContent = names.join(', ') + (selectedItems.length > 5 ? ', +' + (selectedItems.length - 5) + ' more' : '');
+    wrap.appendChild(preview);
+
+    var assigneeSel = el('select');
+    assigneeSel.appendChild(new Option('— Select new assignee —', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { assigneeSel.appendChild(new Option(p.full_name, p.id)); });
+    wrap.appendChild(field('New Assignee', assigneeSel));
+
+    var reviewerSel = el('select');
+    reviewerSel.appendChild(new Option('— Keep existing reviewer —', '__keep__'));
+    reviewerSel.appendChild(new Option('— No reviewer —', ''));
+    state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { reviewerSel.appendChild(new Option(p.full_name, p.id)); });
+    reviewerSel.value = '__keep__';
+    wrap.appendChild(field('New Reviewer (optional)', reviewerSel));
+
+    var actions = el('div', 'modal-actions');
+    var confirmBtn = el('button', 'btn'); confirmBtn.type = 'button'; confirmBtn.textContent = 'Confirm Reassignment';
+    confirmBtn.addEventListener('click', async function () {
+      if (!assigneeSel.value) { toast('Choose a new assignee.', true); return; }
+      confirmBtn.disabled = true;
+      var patch = { assignee_id: assigneeSel.value };
+      if (reviewerSel.value !== '__keep__') patch.reviewer_id = reviewerSel.value || null;
+      var okCount = 0, failCount = 0;
+      for (var i = 0; i < selectedItems.length; i++) {
+        var res = await sb.from('work_items').update(patch).eq('id', selectedItems[i].id);
+        if (res.error) failCount++; else okCount++;
+      }
+      confirmBtn.disabled = false;
+      closeModal();
+      if (failCount) {
+        toast(okCount + ' reassigned, ' + failCount + ' skipped (no longer permitted).', okCount === 0);
+      } else {
+        toast(okCount + ' work item' + (okCount === 1 ? '' : 's') + ' reassigned.');
+      }
+      onDone();
+    });
+    actions.appendChild(confirmBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
   }
 
   function workRow(w) {
