@@ -63,18 +63,31 @@ decrypts exactly what it's asked for") — meaning if the anonymous-execute
 path is live, these four functions are the *entire* protection for every
 client's stored portal password, and that protection does not hold.
 
-**This needs to be checked immediately, independent of Task 1's own
-pace.** Section 0 of `supabase/verify_live_schema.sql` checks this
-directly with `has_function_privilege('anon', ..., 'EXECUTE')` — it does
-not call the functions, so it cannot alter or expose any data itself. An
-optional, permissions-only mitigation (revokes execute grants; does not
-touch any table or row) was provided separately in chat alongside this
-task, since fixing the grant is not "altering production data" under
-Task 1's own constraint. The root-cause fix (making the `NOT IN` check
-itself `NULL`-safe, e.g. `coalesce(current_user_role(), '') not in
-(...)`) is left for Task 10 ("Credential + secret hardening"), so it can
-be reviewed and tested together with a real migration and a versioned
-test, not patched piecemeal mid-Task-1.
+**CONFIRMED LIVE and MITIGATED, 2026-08-14.** The owner ran the
+grant-revoke mitigation, then ran `verify_live_schema.sql` section 0
+directly against production. Live result:
+
+| Function | anon_can_execute | authenticated_can_execute |
+|---|---|---|
+| `add_client_credential` | false | true |
+| `list_client_credentials` | false | true |
+| `reveal_client_credential` | false | true |
+| `delete_client_credential` | false | true |
+| `generate_period_work_for_period` | false | true |
+| `set_client_attention` | false | true |
+| `_generate_period_work_core` | false | false |
+
+The anonymous-execute path is closed. This does **not** mean the root
+cause is fixed — the `NOT IN`/`NULL` bug in these six functions' own
+logic is unchanged; only the grant-level door is now shut. A deactivated
+profile's still-valid `authenticated`-role session (per
+`20260815090000`'s own documented caveat: deactivation alone does not
+revoke an outstanding Supabase Auth session) still trips the same bypass
+for these six functions specifically, the same residual risk
+`set_client_attention` already carried before this fix. The root-cause
+fix (`coalesce(current_user_role(), '') not in (...)`, or an equivalent
+NULL-safe rewrite) is left for Task 10 ("Credential + secret hardening"),
+to ship as a real tested migration.
 
 ## 1. Provenance: which migrations are original vs. reconstructed
 
@@ -230,13 +243,18 @@ Vault/project secrets rather than inline in function source at all.
   their policy *logic* is believed accurate to historical behavior at
   reconstruction time, but has not been independently re-verified against
   the live database in this task.
-- Whether the live project's migration history is tracked via
-  `supabase_migrations.schema_migrations` (CLI-managed) or was applied by
-  hand-pasting each file (this project's actual workflow all session, per
-  every prior task in this repository) is itself unconfirmed —
-  `verify_live_schema.sql` section 12 checks this, and its absence is
-  itself an expected, informative result given how this project has
-  always been operated, not a script error.
+- **CONFIRMED 2026-08-14** (owner ran `verify_live_schema.sql` section 12
+  live): `supabase_migrations.schema_migrations` contains exactly one row
+  — `20260811090000` / `extensions`. Every migration after the first was
+  applied by hand-pasting into the Supabase SQL editor, never through
+  `supabase db push`/CLI tracking, for the entire life of this project.
+  This matches the project's actual workflow (every prior task in this
+  repository was confirmed live the same way: paste SQL, run, reply
+  "Success") and is not itself a defect — but it means Supabase's own
+  migration bookkeeping cannot be trusted as a completeness check for
+  which of the 16 files are actually live; that can only be confirmed by
+  checking each file's actual effect (tables/columns/policies/functions),
+  which is what sections 0–11 of the same script are for.
 - The `client_credentials` passphrase's actual live value cannot and
   should not be checked this way; only its existence/non-placeholder
   status matters here, deferred to Task 10.
