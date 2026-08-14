@@ -5,7 +5,11 @@
   "description": "Static website for Maven Consultancy Services Pvt. Ltd. Content lives in content/site.yaml; run 'npm run build' to regenerate the HTML pages in dist/.",
   "scripts": {
     "build": "node build.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:ui": "playwright test --project=chromium",
+    "test:ui:all": "playwright test",
+    "test:ui:install-browsers": "playwright install chromium firefox webkit",
+    "test:ui:report": "playwright show-report"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -16,6 +20,7 @@
     "marked": "^18.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "wrangler": "4.119.0"
   },
   "overrides": {
