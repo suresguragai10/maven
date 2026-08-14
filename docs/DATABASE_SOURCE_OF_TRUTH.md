@@ -4,16 +4,16 @@ Handbook Task 1. Answers: does `supabase/migrations/` accurately represent
 what is actually live? Written by replaying all 16 migration files in
 filename (chronological) order and recording the resulting expected state.
 
-**LIVE PARITY = UNVERIFIED.** This environment has no direct or
+**LIVE PARITY = PARTIALLY VERIFIED.** This environment has no direct or
 programmatic access to the live Supabase database — no service-role key,
 no CLI project link, no credentials. Every interaction with the live
 database this project has ever had was the owner pasting SQL into the
-Supabase SQL editor and reporting the result back. This document
-describes what the repository *expects* to be live, classified by how
-confident that expectation is. It is not a confirmed live/repo diff.
-`supabase/verify_live_schema.sql` is the read-only script the owner needs
-to run to turn this into a confirmed diff — see "How to close the loop"
-at the end.
+Supabase SQL editor and reporting the result back. The owner ran
+`supabase/verify_live_schema.sql`'s §0 and the consolidated RLS/functions/
+extensions/cron query against production on 2026-08-14 — those results
+are folded into §0 and §3 below as confirmed, classified drift. Table
+columns/constraints/indexes/triggers/table-grants (script sections 2–5,
+8, 11) were not yet run live — see §5 for what's left.
 
 ## 0. Highest-priority finding — check this first
 
@@ -234,15 +234,137 @@ Task 10 needs to confirm a real (non-placeholder, non-committed)
 passphrase is what's actually live, ideally sourced from Supabase
 Vault/project secrets rather than inline in function source at all.
 
-## 3. Known limitations of this document
+## 3. Confirmed live drift (2026-08-14)
 
-- No live query was run. Every statement above describes what 16
-  migration files, read in order, imply should be live — not what is
-  confirmed live.
-- Seven tables' *policy names* are known-unreliable reconstructions (§1);
-  their policy *logic* is believed accurate to historical behavior at
-  reconstruction time, but has not been independently re-verified against
-  the live database in this task.
+The owner ran the consolidated RLS/functions/extensions/cron query
+directly against production. This section classifies every discrepancy
+found, per Task 1's own required buckets.
+
+### 3a. Production missing a migration — urgent, needs owner verification
+
+**`clients` has no live INSERT or UPDATE policy.** The repo migration
+(`20260811090200_clients.sql`) defines `clients_insert_admin` and
+`clients_update_admin` alongside `clients_read_authenticated`. Live shows
+**only** `clients_read_authenticated` — no insert or update policy of any
+name exists for this table. `20260815090000_v2_permission_audit.sql`
+explicitly assumed these two policies already existed and deliberately
+left them untouched (its own comment: "admin-only write policies
+[including] clients_insert/update_admin ... already keyed on
+current_user_role() ... unaffected, no change needed") — so this isn't
+something that migration removed; the policies appear to simply never
+have existed live, or were dropped outside any tracked migration.
+
+**Practical effect if this is really the live state**: with RLS enabled
+and no matching policy, Postgres denies the operation for every role,
+including admin — nobody could create or edit a client through the
+normal app/PostgREST path. This needs a real-world check (try creating
+or editing a client in the Staff app) to confirm impact, and if
+confirmed, a policy needs to be added — but per Task 1's "do not alter
+production data" scope and "record drift, do not fix it blindly"
+instruction, no fix was applied here. Flagged as the single highest
+priority item to resolve, likely as an expedited fix rather than waiting
+for its turn in the task sequence, once confirmed.
+
+### 3b. Repository missing a change — live behavior differs from what's documented, not a security problem, needs backfilling into a migration for accuracy
+
+**`profiles` allows self-update, not just admin-update.** Live policy is
+`profiles_update_own_or_admin`: `(auth.uid() = id) OR
+(current_user_role() = 'admin')` — any user can update their own row.
+The repo's reconstruction (`profiles_update_admin`, admin-only) is
+narrower than what's actually live. Consistent with this, the live
+anti-escalation trigger is named `prevent_self_role_escalation`, not
+`guard_profile_update` (which does not exist live at all) — the real
+design appears to be "anyone may edit their own profile; a trigger
+specifically blocks a non-admin from changing their own `role`/`is_active`
+during that edit," which is a coherent, sensible feature, just not one
+that made it into any migration file. The original `profiles.sql`
+reconstruction's cited justification ("an employee cannot promote
+themselves") is consistent with self-update-but-not-self-escalation, so
+this looks like the reconstruction under-scoped the policy rather than
+live drifting away from an intentionally narrower original. No staff.js
+screen currently appears to exercise self-profile-editing, so this is
+dormant but real. Needs a migration written to match live reality (Task
+4, architecture contracts, or an earlier opportunistic fix — owner's
+call) rather than "fixing" live to match the narrower repo version, since
+live is arguably the more correct/intended behavior.
+
+### 3c. Owner decision needed — unknown-origin live objects, no migration, cannot classify further without input
+
+- **`activity_log` table** — RLS enabled, admin-only `SELECT`,
+  authenticated-insert-own-row `INSERT`. No migration file defines it,
+  and it's distinct from `work_activity` (the per-work-item trail this
+  document does account for). Unknown whether this is a general
+  system-wide activity log still in use, or a superseded/legacy object
+  from an earlier design that was never dropped.
+- **`guard_task_update` function** — no migration defines it, and no live
+  table named anything like "tasks" was found to check it's attached to
+  (the live table query only covers ordinary tables; it could be attached
+  to a view, or be an orphaned trigger function with nothing left
+  pointing at it).
+- **`rls_auto_enable` function** — `search_path = pg_catalog` stands out
+  as unusual for anything in this app's own migrations (everything else
+  uses `public` or `public, extensions`). Could be a Supabase
+  platform/advisor-generated function, or a personal DBA safety net set
+  up directly against the project outside of any Claude session. Not
+  guessed at further here.
+
+None of these three appear to be part of any currently-shipped Maven Work
+Desk feature per the migrations this document is built from. They are
+not removed or altered here — only recorded — pending the owner's input
+on origin and whether they should be documented, kept, or cleaned up.
+
+### 3d. Safe historical differences — logic matches, only naming differs (expected, not a defect)
+
+`service_templates`' and `service_template_items`' INSERT policies are
+named `service_templates_write` / `service_template_items_write` live,
+not `service_templates_insert_admin` /
+`service_template_items_insert_admin` as reconstructed in the repo — same
+`_write`-not`_insert` naming pattern already documented for
+`client_services`. In both cases the live `with_check` expression
+(`current_user_role() = 'admin'`) matches the repo's intended logic
+exactly; only the name differs. Notably, neither of these two tables was
+originally flagged in §1 as a "predates the repo" reconstruction (they
+were assumed to be original, repo-authored migrations) — this result
+shows the naming-drift issue isn't confined to the seven tables §1 lists;
+treat policy names as unreliable everywhere in this schema, not just
+those seven, and always compare `using`/`with_check` text instead.
+
+### 3e. Confirmed matching — no drift
+
+- All 15 live tables have RLS enabled, matching expectation.
+- `pg_cron` jobs: **zero** live (the query returned no rows) — confirms
+  the daily "generate-period-work-daily" sweep really was unscheduled,
+  matching `20260811091000_recurring_work_generation.sql`'s intent
+  exactly.
+- The five previously anon-reachable functions now correctly show
+  `anon_can_execute = false` (see §0's live-confirmed table).
+- `_generate_period_work_core` is correctly locked to nobody
+  (`anon_can_execute = false`, `authenticated_can_execute = false`),
+  matching its explicit revoke in the repo.
+- `pgcrypto` lives in `extensions`, `pg_cron` shows under `pg_catalog` (its
+  control functions are exposed there while job data lives in a separate
+  `cron` schema — normal, not drift). `pg_stat_statements`, `plpgsql`,
+  `supabase_vault`, `uuid-ossp` are Supabase-default extensions not
+  managed by any migration in this repo — expected, not drift.
+- Every function's `search_path` matches what its migration specifies
+  (`public`, or `public, extensions` for the two pgcrypto-calling
+  credential functions).
+
+## 4. Known limitations of this document
+
+- Live queries WERE run for this task (§0, §3) — RLS policies, functions,
+  extensions, cron jobs, table/RLS-enablement list are now
+  live-confirmed, not merely inferred from migrations. What remains
+  unconfirmed live: full column/constraint/index detail
+  (`verify_live_schema.sql` sections 2–5, 8, 11 — not yet run), and the
+  three unknown-origin objects in §3c, which need owner input rather than
+  another query to resolve.
+- Seven tables' *policy names* were expected to be known-unreliable
+  reconstructions (§1); §3 confirms this is actually true more broadly —
+  `service_templates` and `service_template_items` (not in the original
+  seven) also turned out to have renamed policies, logic intact. Treat
+  every policy name in this schema as unverified until compared, not just
+  those seven.
 - **CONFIRMED 2026-08-14** (owner ran `verify_live_schema.sql` section 12
   live): `supabase_migrations.schema_migrations` contains exactly one row
   — `20260811090000` / `extensions`. Every migration after the first was
@@ -259,31 +381,24 @@ Vault/project secrets rather than inline in function source at all.
   should not be checked this way; only its existence/non-placeholder
   status matters here, deferred to Task 10.
 
-## 4. How to close the loop (turns this into a real drift report)
+## 5. What's left to fully close the loop
 
-1. Run `supabase/verify_live_schema.sql` in the Supabase SQL editor,
-   section by section (or all at once).
-2. Check section 0 first — if `anon_can_execute` is `true` for any of the
-   four credential functions or `generate_period_work_for_period`,
-   apply the mitigation grant SQL provided in chat immediately; it only
-   changes permissions, not data.
-3. Share the output back. Each live-vs-repo discrepancy found will then
-   be classified into one of the four buckets Task 1's acceptance
-   criteria calls for:
-   - **Safe historical difference** — e.g., a reconstructed policy name
-     differs but its logic matches.
-   - **Repository missing a change** — live has something no migration
-     file describes (this file's own admission: it cannot rule this out
-     without the live query).
-   - **Production missing a migration** — a migration file exists but its
-     effect isn't live (e.g., a file was never actually pasted/run).
-   - **Owner decision needed** — e.g., confirming the real
-     `client_credentials` passphrase, or deciding when to apply the
-     grant-hardening/root-cause fix from §0.
-4. Until step 3 happens, treat every "expected" statement in this
-   document as **unverified**, not confirmed.
+Most of Task 1's acceptance criteria are now satisfied — §0 and §3 give
+live-confirmed, classified discrepancies. What remains:
 
-## 5. Nothing in this task altered production data
+1. **Real-world check on `clients` INSERT/UPDATE (§3a)** — try creating
+   or editing a client in the Staff app and report what happens. This is
+   the single highest-priority open item; everything else here can wait
+   for its normal place in the task sequence, this one probably shouldn't.
+2. **Owner input on the three unknown-origin objects (§3c)** —
+   `activity_log`, `guard_task_update`, `rls_auto_enable`. Whenever
+   convenient, not urgent.
+3. Optionally, run `verify_live_schema.sql` sections 2–5, 8, 11 for full
+   column/constraint/index/trigger/grant-level completeness — lower
+   priority, since the security- and RLS-relevant surface (§0, §3) is
+   already covered.
+
+## 6. Nothing in this task altered production data
 
 This task only read files in this repository and wrote two new files
 (this document and `supabase/verify_live_schema.sql`, which itself
