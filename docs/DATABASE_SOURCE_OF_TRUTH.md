@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260830090000` (last applied)
+## 2. Expected schema, as of migration `20260831090000` (last applied)
 
 ### Tables (18)
 
@@ -688,6 +688,59 @@ sections render an explicit message rather than disappearing, 20 items
 render without error, completed-work filtering, person/scope filters,
 mobile/tablet overflow, and a full-page-text scan confirming no
 productivity/ranking/hours/presence/timezone language appears anywhere).
+
+### Since Last Seen feed (Handbook Task 22)
+
+Verified first: `work_activity` already existed, is DB-guaranteed/
+unforgeable (Task 7), and already logged `created` (original schema),
+`reassigned`/`due_date_changed`/`status_changed` (Task 7/8), and
+`project_changed` (Task 18) — most of this task's example list was
+already captured. `work_comments`' optional `update_type` (Task 18)
+already covers "progress update posted." Two real gaps against this
+task's own example list, closed by `20260831090000_since_last_seen_
+feed.sql`'s extension to `guard_work_item_update()` (every other line
+reproduced byte-for-byte from Task 18's version): `next_action` and
+`blocker_reason` changes were never logged. Both are Firm-Work-only
+fields, so these blocks never fire for a Client Work row.
+
+**Client Work is deliberately excluded from this feed entirely** — not
+by new RLS, but by the query itself only ever looking up `work_scope=
+'firm'` item ids before touching `work_activity`/`work_comments` at all.
+Client Work's status/due-date/reassignment changes are already surfaced
+by the existing Notifications system; duplicating them here would make
+this "a second compliance notification system," which this task
+explicitly warns against.
+
+**Last-seen timestamp:** `profiles.since_last_seen_at`, set ONLY via a
+new `mark_feed_seen()` RPC — never auto-updated on login or page view.
+This is deliberate: an auto-updated-on-every-visit timestamp would start
+to look like session/presence tracking, which this task explicitly
+forbids ("no online/offline presence monitoring"). A dedicated
+SECURITY DEFINER RPC was used instead of a new self-UPDATE RLS policy on
+`profiles`, so the existing `profiles_update_admin` policy (role/
+is_active/full_name, admin-only) is completely untouched — this grants
+exactly one narrow capability (set your own `since_last_seen_at` to
+`now()`), nothing broader. Caught and fixed a real mistake while
+verifying this: the migration's first draft did `revoke execute ... from
+anon` only, not `from public, anon` — Postgres grants EXECUTE on a new
+function to PUBLIC by default, and revoking from one specific role has
+no effect while PUBLIC still holds the privilege, so `anon` could still
+have called it. The generic SECURITY DEFINER catalog-inspection matrix
+(`security_definer_grants.matrix.js`, unchanged since it introspects
+`pg_proc` directly rather than needing a per-function update) caught this
+immediately — exactly the kind of mistake that check exists to catch.
+Fixed to match every other privileged RPC in this schema's `revoke ...
+from public, anon` convention.
+
+`tests/db/matrices/since_last_seen.matrix.js` (6 checks: next_action
+set/cleared both logged, blocker_reason set/cleared both logged,
+`mark_feed_seen()` updates only the caller's own row, an inactive user
+is rejected). Baseline: **238 DB checks, 0 findings** (up from 231).
+`tests/ui/app/since-last-seen.spec.js` (5 tests, including this task's
+own specified scenario — user B and C make several changes to Firm
+items while user A is away, user A returns and sees all of it, newest
+first, exactly once — plus empty state, Client Work exclusion, the
+exclude-caller's-own-actor request shape, and Mark Reviewed).
 
 ## 3. Confirmed live drift (2026-08-14)
 

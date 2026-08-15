@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T16:43:17.541Z",
-    "migrationCount": 30
+    "generatedAt": "2026-08-15T16:58:00.364Z",
+    "migrationCount": 31
   },
   "results": [
     {
@@ -1931,6 +1931,60 @@
       "note": "2 row(s), correctly scoped"
     },
     {
+      "area": "Since Last Seen feed (Handbook Task 22)",
+      "action": "Setting next_action logs a next_action_changed activity row with the new value",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "logged correctly"
+    },
+    {
+      "area": "Since Last Seen feed (Handbook Task 22)",
+      "action": "Clearing next_action is also logged, not just setting it",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "logged correctly"
+    },
+    {
+      "area": "Since Last Seen feed (Handbook Task 22)",
+      "action": "Marking Blocked with a reason logs a blocker_changed activity row",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "logged correctly"
+    },
+    {
+      "area": "Since Last Seen feed (Handbook Task 22)",
+      "action": "Removing a blocker (status leaves Blocked, blocker_reason cleared) logs a blocker_changed row",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "logged correctly"
+    },
+    {
+      "area": "Since Last Seen feed (Handbook Task 22)",
+      "action": "mark_feed_seen() sets only the calling user's own since_last_seen_at",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "employeeA updated, employeeB untouched"
+    },
+    {
+      "area": "Since Last Seen feed (Handbook Task 22)",
+      "action": "An inactive user cannot call mark_feed_seen()",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Your account is inactive."
+    },
+    {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text, p_period_start date, p_period_end date)",
       "identity": "n/a (catalog check)",
@@ -2037,6 +2091,15 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on mark_feed_seen()",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

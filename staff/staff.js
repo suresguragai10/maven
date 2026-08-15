@@ -160,6 +160,7 @@
     chart: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="3" width="3" height="17"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04z"/>',
     briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="3" y1="13" x2="21" y2="13"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -840,7 +841,7 @@
       render();
       return;
     }
-    var known = ['today', 'my-work', 'team', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
+    var known = ['today', 'my-work', 'team', 'since-last-seen', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -874,6 +875,9 @@
     // separate from Manager Dashboard (workload counts/exceptions,
     // reviewer/admin only) — this shows the actual per-person item lists.
     item('team', 'Team', 'users');
+    // Handbook Task 22: open to every active teammate, same as Team —
+    // a catch-up feed, not a role-gated report.
+    item('since-last-seen', 'Since Last Seen', 'clock');
     if (isReviewerOrAdmin()) {
       item('review', 'Review', 'check');
       item('all-work', 'All Work', 'folder');
@@ -917,6 +921,7 @@
     if (state.view === 'search') return renderSearchPage(main, state.searchQuery || '');
     if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
     if (state.view === 'team') return renderTeamPage(main);
+    if (state.view === 'since-last-seen') return renderSinceLastSeenPage(main);
     if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
     if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
     if (state.view === 'deadlines') return renderDeadlinesPage(main);
@@ -1378,6 +1383,127 @@
     scopeSel.addEventListener('change', apply);
     completedCb.addEventListener('change', apply);
     apply();
+  }
+
+  // Handbook Task 22: humanized labels for work_activity's `action`
+  // values, shown on the Since Last Seen feed. 'completed' is special-
+  // cased below (not here) since it's really status_changed with a
+  // specific new status, not its own action value.
+  var ACTIVITY_ACTION_LABELS = {
+    created: 'Created', reassigned: 'Reassigned', due_date_changed: 'Target date changed',
+    project_changed: 'Project changed', next_action_changed: 'Next action updated',
+    blocker_changed: 'Blocker updated', status_changed: 'Status changed',
+    checklist_toggled: 'Checklist updated',
+  };
+  // No "mark reviewed" ever clicked yet -- a bounded 14-day catch-up
+  // window rather than an unbounded full history dump for a brand-new
+  // user or one who hasn't opened this page in a long time.
+  var SINCE_LAST_SEEN_DEFAULT_DAYS = 14;
+
+  // ============================================================
+  // Since Last Seen — Handbook Task 22: a concise catch-up feed of Firm
+  // Work activity/updates since the caller last marked it reviewed.
+  // Deliberately NOT chat, presence, or push infrastructure -- no
+  // real-time delivery, no read receipts on other people, nothing beyond
+  // "what changed since I was last here."
+  //
+  // CLIENT WORK is deliberately excluded (see this migration's own
+  // header comment) -- Notifications already covers Client Work status/
+  // due-date/reassignment changes, and duplicating that here would make
+  // this "a second compliance notification system," which this task
+  // explicitly warns against. Scoped by querying only work_scope='firm'
+  // item ids before touching work_activity/work_comments at all.
+  // ============================================================
+  async function renderSinceLastSeenPage(main) {
+    clear(main); // this function re-renders itself in place after "Mark Reviewed", not just on first navigation
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Since Last Seen'; head.appendChild(h1);
+    var markBtn = el('button', 'btn btn-sm'); markBtn.type = 'button'; markBtn.appendChild(icon('check')); markBtn.appendChild(document.createTextNode('Mark Reviewed'));
+    head.appendChild(markBtn);
+    main.appendChild(head);
+
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = 'What changed on Firm Work while you were away — a catch-up feed, not a chat or notification stream.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
+
+    var resultsWrap = el('div');
+    main.appendChild(resultsWrap);
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…'; resultsWrap.appendChild(loading);
+
+    var sinceIso = state.profile.since_last_seen_at
+      || new Date(Date.now() - SINCE_LAST_SEEN_DEFAULT_DAYS * 86400000).toISOString();
+
+    var firmItemsRes = await sb.from('work_items').select('id,title,status,assignee_id').eq('work_scope', 'firm');
+    var firmItems = firmItemsRes.data || [];
+    var itemById = {};
+    firmItems.forEach(function (w) { itemById[w.id] = w; });
+    var firmIds = firmItems.map(function (w) { return w.id; });
+
+    var entries = [];
+    if (firmIds.length) {
+      var results = await Promise.all([
+        sb.from('work_activity').select('*').in('work_item_id', firmIds).gt('created_at', sinceIso).neq('actor_id', state.user.id).order('created_at', { ascending: false }).limit(200),
+        sb.from('work_comments').select('*').in('work_item_id', firmIds).gt('created_at', sinceIso).neq('author_id', state.user.id).order('created_at', { ascending: false }).limit(200),
+      ]);
+      (results[0].data || []).forEach(function (a) {
+        entries.push({ type: 'activity', created_at: a.created_at, actor_id: a.actor_id, work_item_id: a.work_item_id, action: a.action, detail: a.detail });
+      });
+      (results[1].data || []).forEach(function (c) {
+        entries.push({ type: 'comment', created_at: c.created_at, actor_id: c.author_id, work_item_id: c.work_item_id, body: c.body, update_type: c.update_type });
+      });
+      entries.sort(function (x, y) { return y.created_at.localeCompare(x.created_at); });
+    }
+
+    if (loading.parentNode) loading.parentNode.removeChild(loading);
+
+    if (!entries.length) {
+      var empty = el('div', 'empty-note'); empty.appendChild(icon('check'));
+      empty.appendChild(document.createTextNode(state.profile.since_last_seen_at ? "You're all caught up." : 'Nothing on Firm Work in the last ' + SINCE_LAST_SEEN_DEFAULT_DAYS + ' days.'));
+      resultsWrap.appendChild(empty);
+    } else {
+      var wrap = el('div', 'task-group');
+      entries.forEach(function (entry) {
+        var w = itemById[entry.work_item_id];
+        var row = el('div', 'activity-row'); row.style.cssText = 'cursor:pointer;';
+        row.addEventListener('click', function () { gotoFirmWork(entry.work_item_id); });
+        var who = el('span', 'who'); who.textContent = profileName(entry.actor_id);
+        var when = el('span', 'when'); when.textContent = fmtDateTime(entry.created_at);
+        who.appendChild(when);
+        row.appendChild(who);
+
+        var summary = el('div');
+        var titleText = w ? w.title : 'A Firm Work item';
+        var line1 = el('div'); line1.style.fontWeight = '700'; line1.textContent = titleText;
+        summary.appendChild(line1);
+        var line2 = el('div'); line2.style.cssText = 'color:var(--ink-soft);font-size:.88rem;margin-top:2px;';
+        if (entry.type === 'comment') {
+          var typeLabel = entry.update_type ? (UPDATE_TYPE_LABELS[entry.update_type] || entry.update_type) + ' — ' : '';
+          line2.textContent = typeLabel + truncateOneLine(entry.body, 90);
+        } else {
+          // "Completed" reads better than the generic "Status changed"
+          // for the one status_changed case this task calls out by name.
+          var label = (entry.action === 'status_changed' && /→ Completed$/.test(entry.detail || ''))
+            ? 'Completed' : (ACTIVITY_ACTION_LABELS[entry.action] || entry.action);
+          line2.textContent = label + (entry.detail ? ' — ' + truncateOneLine(entry.detail, 90) : '');
+        }
+        summary.appendChild(line2);
+        row.appendChild(summary);
+        wrap.appendChild(row);
+      });
+      resultsWrap.appendChild(wrap);
+    }
+
+    markBtn.addEventListener('click', async function () {
+      markBtn.disabled = true;
+      var res = await sb.rpc('mark_feed_seen');
+      markBtn.disabled = false;
+      if (res.error) { toast('Could not mark reviewed: ' + res.error.message, true); return; }
+      state.profile.since_last_seen_at = new Date().toISOString();
+      toast('Marked reviewed.');
+      renderSinceLastSeenPage(main);
+    });
   }
 
   // "Who has open work right now" — the one thing a flat list can't

@@ -38,6 +38,7 @@ const MATRIX_FILES = [
   'projects_management',
   'my_work_combined',
   'team_view',
+  'since_last_seen',
   'security_definer_grants',
 ];
 
