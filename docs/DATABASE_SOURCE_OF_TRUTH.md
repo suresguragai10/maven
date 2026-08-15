@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260826090000` (last applied)
+## 2. Expected schema, as of migration `20260827090000` (last applied)
 
 ### Tables (18)
 
@@ -241,9 +241,9 @@ findings as of Task 9.
 | `current_user_active()` | DEFINER, `sql`, stable | `public` | is_active, coalesced false |
 | `handle_new_user()` | DEFINER, trigger | `public` | creates a profile row on `auth.users` insert |
 | `guard_profile_update()` | DEFINER, trigger | `public` | blocks non-admins changing `role`/`is_active` (NULL-safe: positive-list pattern, but see §0 residual note — RLS is the real gate here anyway) |
-| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally, forces `submitted_by` from `auth.uid()`. Extended again by Task 8 (`20260820090000`) — adds the Client Work valid-transition map + required-checklist gates (preparation/review/submission stages) + the admin-only, reason-required, permanently-logged override path (`status_override_reason` → `work_activity` action `status_override`). Firm Work is exempt from all of this (unchanged 5-status model). |
+| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally, forces `submitted_by` from `auth.uid()`. Extended again by Task 8 (`20260820090000`) — adds the Client Work valid-transition map + required-checklist gates (preparation/review/submission stages) + the admin-only, reason-required, permanently-logged override path (`status_override_reason` → `work_activity` action `status_override`). Firm Work is exempt from all of this (unchanged 5-status model). Task 16 (`20260827090000`) adds one check to the firm branch: on reassignment (`assignee_id` actually changing), the new assignee must be an active profile. |
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
-| `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by` |
+| `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by`. Task 16 (`20260827090000`) adds: for `work_scope = 'firm'`, `assignee_id` must be an active profile at creation time too. |
 | `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
 | `_generate_period_work_core(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated. Task 8 added `requires_submission`/`requires_review` copy-through from the template. Task 11 (`20260823090000`) added the two new required date params — `month_start`/`month_end` for `filing_deadline_day`/`internal_offset_days` now derive from `period_end`, never from `current_date` (the bug this task existed to fix) — and both are validated non-null with `period_end >= period_start` before anything else runs. Task 12 (`20260824090000`, signature unchanged) left-joins the active `deadline_rules` row per template instead of reading `service_templates.filing_deadline_day` directly — no active rule means `external_due_date` stays `NULL`, never a guess. Task 13 (`20260825090000`, signature unchanged) adds `client_services.start_date`/`end_date` window filtering to the eligibility `WHERE`; fixes `created_by` to `auth.uid()` (the real caller) instead of the arbitrary assignee-fallback admin; skips (not crashes on) a service with neither its own assignee nor any active admin to fall back to. |
 | `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | NULL-safe + grant-restricted to `authenticated` as of Task 9 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Fixed bug class"); `add_client_credential`/`reveal_client_credential` additionally Vault-backed as of Task 10 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Secret setup, rotation, and recovery") |
@@ -418,6 +418,35 @@ environment's standing inability to directly inspect live drift) — still
 fully enforced for every new write, only the retroactive check of
 existing rows is deferred. See the migration's own header for the
 verification query to run live before an optional `VALIDATE CONSTRAINT`.
+
+### Firm Work: closing the peer-permission gaps (Handbook Task 16)
+
+`guard_work_item_update()` already implemented most of the approved
+peer model correctly as of Task 6 — an active caller of any role can
+already update any field on any Firm Work item, and `work_scope` itself
+has been universally immutable (checked first, before any role dispatch,
+applies even to admin) since the same task. `20260827090000_firm_work_
+peer_permissions.sql` closes the two gaps actually found by reading, not
+assumed: `work_checklist_items`'s `INSERT`/`UPDATE` policies (last
+touched by a pre-Firm-Work migration, `20260815090000`) had no
+`work_scope = 'firm'` branch at all — only admin/current-assignee/
+reviewer could write, contradicting "manage its checklist" for any other
+active peer — fixed by adding the same branch the read policy already
+had. And nothing previously stopped assigning Firm Work to a
+**deactivated** profile (the UI's owner picker filtering to active
+profiles was a convenience, not a boundary) — fixed with an active-
+profile check added to both `set_work_item_created_by()` (creation) and
+`guard_work_item_update()`'s firm branch (reassignment only — an
+already-assigned person who is deactivated *later* doesn't retroactively
+lock the item from further edits, only *new* assignment attempts
+targeting an inactive profile are rejected).
+
+Also fixed, UI only: `staff/staff.js`'s `openFirmWorkModal` still gated
+every field (including the owner picker) to `isAdmin() || isMine`,
+a leftover from before Task 6's DB-layer fix that was flagged but never
+closed — see [ROLE_CAPABILITIES.md](ROLE_CAPABILITIES.md)'s Task 16
+note for detail. No RLS/trigger change was needed for this half; the
+database was already correct.
 
 ## 3. Confirmed live drift (2026-08-14)
 

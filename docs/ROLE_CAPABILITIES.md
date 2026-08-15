@@ -109,11 +109,39 @@ role — has full edit/reassign power on any Firm Work item, exactly as
 this table states. An inactive profile is still blocked, both by RLS
 and by an explicit check in the trigger itself. Confirmed in
 [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("work_items (firm
-scope)"). The Firm Work UI itself (Firm Work Task 2's admin-only
-reassignment control) may still need a follow-up to actually expose
-this to non-admin users — this fix is the database layer only; check
-`staff/staff.js`'s Firm Work modal before assuming the UI already
-reflects it.
+scope)").
+
+**UI gap closed, Handbook Task 16 (2026-08-15):** the Firm Work modal
+itself (`openFirmWorkModal` in `staff/staff.js`) still gated every field
+— including the owner picker — to `isAdmin() || isMine`, contradicting
+the database rule above and this document's own stated peer model ever
+since Task 6 shipped it. Fixed: `canEdit`/`canEditFull` are now
+unconditionally `true` for any signed-in user viewing the modal: no
+field is disabled based on "not the owner." The "Only the owner or an
+admin can edit this item" read-only notice is gone. The database is
+still the real enforcement layer regardless (see the Task 6 paragraph
+above) — this was purely a UI convention that had drifted out of sync
+with it, now corrected.
+
+**Two additional real gaps found while verifying Task 16, both closed:**
+1. `work_checklist_items`'s `INSERT`/`UPDATE` policies still predated
+   Firm Work entirely (last touched by `20260815090000`, a migration
+   from before `work_scope` existed) and only allowed admin, the item's
+   *current* assignee, or its reviewer to write — Task 5's visibility
+   fix only ever added Firm Work's open-read branch, never a matching
+   write branch. A teammate who wasn't the current assignee could see a
+   Firm Work item's checklist but not add or check off an item on it,
+   contradicting "manage its checklist." Fixed in
+   `20260827090000_firm_work_peer_permissions.sql` by adding the same
+   `work_scope = 'firm'` branch write already had on read.
+2. Nothing previously stopped assigning Firm Work to a **deactivated**
+   profile — the UI's owner picker only ever listed active profiles,
+   which is a convenience, not a boundary. Fixed with a trigger-level
+   check (a `CHECK` constraint can't query another table) in both
+   `set_work_item_created_by()` (creation) and
+   `guard_work_item_update()`'s firm branch (reassignment, only checked
+   when `assignee_id` is actually changing — an already-assigned person
+   who is deactivated *later* doesn't retroactively lock the item).
 
 ## Configuration / admin-only capabilities
 

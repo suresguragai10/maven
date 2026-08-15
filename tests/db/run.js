@@ -32,6 +32,7 @@ const MATRIX_FILES = [
   'client_work_full_lifecycle',
   'firm_work_isolation',
   'firm_work_projects',
+  'firm_work_peer_permissions',
   'security_definer_grants',
 ];
 

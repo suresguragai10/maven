@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T12:05:58.593Z",
-    "migrationCount": 26
+    "generatedAt": "2026-08-15T13:04:34.418Z",
+    "migrationCount": 27
   },
   "results": [
     {
@@ -1533,6 +1533,105 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "0 row(s) - CRITICAL: a project was deleted despite no delete policy existing, which would orphan any work_items still referencing it"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Employee edits title/description/priority on Firm Work owned by a different employee",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - ownership identifies responsibility, not exclusive edit rights"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Reviewer edits status/next_action on Firm Work not assigned to or reviewed by them",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - Firm Work has no reviewer concept; a reviewer is just another active teammate here"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Reassign Firm Work to a different active teammate, and confirm it is logged to activity history",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "reassigned and logged: \"Assignee: Employee A → Reviewer A.\""
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "CREATE Firm Work assigned to a deactivated profile",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Firm Work can only be assigned to an active teammate."
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "REASSIGN existing Firm Work to a deactivated profile",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Firm Work can only be assigned to an active teammate."
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Deactivated profile with a still-valid session attempts to edit Firm Work",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - blocked both by RLS (current_user_active() in work_items_update) and by guard_work_item_update()'s own explicit check"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Attempt to change work_scope from firm to client, as admin",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "work_scope cannot be changed after creation."
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Add a checklist item to Firm Work not assigned to them",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - FIXED by this task: work_checklist_items_write previously had no work_scope='firm' branch at all"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Toggle a checklist item on Firm Work not assigned to them",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - FIXED by this task: work_checklist_items_update previously had no work_scope='firm' branch either"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Post an update/comment on Firm Work not assigned to them",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "already worked before this task; re-verified here directly"
+    },
+    {
+      "area": "Firm Work peer permissions (Handbook Task 16)",
+      "action": "Anonymous attempts to edit Firm Work",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - CRITICAL: no login at all was enough to edit Firm Work"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

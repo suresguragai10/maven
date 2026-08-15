@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T12:05:58.593Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T13:04:34.418Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 26 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 27 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-186 checks run across 24 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+197 checks run across 25 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -299,6 +299,22 @@ Generated 2026-08-15T12:05:58.593Z by `node tests/db/run.js` -- **every row belo
 | INSERT a project as anonymous | anon | DENIED | DENY | PASS | new row violates row-level security policy for table "projects" |
 | SELECT a project as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 | DELETE a project, even as admin (no delete policy -- archive is the intended retirement path) | admin | DENIED | DENY | PASS | 0 row(s) - CRITICAL: a project was deleted despite no delete policy existing, which would orphan any work_items still referencing it |
+
+### Firm Work peer permissions (Handbook Task 16)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| Employee edits title/description/priority on Firm Work owned by a different employee | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) - ownership identifies responsibility, not exclusive edit rights |
+| Reviewer edits status/next_action on Firm Work not assigned to or reviewed by them | reviewerA | ALLOWED | ALLOW | PASS | 1 row(s) - Firm Work has no reviewer concept; a reviewer is just another active teammate here |
+| Reassign Firm Work to a different active teammate, and confirm it is logged to activity history | employeeB | ALLOWED | ALLOW | PASS | reassigned and logged: "Assignee: Employee A → Reviewer A." |
+| CREATE Firm Work assigned to a deactivated profile | admin | DENIED | DENY | PASS | Firm Work can only be assigned to an active teammate. |
+| REASSIGN existing Firm Work to a deactivated profile | employeeA | DENIED | DENY | PASS | Firm Work can only be assigned to an active teammate. |
+| Deactivated profile with a still-valid session attempts to edit Firm Work | inactive | DENIED | DENY | PASS | 0 row(s) - blocked both by RLS (current_user_active() in work_items_update) and by guard_work_item_update()'s own explicit check |
+| Attempt to change work_scope from firm to client, as admin | admin | DENIED | DENY | PASS | work_scope cannot be changed after creation. |
+| Add a checklist item to Firm Work not assigned to them | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) - FIXED by this task: work_checklist_items_write previously had no work_scope='firm' branch at all |
+| Toggle a checklist item on Firm Work not assigned to them | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) - FIXED by this task: work_checklist_items_update previously had no work_scope='firm' branch either |
+| Post an update/comment on Firm Work not assigned to them | employeeB | ALLOWED | ALLOW | PASS | already worked before this task; re-verified here directly |
+| Anonymous attempts to edit Firm Work | anon | DENIED | DENY | PASS | 0 row(s) - CRITICAL: no login at all was enough to edit Firm Work |
 
 ### SECURITY DEFINER function grants (catalog inspection)
 

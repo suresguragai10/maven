@@ -4941,20 +4941,26 @@
     await refresh();
   }
 
-  // isEdit=false (existing=null): New Firm Work — open to anyone, owner
-  // defaults to self but any active team member can be chosen (matches
-  // "any active team member may create Firm Work and assign it to
-  // another active team member").
-  // isEdit=true: editing is gated to admin or the item's own owner —
-  // guard_work_item_update() enforces this at the DB layer regardless
-  // (a non-owner's update would be rejected there even if these disabled
-  // attributes were somehow bypassed); reassignment specifically stays
-  // admin-only, same as Client Work's Edit Work modal.
+  // Handbook Task 16: "every active teammate may edit... regardless of
+  // who currently owns it" — ownership identifies responsibility, not
+  // exclusive edit rights. Every active team member (any role) can fully
+  // edit ANY Firm Work item, including reassigning it, exactly matching
+  // what guard_work_item_update() already enforces at the database layer
+  // (see 20260827090000_firm_work_peer_permissions.sql) — this is no
+  // longer a frontend convention layered on top of a narrower DB rule,
+  // it's the same rule expressed in both places. canEdit/canEditFull are
+  // kept as named variables (rather than inlining `true` at each call
+  // site) only to minimize the diff against the rest of this function;
+  // both are now unconditionally true for any signed-in user viewing
+  // this modal at all. The DB is still the real enforcement layer
+  // regardless (an inactive session, or an attempt to assign to an
+  // inactive teammate, is rejected there even if these controls were
+  // somehow bypassed) — this UI change only stops hiding controls that
+  // were never actually exclusive.
   function openFirmWorkModal(existing, onDone) {
     var isEdit = !!existing;
-    var canEditFull = isAdmin();
-    var isMine = isEdit && existing.assignee_id === state.user.id;
-    var canEdit = !isEdit || canEditFull || isMine;
+    var canEditFull = true;
+    var canEdit = true;
 
     var wrap = el('div');
     var head = el('div', 'modal-head');
@@ -4963,11 +4969,6 @@
     closeBtn.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
-
-    if (isEdit && !canEdit) {
-      var readOnlyNote = el('p', 'desc'); readOnlyNote.textContent = 'Only the owner or an admin can edit this item.';
-      wrap.appendChild(readOnlyNote);
-    }
 
     var titleInput = el('input'); titleInput.type = 'text'; titleInput.disabled = isEdit && !canEdit;
     if (isEdit) titleInput.value = existing.title;
