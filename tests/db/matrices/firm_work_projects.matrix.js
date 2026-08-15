@@ -100,8 +100,12 @@ module.exports = async function firmWorkProjectsMatrix({ asRole, asSuperuser, ID
   await asRole(IDENTITIES.employeeA, async (c) => {
     const r = await tryQuery(
       c,
-      `insert into public.work_items (title, assignee_id, status, work_scope, created_by)
-       values ('No project, no next action, no blocker', $1, 'to_do', 'firm', $1) returning id`,
+      // firm_category is required as of Handbook Task 17 -- included
+      // here so this insert only exercises what it's actually testing
+      // (project_id/next_action/blocker_reason nullability), not an
+      // unrelated, later-added requirement.
+      `insert into public.work_items (title, assignee_id, status, work_scope, firm_category, created_by)
+       values ('No project, no next action, no blocker', $1, 'to_do', 'firm', 'Administration', $1) returning id`,
       [IDENTITIES.employeeA.id]
     );
     record({ area, action: 'INSERT a firm-scope work item with project_id/next_action/blocker_reason all omitted', identity: 'employeeA', allowed: r.ok && r.rowCount === 1, expectedSecure: 'allow', note: r.error || `${r.rowCount} row(s) - all three genuinely optional` });

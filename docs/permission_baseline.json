@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T13:04:34.418Z",
-    "migrationCount": 27
+    "generatedAt": "2026-08-15T13:44:00.581Z",
+    "migrationCount": 28
   },
   "results": [
     {
@@ -1451,7 +1451,7 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "insert or update on table \"work_items\" violates foreign key constraint \"work_items_project_id_fkey\""
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_firm_category_required_check\""
     },
     {
       "area": "projects / Firm Work async fields (Handbook Task 15)",
@@ -1632,6 +1632,69 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "0 row(s) - CRITICAL: no login at all was enough to edit Firm Work"
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "CREATE Firm Work with no category",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_firm_category_required_check\""
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "CREATE Firm Work with a valid category",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "CREATE Client Work with no firm_category (category is a Firm-Work-only requirement)",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "correctly unaffected -- firm_category is never required for Client Work"
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "Transition to Blocked with no blocker_reason at all",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Explain what's blocking this (at least a short sentence) before marking it Blocked."
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "Transition to Blocked with a too-short blocker_reason (\"ugh\")",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Explain what's blocking this (at least a short sentence) before marking it Blocked."
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "Transition to Blocked with a real blocker_reason",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Firm Work form validation (Handbook Task 17)",
+      "action": "Unrelated edit (rename) on an already-Blocked historical item with no blocker_reason",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - historical records are never locked out of routine editing just because they predate this rule"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

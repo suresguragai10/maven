@@ -57,11 +57,53 @@ tests/ui/
   support/
     pages.js         — shared page list, viewport widths, expected nav structure
     serve-dist.js     — the static file server described above
+    mock-supabase.js  — Handbook Task 17: intercepts the real Supabase
+                        client's network calls with fixture data, see below
   public/             — marketing site tests (home, mobile nav, FAQ, documents,
                          industries, overflow, hidden-links, contact, 404/nav)
-  app/                — staff.js / admin.js shell smoke tests (pre-login only)
+  app/                — staff.js / admin.js: pre-login shell smoke tests
+                        (staff.spec.js, admin.spec.js), plus a genuinely
+                        logged-in Firm Work suite (firm-work.spec.js,
+                        Handbook Task 17) using the mock below
 playwright.config.js   — at repo root, alongside package.json
 ```
+
+## Testing past the login screen (Handbook Task 17)
+
+`staff.spec.js`/`admin.spec.js` only ever tested the pre-login shell —
+this environment has no live Supabase credentials, so nothing past the
+login form could be exercised for a long stretch of this project's
+history (every DB-facing handbook task instead relied on
+`tests/db/`'s local-Postgres permission harness, which is authoritative
+for server-side rules but renders no browser at all).
+
+`tests/ui/support/mock-supabase.js` closes that gap for pages that don't
+need real backend logic to test meaningfully — it uses Playwright's
+`page.route()` to intercept the REAL `@supabase/supabase-js` UMD
+bundle's network calls (the exact file `dist/staff/supabase.js` ships,
+copied from `node_modules` at build time — see `build.js`) and answers
+them with fixture data. `staff.js` and the real client library run
+completely unmodified; only the network boundary is faked. This is
+deliberately NOT a general PostgREST emulator — GET requests do simple
+`eq.` filtering (enough to make `.single()` calls resolve correctly) but
+otherwise return a table's full fixture array regardless of query
+params, since query CORRECTNESS is already proven by `tests/db/`; this
+mock's job is only to give the UI something real to render and to let
+assertions inspect the outgoing request itself (e.g. confirming a filter
+value actually appears in the query string, proving a server-side query
+was used rather than a client-side download-then-filter).
+
+`firm-work.spec.js` is the first consumer: 6 tests covering list
+rendering, create-form validation, filter/search request shape,
+edit/reassign, the completed-history status filter, and mobile/tablet
+overflow. Building this surfaced two real bugs neither `tests/db/` nor a
+code read would have caught: a `.single()` response-shape mismatch in
+the mock itself (fixed in the mock, not the app — see the file's own
+comments) and a genuine mobile-layout overflow in the Firm Work filter
+row's date-range inputs (fixed in `staff.js`, see Handbook Task 17's
+commit). Reusable for any future task that touches authenticated
+Staff/Admin app pages — extend the `tables` fixture passed to
+`installSupabaseMock()` rather than building a new mock per task.
 
 ## Browsers
 

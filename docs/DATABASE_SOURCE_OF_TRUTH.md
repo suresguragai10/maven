@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260827090000` (last applied)
+## 2. Expected schema, as of migration `20260828090000` (last applied)
 
 ### Tables (18)
 
@@ -241,7 +241,7 @@ findings as of Task 9.
 | `current_user_active()` | DEFINER, `sql`, stable | `public` | is_active, coalesced false |
 | `handle_new_user()` | DEFINER, trigger | `public` | creates a profile row on `auth.users` insert |
 | `guard_profile_update()` | DEFINER, trigger | `public` | blocks non-admins changing `role`/`is_active` (NULL-safe: positive-list pattern, but see §0 residual note — RLS is the real gate here anyway) |
-| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally, forces `submitted_by` from `auth.uid()`. Extended again by Task 8 (`20260820090000`) — adds the Client Work valid-transition map + required-checklist gates (preparation/review/submission stages) + the admin-only, reason-required, permanently-logged override path (`status_override_reason` → `work_activity` action `status_override`). Firm Work is exempt from all of this (unchanged 5-status model). Task 16 (`20260827090000`) adds one check to the firm branch: on reassignment (`assignee_id` actually changing), the new assignee must be an active profile. |
+| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally, forces `submitted_by` from `auth.uid()`. Extended again by Task 8 (`20260820090000`) — adds the Client Work valid-transition map + required-checklist gates (preparation/review/submission stages) + the admin-only, reason-required, permanently-logged override path (`status_override_reason` → `work_activity` action `status_override`). Firm Work is exempt from all of this (unchanged 5-status model). Task 16 (`20260827090000`) adds one check to the firm branch: on reassignment (`assignee_id` actually changing), the new assignee must be an active profile. Task 17 (`20260828090000`) adds one more: transitioning `status` INTO `'blocked'` (not merely being blocked already) requires `blocker_reason` to be at least 10 characters — scoped to the transition moment specifically so a historical row that predates this rule is never locked out of routine editing. |
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
 | `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by`. Task 16 (`20260827090000`) adds: for `work_scope = 'firm'`, `assignee_id` must be an active profile at creation time too. |
 | `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
@@ -447,6 +447,48 @@ a leftover from before Task 6's DB-layer fix that was flagged but never
 closed — see [ROLE_CAPABILITIES.md](ROLE_CAPABILITIES.md)'s Task 16
 note for detail. No RLS/trigger change was needed for this half; the
 database was already correct.
+
+### Firm Work list/create/edit experience (Handbook Task 17)
+
+Verified first: most of what this task asks for already existed
+(Task 15/16) — title/category/owner/project/target date/priority/
+status/description/next_action/blocker_reason/checklist all already
+wired into `openFirmWorkModal`; the list already showed title/category/
+project/owner/status/due date/priority; filters already covered owner/
+category/project/status/priority/due date; search already used a
+server-side `ilike` query, not a client-side download-then-filter. Two
+concrete VALIDATION gaps remained, both closed by `20260828090000_firm_
+work_form_validation.sql`:
+
+1. Category was optional; this task's own required-fields list makes it
+   required for Firm Work. Added as a `work_items_firm_category_
+   required_check` constraint, `NOT VALID` (same standing caution about
+   unverifiable live drift as every other new constraint this session —
+   the check still fully applies to every new write).
+2. Nothing required `blocker_reason` when a Firm Work item's status
+   becomes `'blocked'`. Added to `guard_work_item_update()`'s firm
+   branch — deliberately a TRIGGER check (not a plain `CHECK`
+   constraint, which can't see `OLD`), and deliberately scoped to only
+   the moment of transitioning INTO `'blocked'` (`old.status is distinct
+   from 'blocked'`), not to every future edit of an already-Blocked row.
+   A plain `CHECK` constraint would have re-validated the entire row on
+   every subsequent UPDATE, silently locking any historical Blocked item
+   without context out of routine editing — exactly the "don't corrupt
+   existing records" mistake this project's migrations consistently
+   avoid. See the migration's own header for the full reasoning.
+
+Also found and fixed, UI only, via an actual browser measurement (not
+assumed): the Firm Work filter row's two native `type="date"` inputs
+side by side overflowed a 375px viewport by 26px — `flex-wrap` added to
+that one row lets them stack instead of forcing the page wider. New
+browser test infrastructure,
+[tests/ui/support/mock-supabase.js](../tests/ui/support/mock-supabase.js),
+intercepts the real `@supabase/supabase-js` bundle's network calls (the
+same file `dist/staff/supabase.js` ships) with fixture data — this is
+what caught both the mobile-overflow bug and a `.single()` response-
+shape mismatch in the mock itself, neither of which the DB permission
+harness alone could have found, since that harness never renders a
+browser at all.
 
 ## 3. Confirmed live drift (2026-08-14)
 

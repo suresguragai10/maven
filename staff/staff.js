@@ -4803,7 +4803,7 @@
     var filterCard = el('div', 'card');
     var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
 
-    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title or description…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
+    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title, description, or next action…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
     var ownerSel = el('select'); ownerSel.style.width = 'auto';
     ownerSel.appendChild(new Option('All Owners', ''));
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
@@ -4829,7 +4829,14 @@
     var dueToLabel = el('span'); dueToLabel.textContent = 'to'; dueToLabel.style.cssText = 'font-size:.8rem;color:var(--ink-soft);';
 
     [searchInput, ownerSel, categorySel, projectSel, statusSel, prioritySel].forEach(function (elm) { filterRow.appendChild(elm); });
-    var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    // Handbook Task 17: flex-wrap here too -- two native date inputs
+    // side by side don't fit a narrow phone screen even alone on their
+    // own row (Chromium's date input has an intrinsic minimum width
+    // wider than a 375px viewport's available space), found by an actual
+    // overflow measurement, not assumed. Wrapping lets "to" and the
+    // second date drop to their own line instead of forcing the page
+    // itself wider.
+    var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;';
     dueWrap.appendChild(dueFromInput); dueWrap.appendChild(dueToLabel); dueWrap.appendChild(dueToInput);
     filterRow.appendChild(dueWrap);
     filterCard.appendChild(filterRow);
@@ -4878,7 +4885,11 @@
       if (dueFromInput.value) query = query.gte('internal_due_date', dueFromInput.value);
       if (dueToInput.value) query = query.lte('internal_due_date', dueToInput.value);
       var term = searchInput.value.trim().replace(/[,()]/g, ' ');
-      if (term) query = query.or('title.ilike.%' + term + '%,description.ilike.%' + term + '%');
+      // Handbook Task 17: search also matches next_action, per the
+      // task's own "Search title/description/next action" instruction —
+      // still one server-side query, never a client-side download-then-
+      // filter of the full table.
+      if (term) query = query.or('title.ilike.%' + term + '%,description.ilike.%' + term + '%,next_action.ilike.%' + term + '%');
 
       var res = await query;
       clear(resultsWrap);
@@ -4903,10 +4914,15 @@
       var latestByItem = {};
       (commentsRes.data || []).forEach(function (c) { if (!latestByItem[c.work_item_id]) latestByItem[c.work_item_id] = c; });
 
+      // Handbook Task 17: 8 columns is wide enough to overflow a narrow
+      // phone screen — scrolls horizontally within its own card instead
+      // of forcing the whole page wider (the page body itself must never
+      // scroll sideways).
       var card = el('div', 'card');
+      var tableScroll = el('div'); tableScroll.style.cssText = 'overflow-x:auto;';
       var table = el('table');
       var thead = el('thead'); var trh = el('tr');
-      ['Title', 'Category', 'Project', 'Owner', 'Status', 'Due Date', 'Priority', 'Latest Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+      ['Title', 'Category', 'Project', 'Owner', 'Status', 'Due Date', 'Priority', 'Next Action / Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
       thead.appendChild(trh); table.appendChild(thead);
       var tbody = el('tbody');
       items.forEach(function (w) {
@@ -4927,14 +4943,19 @@
         tdPriority.appendChild(dot);
         tdPriority.appendChild(document.createTextNode(w.priority.charAt(0).toUpperCase() + w.priority.slice(1)));
         tr.appendChild(tdPriority);
+        // Handbook Task 17: next_action, when set, is a more direct
+        // "what happens next" signal than a comment thread — falls back
+        // to the latest update when there's no next_action recorded.
         var tdUpdate = el('td'); tdUpdate.style.cssText = 'color:var(--ink-soft);font-size:.85rem;max-width:220px;';
         var latest = latestByItem[w.id];
-        tdUpdate.textContent = latest ? truncateOneLine(latest.body, 60) : '—';
+        if (w.next_action) tdUpdate.textContent = truncateOneLine(w.next_action, 60);
+        else tdUpdate.textContent = latest ? truncateOneLine(latest.body, 60) : '—';
         tr.appendChild(tdUpdate);
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
-      card.appendChild(table);
+      tableScroll.appendChild(table);
+      card.appendChild(tableScroll);
       resultsWrap.appendChild(card);
     }
 
@@ -4974,11 +4995,14 @@
     if (isEdit) titleInput.value = existing.title;
     wrap.appendChild(field('Title', titleInput));
 
+    // Handbook Task 17: Category is required (was optional) — still
+    // starts blank so a real choice has to be made, rather than
+    // defaulting to the first real category in the list.
     var categorySel = el('select'); categorySel.disabled = isEdit && !canEdit;
-    categorySel.appendChild(new Option('— No category —', ''));
+    categorySel.appendChild(new Option('— Choose a category —', ''));
     FIRM_CATEGORIES.forEach(function (c) { categorySel.appendChild(new Option(c, c)); });
     if (isEdit) categorySel.value = existing.firm_category || '';
-    wrap.appendChild(field('Category (optional)', categorySel));
+    wrap.appendChild(field('Category', categorySel));
 
     var ownerSel = el('select'); ownerSel.disabled = isEdit && !canEditFull;
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
@@ -5048,17 +5072,29 @@
     if (isEdit) nextActionInput.value = existing.next_action || '';
     wrap.appendChild(field('Next Action (optional)', nextActionInput));
 
+    // Handbook Task 17: required only at the moment of transitioning
+    // INTO Blocked (matches the DB trigger's own scoping — see
+    // 20260828090000_firm_work_form_validation.sql's header for why an
+    // already-Blocked historical item without context stays editable).
+    // Not an approval flow: the same person marking it Blocked just has
+    // to say why, in the same save.
     var blockerInput = el('input'); blockerInput.type = 'text'; blockerInput.disabled = isEdit && !canEdit;
     blockerInput.placeholder = 'e.g. Waiting on landlord to confirm viewing date';
     if (isEdit) blockerInput.value = existing.blocker_reason || '';
-    wrap.appendChild(field('Blocker Reason (optional, most useful when Status is Blocked)', blockerInput));
+    wrap.appendChild(field('Blocker Reason (required when Status is Blocked)', blockerInput));
 
     if (!isEdit || canEdit) {
       var actions = el('div', 'modal-actions');
       var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Firm Work';
       saveBtn.addEventListener('click', async function () {
         if (!titleInput.value.trim()) { toast('Give it a title.', true); return; }
+        if (!categorySel.value) { toast('Choose a category.', true); return; }
         if (!ownerSel.value) { toast('Choose an owner.', true); return; }
+        var becomingBlocked = isEdit && statusSel.value === 'blocked' && existing.status !== 'blocked';
+        if (becomingBlocked && blockerInput.value.trim().length < 10) {
+          toast('Explain what\'s blocking this (at least a short sentence) before marking it Blocked.', true);
+          return;
+        }
         saveBtn.disabled = true;
         var res;
         if (isEdit) {
