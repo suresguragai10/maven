@@ -119,6 +119,17 @@ async function installSupabaseMock(page, { user, tables }) {
       return;
     }
 
+    // Same bare-object-vs-array distinction the GET handler above makes
+    // for .single()/.maybeSingle() (see its own comment) applies equally
+    // to .insert(...).select().single() and .update(...).select().single()
+    // -- postgrest-js sends the same Accept: application/vnd.pgrst.
+    // object+json header regardless of HTTP method. Originally only
+    // fixed for GET (Handbook Task 17); POST/PATCH had the same latent
+    // bug, just never exercised by a test that chained .select().single()
+    // onto a write until Handbook Task 19's "create a project and use
+    // its returned id immediately" flow.
+    const wantsSingle = (request.headers()['accept'] || '').includes('vnd.pgrst.object');
+
     if (request.method() === 'POST') {
       let body = {};
       try { body = JSON.parse(request.postData() || '{}'); } catch (e) { /* ignore */ }
@@ -131,7 +142,7 @@ async function installSupabaseMock(page, { user, tables }) {
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: wantsRepresentation ? JSON.stringify([row]) : '',
+        body: wantsRepresentation ? JSON.stringify(wantsSingle ? row : [row]) : '',
       });
       return;
     }
@@ -151,7 +162,8 @@ async function installSupabaseMock(page, { user, tables }) {
         return r;
       });
       const wantsRepresentation = (request.headers()['prefer'] || '').includes('return=representation');
-      await route.fulfill({ status: 200, contentType: 'application/json', body: wantsRepresentation ? JSON.stringify(updated) : '' });
+      const repBody = wantsSingle ? updated[0] : updated;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: wantsRepresentation ? JSON.stringify(repBody) : '' });
       return;
     }
 

@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T15:01:47.540Z",
-    "migrationCount": 29
+    "generatedAt": "2026-08-15T15:22:39.942Z",
+    "migrationCount": 30
   },
   "results": [
     {
@@ -1805,6 +1805,69 @@
       "note": "1 row(s)"
     },
     {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "Create a project as a plain employee",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "Renaming a project sets updated_by/updated_at from the REAL caller, ignoring a spoofed value",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "updated_by correctly = employeeA (spoofed employeeB rejected)"
+    },
+    {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "created_by/created_at cannot be rewritten via UPDATE, even by the project's own creator",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "provenance unchanged"
+    },
+    {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "Archive a project created by someone else (peer model)",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "Reactivate an archived project",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "Archiving a project does NOT clear or delete project_id on Firm Work that references it",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "project_id untouched, history intact"
+    },
+    {
+      "area": "Projects management (Handbook Task 19)",
+      "action": "Delete a project outright (even as admin) -- no delete policy exists, by design",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "CRITICAL: a project was deleted -- historical Firm Work under it would lose its label with no way back"
+    },
+    {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text, p_period_start date, p_period_end date)",
       "identity": "n/a (catalog check)",
@@ -1929,6 +1992,15 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on set_projects_updated_by()",
+      "identity": "n/a (catalog check)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

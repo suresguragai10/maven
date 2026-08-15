@@ -4844,9 +4844,14 @@
   async function renderFirmWorkPage(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Firm Work'; head.appendChild(h1);
+    var headBtns = el('div'); headBtns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    var projectsBtn = el('button', 'btn btn-outline btn-sm'); projectsBtn.type = 'button'; projectsBtn.appendChild(icon('folder')); projectsBtn.appendChild(document.createTextNode('Manage Projects'));
+    projectsBtn.addEventListener('click', function () { openProjectsModal(refresh); });
+    headBtns.appendChild(projectsBtn);
     var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Firm Work'));
     addBtn.addEventListener('click', function () { openFirmWorkModal(refresh); });
-    head.appendChild(addBtn);
+    headBtns.appendChild(addBtn);
+    head.appendChild(headBtns);
     main.appendChild(head);
 
     var intro = el('div', 'card');
@@ -4944,7 +4949,21 @@
       // task's own "Search title/description/next action" instruction —
       // still one server-side query, never a client-side download-then-
       // filter of the full table.
-      if (term) query = query.or('title.ilike.%' + term + '%,description.ilike.%' + term + '%,next_action.ilike.%' + term + '%');
+      if (term) {
+        var orParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%'];
+        // Handbook Task 19: "Project name should participate in Firm
+        // Work search where practical." project_id is a foreign key, not
+        // text, so it can't join into an ilike directly -- matched the
+        // same way Client Work's own Search page matches client/staff
+        // names (see renderSearchPage): compute matching project IDs
+        // client-side from the already-loaded state.projects, then fold
+        // them into the same server-side .or() as project_id.in.(...).
+        // Still one query, never a client-side download-then-filter.
+        var lowerTerm = term.toLowerCase();
+        var matchingProjectIds = state.projects.filter(function (p) { return p.name.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (p) { return p.id; });
+        if (matchingProjectIds.length) orParts.push('project_id.in.(' + matchingProjectIds.join(',') + ')');
+        query = query.or(orParts.join(','));
+      }
 
       var res = await query;
       clear(resultsWrap);
@@ -5018,6 +5037,161 @@
   }
 
   // ============================================================
+  // Projects / Initiatives management — Handbook Task 19. Deliberately
+  // small: no budgets, timesheets, dependencies, Gantt, milestones, or
+  // files — a project is just a lightweight label Firm Work can group
+  // under. Any active teammate may create/rename/archive any project,
+  // same open peer model as Firm Work itself (projects_insert/update
+  // RLS already grant this — see 20260826090000). Every material edit is
+  // attributable via updated_by/updated_at, auto-set by a DB trigger
+  // (Handbook Task 19) — never trusted from the client. Archiving never
+  // deletes or hides historical Firm Work: there is no delete policy on
+  // projects at all, and the Firm Work list's own project filter already
+  // includes archived projects (labeled "(archived)") precisely so past
+  // work under a retired project stays fully reachable.
+  // ============================================================
+  function openProjectsModal(onDone) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Projects / Initiatives';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', function () { closeModal(); onDone(); });
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var newRow = el('div'); newRow.style.cssText = 'display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;';
+    var newInput = el('input'); newInput.type = 'text'; newInput.placeholder = 'e.g. Office Search, Marketing Campaign…'; newInput.style.flex = '1'; newInput.style.minWidth = '180px';
+    var newBtn = el('button', 'btn btn-sm'); newBtn.type = 'button'; newBtn.appendChild(icon('plus')); newBtn.appendChild(document.createTextNode('New Project'));
+    newBtn.addEventListener('click', async function () {
+      if (!newInput.value.trim()) return;
+      newBtn.disabled = true;
+      var res = await sb.from('projects').insert({ name: newInput.value.trim(), created_by: state.user.id }).select().single();
+      newBtn.disabled = false;
+      if (res.error) { toast('Could not create project: ' + res.error.message, true); return; }
+      state.projects.push(res.data);
+      newInput.value = '';
+      renderList();
+    });
+    newRow.appendChild(newInput); newRow.appendChild(newBtn);
+    wrap.appendChild(newRow);
+
+    var list = el('div');
+    wrap.appendChild(list);
+
+    function renderList() {
+      clear(list);
+      var sorted = state.projects.slice().sort(function (a, b) {
+        if ((a.status === 'archived') !== (b.status === 'archived')) return a.status === 'archived' ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
+      if (!sorted.length) {
+        var noneP = el('p', 'desc'); noneP.textContent = 'No projects yet.'; list.appendChild(noneP);
+        return;
+      }
+      sorted.forEach(function (p) {
+        var row = el('div', 'checklist-item'); row.style.cssText = 'align-items:center;gap:10px;';
+        var nameSpan = el('span'); nameSpan.style.cssText = 'flex:1;font-weight:700;cursor:pointer;' + (p.status === 'archived' ? 'color:var(--ink-soft);text-decoration:line-through;' : '');
+        nameSpan.textContent = p.name;
+        nameSpan.addEventListener('click', function () { openProjectDetailModal(p, function () { openProjectsModal(onDone); }); });
+        row.appendChild(nameSpan);
+        if (p.status === 'archived') { var badge = el('span', 'badge badge-to_do'); badge.textContent = 'Archived'; row.appendChild(badge); }
+        var renameBtn = el('button', 'btn btn-outline btn-sm'); renameBtn.type = 'button'; renameBtn.textContent = 'Rename';
+        renameBtn.addEventListener('click', async function () {
+          var name = prompt('Rename project:', p.name);
+          if (!name || !name.trim() || name.trim() === p.name) return;
+          var res = await sb.from('projects').update({ name: name.trim() }).eq('id', p.id);
+          if (res.error) { toast('Could not rename: ' + res.error.message, true); return; }
+          p.name = name.trim();
+          toast('Project renamed.');
+          renderList();
+        });
+        row.appendChild(renameBtn);
+        var archiveBtn = el('button', 'btn btn-outline btn-sm'); archiveBtn.type = 'button';
+        archiveBtn.textContent = p.status === 'archived' ? 'Reactivate' : 'Archive';
+        archiveBtn.addEventListener('click', async function () {
+          var newStatus = p.status === 'archived' ? 'active' : 'archived';
+          var res = await sb.from('projects').update({ status: newStatus }).eq('id', p.id);
+          if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+          p.status = newStatus;
+          toast(newStatus === 'archived' ? 'Project archived — its Firm Work history stays fully visible.' : 'Project reactivated.');
+          renderList();
+        });
+        row.appendChild(archiveBtn);
+        list.appendChild(row);
+      });
+    }
+    renderList();
+
+    openModal(wrap);
+  }
+
+  // Project Detail — Handbook Task 19: "can show active/completed Firm
+  // Work counts and actual items." A small modal, not a page (this is a
+  // lightweight label, not a first-class object with its own workflow) —
+  // reachable from the Projects modal above and from the Project field
+  // on the Firm Work Detail page (Handbook Task 18).
+  function openProjectDetailModal(project, onClose) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = project.name;
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', function () { closeModal(); if (onClose) onClose(); });
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    if (project.status === 'archived') {
+      var archivedNote = el('p', 'desc'); archivedNote.textContent = 'Archived — no longer offered for new Firm Work, but its history stays intact below.';
+      wrap.appendChild(archivedNote);
+    }
+    if (project.description) {
+      var descP = el('p'); descP.style.cssText = 'white-space:pre-wrap;'; descP.textContent = project.description;
+      wrap.appendChild(descP);
+    }
+
+    var metaLine = el('div'); metaLine.style.cssText = 'font-size:.82rem;color:var(--ink-soft);margin:8px 0 16px;';
+    var metaBits = ['Created by ' + profileName(project.created_by) + ' on ' + fmtDate(project.created_at)];
+    if (project.updated_by) metaBits.push('last edited by ' + profileName(project.updated_by) + ' on ' + fmtDateTime(project.updated_at));
+    metaLine.textContent = metaBits.join(' · ');
+    wrap.appendChild(metaLine);
+
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading Firm Work…';
+    wrap.appendChild(loading);
+    openModal(wrap);
+
+    (async function loadItems() {
+      var res = await sb.from('work_items').select('*').eq('work_scope', 'firm').eq('project_id', project.id).order('internal_due_date', { ascending: true, nullsFirst: false });
+      if (loading.parentNode) loading.parentNode.removeChild(loading);
+      var items = res.data || [];
+      if (res.error) {
+        var errP = el('p', 'desc'); errP.textContent = 'Could not load Firm Work: ' + res.error.message; wrap.appendChild(errP);
+        return;
+      }
+      var active = items.filter(function (w) { return w.status !== 'completed'; });
+      var completed = items.filter(function (w) { return w.status === 'completed'; });
+
+      var countsLine = el('div'); countsLine.style.cssText = 'display:flex;gap:16px;margin-bottom:12px;';
+      countsLine.appendChild((function () { var s = el('div', 'today-stat'); var n = el('div', 'n'); n.textContent = String(active.length); var l = el('div', 'l'); l.textContent = 'Active'; s.appendChild(n); s.appendChild(l); return s; })());
+      countsLine.appendChild((function () { var s = el('div', 'today-stat'); var n = el('div', 'n'); n.textContent = String(completed.length); var l = el('div', 'l'); l.textContent = 'Completed'; s.appendChild(n); s.appendChild(l); return s; })());
+      wrap.appendChild(countsLine);
+
+      if (!items.length) {
+        var noneP = el('p', 'desc'); noneP.textContent = 'No Firm Work under this project yet.'; wrap.appendChild(noneP);
+        return;
+      }
+      items.forEach(function (w) {
+        var row = el('div', 'activity-row'); row.style.cursor = 'pointer';
+        row.addEventListener('click', function () { closeModal(); gotoFirmWork(w.id); });
+        var titleLine = el('div'); titleLine.style.cssText = 'display:flex;justify-content:space-between;gap:8px;align-items:center;';
+        var titleSpan = el('span'); titleSpan.style.fontWeight = '700'; titleSpan.textContent = w.title;
+        var badge = el('span', 'badge badge-' + w.status); badge.textContent = STATUS_LABELS[w.status] || w.status;
+        titleLine.appendChild(titleSpan); titleLine.appendChild(badge);
+        row.appendChild(titleLine);
+        wrap.appendChild(row);
+      });
+    })();
+  }
+
+  // ============================================================
   // Firm Work Detail — Handbook Task 18: a dedicated page (not a modal)
   // so a teammate coming online later — possibly in a different time
   // zone, without a meeting — can see current position, next action, and
@@ -5080,7 +5254,15 @@
 
     var metaGrid = el('div', 'meta-grid');
     metaGrid.appendChild(metaItem('Category', work.firm_category || '—', 'idcard'));
-    metaGrid.appendChild(metaItem('Project', project ? project.name : '—', 'folder'));
+    var projectMeta = metaItem('Project', project ? project.name : '—', 'folder');
+    if (project) {
+      // Handbook Task 19: cross-link into the Project Detail modal — "Project
+      // visible on ... detail" plus somewhere to actually navigate to it from.
+      var projectValueEl = projectMeta.querySelector('.value');
+      projectValueEl.style.cursor = 'pointer'; projectValueEl.style.textDecoration = 'underline';
+      projectValueEl.addEventListener('click', function () { openProjectDetailModal(project, function () { renderFirmWorkDetail(id); }); });
+    }
+    metaGrid.appendChild(projectMeta);
     metaGrid.appendChild(metaItem('Owner', profileName(work.assignee_id), 'user', true));
     metaGrid.appendChild(metaItem('Priority', work.priority.charAt(0).toUpperCase() + work.priority.slice(1), 'flag'));
     metaGrid.appendChild(metaItem('Target Date', work.internal_due_date ? fmtDate(work.internal_due_date) : '—', 'calendar'));

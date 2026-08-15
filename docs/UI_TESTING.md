@@ -105,6 +105,17 @@ commit). Reusable for any future task that touches authenticated
 Staff/Admin app pages — extend the `tables` fixture passed to
 `installSupabaseMock()` rather than building a new mock per task.
 
+**Handbook Task 19 follow-up:** the `.single()` bare-object-vs-array fix
+above was originally applied to the mock's GET handler only. Writing
+`firm-work-detail.spec.js`/`projects.spec.js` — the first tests to chain
+`.insert(...).select().single()` / `.update(...).select().single()` onto
+a WRITE, not just a read — surfaced the identical bug on POST/PATCH: the
+mock always wrapped the returned row in an array, so a `.single()` call
+right after a write silently got no usable `data`. Fixed the same way,
+in the mock only (`tests/ui/support/mock-supabase.js`), checking the same
+`Accept: application/vnd.pgrst.object+json` header on POST/PATCH that GET
+already checked.
+
 ## Browsers
 
 Chromium is the project `npm run test:ui` runs by itself and is what

@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260829090000` (last applied)
+## 2. Expected schema, as of migration `20260830090000` (last applied)
 
 ### Tables (18)
 
@@ -549,6 +549,58 @@ zero console errors. Fixed by guarding all five sites with `if
 (loading.parentNode) loading.parentNode.removeChild(loading)` instead of
 an unguarded `main.removeChild(loading)` — a plain safety guard, not a
 behavior change, in every non-race case.
+
+### Projects / Initiatives management (Handbook Task 19)
+
+Verified first: the `projects` table, its RLS (open to any active
+teammate for read/insert/update, no delete — Task 15), Firm Work's
+project filter/column/picker (Task 15/17), and the create/edit modals'
+inline "+ New Project" quick-create all already shipped. One real gap
+against this task's own requirements: "every material project edit
+should be attributable" — only the *original* creator (`created_by`) was
+ever tracked, nothing recorded who most recently renamed or archived a
+project. `20260830090000_projects_management.sql` adds `projects.
+updated_by`, auto-set (alongside `updated_at`) by a new `BEFORE UPDATE`
+trigger — never trusted from the client, same convention as every other
+provenance column in this schema. The same trigger also pins `id`/
+`created_by`/`created_at` immutable on UPDATE, mirroring `guard_work_
+item_update()`'s own immutability rule.
+
+Everything else this task asked for was UI-only, in `staff/staff.js`:
+- **Projects management modal** (`openProjectsModal`) — list all
+  projects (active first, then archived), inline rename, inline
+  Archive/Reactivate (the column already supported both directions;
+  offering only one-way archiving would have been a dead end for a
+  mistaken click), and the same "+ New Project" quick-create pattern.
+- **Project Detail modal** (`openProjectDetailModal`) — active/completed
+  Firm Work counts plus the actual items, each clickable straight into
+  its own Firm Work Detail page (Task 18). Reachable from the Projects
+  modal and from a new clickable "Project" value on the Firm Work Detail
+  page's own top summary — a small cross-link tying Task 18 and 19
+  together.
+- **Firm Work search now matches project name** — `project_id` is a
+  foreign key, not text, so it can't join into a plain `ilike`; matched
+  Client Work's own Search page's existing pattern for client/staff name
+  matching (`renderSearchPage`): compute matching project IDs client-side
+  from the already-loaded `state.projects`, fold them into the same
+  server-side `.or()` as `project_id.in.(...)`. Still one query, never a
+  client-side download-then-filter.
+- **Archiving verified not to hide/delete history** — there is no delete
+  policy on `projects` at all (confirmed by a DB test attempting delete
+  as admin and expecting denial), and the Firm Work list's project filter
+  already listed archived projects (labeled `(archived)`) before this
+  task, so historical work under a retired project was always reachable;
+  this task adds explicit DB + Playwright coverage proving it, rather
+  than leaving it as an unverified assumption.
+
+Building `firm-work-detail.spec.js`/`projects.spec.js` — the first tests
+to chain `.insert(...).select().single()` / `.update(...).select()
+.single()` onto a WRITE rather than a plain read — surfaced the same
+`.single()` bare-object-vs-array bug Task 17 found and fixed for GET, but
+this time on POST/PATCH: `tests/ui/support/mock-supabase.js` always
+wrapped a written row in an array even when `.single()` asked for a bare
+object, so `res.data` came back unusable right after a write. Fixed in
+the mock only, same technique, see `docs/UI_TESTING.md`.
 
 ## 3. Confirmed live drift (2026-08-14)
 
