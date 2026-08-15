@@ -725,6 +725,22 @@
     return row;
   }
 
+  // Handbook Task 20: My Work's Firm Work half. Deliberately a separate
+  // function/query, not a branch inside loadWork() below -- loadWork()'s
+  // whole reason to exist is "Client Work only, always" (see its own
+  // comment), and this task's own "do not load all firm records then
+  // client-filter in the browser" instruction means the assignee filter
+  // has to be server-side here too, exactly like loadWork('mine') already
+  // does for Client Work.
+  async function loadMyFirmWork() {
+    var res = await sb.from('work_items').select('*')
+      .eq('work_scope', 'firm')
+      .eq('assignee_id', state.user.id)
+      .order('internal_due_date', { ascending: true, nullsFirst: false });
+    if (res.error) { toast('Could not load Firm Work: ' + res.error.message, true); return []; }
+    return res.data || [];
+  }
+
   async function loadWork(mode) {
     // Every caller of loadWork() is a Client Work view (My Work, Review,
     // All Work, Today, Deadlines, Manager Dashboard, Period Summary,
@@ -732,7 +748,9 @@
     // alongside Client Work in the same work_items table) must never
     // silently show up in any of them, per the explicit "must not
     // contaminate client compliance reporting" requirement. This one
-    // filter covers all of those call sites at once.
+    // filter covers all of those call sites at once. (My Work's Firm
+    // Work half comes from loadMyFirmWork() above, kept entirely
+    // separate — see Handbook Task 20.)
     var q = sb.from('work_items').select('*').eq('work_scope', 'client').order('internal_due_date', { ascending: true, nullsFirst: false });
     if (mode === 'mine') q = q.eq('assignee_id', state.user.id);
     if (mode === 'review') {
@@ -1034,6 +1052,21 @@
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
 
+    // Handbook Task 20: My Work is the one view that spans both scopes —
+    // fetch Client and Firm Work in parallel, each with its own
+    // server-side assignee_id filter (never a client-side download-then-
+    // filter of every Firm Work row), and hand off to the combined
+    // renderer entirely. Review/All Work are untouched below — both stay
+    // exactly the single-scope, Client-Work-only views they always were.
+    if (mode === 'mine') {
+      var results = await Promise.all([loadWork('mine'), loadMyFirmWork()]);
+      var clientItems = results[0].slice().sort(compareByDue);
+      var firmItems = results[1].slice().sort(compareByDue);
+      if (loading.parentNode) loading.parentNode.removeChild(loading);
+      renderMyWorkCombined(main, clientItems, firmItems);
+      return;
+    }
+
     var items = await loadWork(mode);
     // The DB query orders by internal_due_date alone, which pushes a work
     // item that only has a filing due date set to the bottom as if it had
@@ -1052,15 +1085,20 @@
     if (loading.parentNode) loading.parentNode.removeChild(loading);
 
     if (mode === 'all') renderWorkloadSummary(main, items);
-
-    if (mode === 'mine') {
-      renderGroupedWork(main, items);
-    } else {
-      renderFlatWorkList(main, items, mode === 'all' && isReviewerOrAdmin());
-    }
+    renderFlatWorkList(main, items, mode === 'all' && isReviewerOrAdmin());
   }
 
-  function renderGroupedWork(main, items) {
+  // opts (Handbook Task 20, both optional, both default to the original
+  // Client Work behavior so every pre-existing call site is unaffected):
+  //   rowRenderer(w) -- defaults to plain workRow(w); the combined My
+  //     Work view passes `function (w) { return workRow(w, true); }` to
+  //     add the CLIENT scope tag.
+  //   suppressEmpty -- when true, skip this function's own "no work"
+  //     message; the combined My Work view shows one message covering
+  //     both scopes instead of a possible duplicate/wrong one here.
+  function renderGroupedWork(main, items, opts) {
+    opts = opts || {};
+    var rowRenderer = opts.rowRenderer || workRow;
     var groups = [
       { key: 'overdue', label: 'Overdue', filter: function (w) { return isOverdue(w); } },
       { key: 'ready_for_review', label: 'Ready for Review', filter: function (w) { return w.status === 'ready_for_review' && !isOverdue(w); } },
@@ -1084,13 +1122,101 @@
       var count = el('span', 'count'); count.textContent = String(rows.length);
       h3.appendChild(count);
       wrap.appendChild(h3);
-      rows.forEach(function (w) { wrap.appendChild(workRow(w)); });
+      rows.forEach(function (w) { wrap.appendChild(rowRenderer(w)); });
       main.appendChild(wrap);
     });
-    if (!shown) {
+    if (!shown && !opts.suppressEmpty) {
       var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No work assigned to you yet.'));
       main.appendChild(empty);
     }
+    return shown;
+  }
+
+  // Handbook Task 20: Firm Work's own grouped section within the
+  // combined My Work view. Mirrors renderGroupedWork's shape (status
+  // groups, "Recently Completed" capped at 10) but with Firm's own
+  // 5-status set and no overdue/urgency grouping -- Blocked is listed
+  // first as the operationally-most-attention-needed state, not because
+  // it's styled as urgent the way an overdue Client item is.
+  function renderFirmWorkGroups(main, items) {
+    var groups = [
+      { key: 'blocked', label: 'Blocked', filter: function (w) { return w.status === 'blocked'; } },
+      { key: 'in_progress', label: 'In Progress', filter: function (w) { return w.status === 'in_progress'; } },
+      { key: 'review', label: 'In Review', filter: function (w) { return w.status === 'review'; } },
+      { key: 'to_do', label: 'To Do', filter: function (w) { return w.status === 'to_do'; } },
+      { key: 'completed', label: 'Recently Completed', filter: function (w) { return w.status === 'completed'; } },
+    ];
+    var shown = 0;
+    groups.forEach(function (g) {
+      var rows = items.filter(g.filter);
+      if (g.key === 'completed') rows = rows.slice(0, 10);
+      if (!rows.length) return;
+      shown += rows.length;
+      var wrap = el('div', 'task-group');
+      var h3 = el('h3');
+      h3.appendChild(document.createTextNode(g.label + ' '));
+      var count = el('span', 'count'); count.textContent = String(rows.length);
+      h3.appendChild(count);
+      wrap.appendChild(h3);
+      rows.forEach(function (w) { wrap.appendChild(firmWorkRow(w)); });
+      main.appendChild(wrap);
+    });
+    return shown;
+  }
+
+  // Handbook Task 20: "one view of work assigned to them" spanning both
+  // Client and Firm Work, without merging their very different urgency
+  // semantics. Client Work's existing grouped sections (Overdue/Ready
+  // for Review/etc, unchanged) always render before any Firm Work
+  // section -- a Firm target due tomorrow must never visually outrank an
+  // overdue Client compliance item, which a single date-sorted list
+  // would risk. The "All/Client/Firm" scope filter only toggles which
+  // of the two ALREADY-LOADED sets render; both were fetched with their
+  // own server-side assignee_id filter (see renderWorkListView), never a
+  // client-side download-then-filter of every Firm Work row.
+  function renderMyWorkCombined(main, clientItems, firmItems) {
+    var filterCard = el('div', 'card'); filterCard.style.cssText = 'margin-bottom:16px;padding:14px 18px;';
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+    var filterLabel = el('span'); filterLabel.style.cssText = 'font-size:.85rem;color:var(--ink-soft);'; filterLabel.textContent = 'Show:';
+    var scopeSel = el('select'); scopeSel.style.width = 'auto';
+    scopeSel.appendChild(new Option('All (' + (clientItems.length + firmItems.length) + ')', 'all'));
+    scopeSel.appendChild(new Option('Client (' + clientItems.length + ')', 'client'));
+    scopeSel.appendChild(new Option('Firm (' + firmItems.length + ')', 'firm'));
+    filterRow.appendChild(filterLabel); filterRow.appendChild(scopeSel);
+    filterCard.appendChild(filterRow);
+    main.appendChild(filterCard);
+
+    var listWrap = el('div');
+    main.appendChild(listWrap);
+
+    function apply() {
+      clear(listWrap);
+      var scope = scopeSel.value;
+      var shownClient = 0, shownFirm = 0;
+
+      if (scope !== 'firm') {
+        shownClient = renderGroupedWork(listWrap, clientItems, { rowRenderer: function (w) { return workRow(w, true); }, suppressEmpty: true });
+      }
+      if (scope !== 'client' && firmItems.length) {
+        var firmHead = el('h2'); firmHead.style.cssText = 'font-size:1rem;margin:' + (shownClient ? '8px' : '0') + ' 0 4px;';
+        firmHead.appendChild(icon('briefcase'));
+        firmHead.appendChild(document.createTextNode('Firm Work'));
+        listWrap.appendChild(firmHead);
+        shownFirm = renderFirmWorkGroups(listWrap, firmItems);
+      }
+
+      if (!shownClient && !shownFirm) {
+        var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard'));
+        empty.appendChild(document.createTextNode(
+          scope === 'client' ? 'No Client Work assigned to you.' :
+          scope === 'firm' ? 'No Firm Work assigned to you.' :
+          'No work assigned to you yet.'
+        ));
+        listWrap.appendChild(empty);
+      }
+    }
+    scopeSel.addEventListener('change', apply);
+    apply();
   }
 
   // "Who has open work right now" — the one thing a flat list can't
@@ -1252,7 +1378,11 @@
     openModal(wrap);
   }
 
-  function workRow(w) {
+  // showScopeTag (Handbook Task 20): only the combined My Work view
+  // passes this -- Review/All Work call workRow(w) with one argument and
+  // are completely unaffected, since every row there is already known to
+  // be Client Work (loadWork() is client-scope-only for those modes too).
+  function workRow(w, showScopeTag) {
     var row = el('div', 'task-row');
     row.addEventListener('click', function () { gotoWork(w.id); });
     row.appendChild(avatar(profileName(w.assignee_id)));
@@ -1274,6 +1404,46 @@
     var badge = el('span', 'badge badge-' + w.status);
     badge.textContent = STATUS_LABELS[w.status] || w.status;
     row.appendChild(badge);
+    if (showScopeTag) {
+      var scopeBadge = el('span', 'badge badge-scope-client'); scopeBadge.textContent = 'CLIENT';
+      row.appendChild(scopeBadge);
+    }
+    return row;
+  }
+
+  // Handbook Task 20: Firm Work's row in the combined My Work list.
+  // Deliberately its OWN renderer, not a branch inside workRow() above --
+  // Firm Work has no client/template/period/statutory-deadline concept,
+  // and this task explicitly requires that a missed Firm target must
+  // NOT be styled like a missed statutory filing (contrast: workRow's
+  // `due.overdue` class, which this function never applies).
+  function firmWorkRow(w) {
+    var row = el('div', 'task-row');
+    row.addEventListener('click', function () { gotoFirmWork(w.id); });
+    row.appendChild(avatar(profileName(w.assignee_id)));
+    var dot = el('span', 'priority-dot priority-dot-' + w.priority);
+    dot.title = w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority';
+    row.appendChild(dot);
+    var title = el('div', 'title');
+    var project = w.project_id ? projectById(w.project_id) : null;
+    var strong = el('strong'); strong.textContent = w.title;
+    var span = el('span');
+    span.appendChild(icon('folder'));
+    span.appendChild(document.createTextNode((w.firm_category || 'Uncategorized') + (project ? ' · ' + project.name : '')));
+    title.appendChild(strong); title.appendChild(span);
+    row.appendChild(title);
+    // Target date, plain -- never `.overdue`/red, per this task's own
+    // "do not style a missed Firm target as if it were a statutory
+    // filing breach" instruction.
+    var due = el('span', 'due');
+    due.appendChild(icon('calendar'));
+    due.appendChild(document.createTextNode(w.internal_due_date ? fmtDate(w.internal_due_date) : 'No target date'));
+    row.appendChild(due);
+    var badge = el('span', 'badge badge-' + w.status);
+    badge.textContent = STATUS_LABELS[w.status] || w.status;
+    row.appendChild(badge);
+    var scopeBadge = el('span', 'badge badge-scope-firm'); scopeBadge.textContent = 'FIRM';
+    row.appendChild(scopeBadge);
     return row;
   }
 

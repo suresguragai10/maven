@@ -1,6 +1,6 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T15:22:39.942Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T16:31:09.637Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
@@ -11,7 +11,7 @@ Generated 2026-08-15T15:22:39.942Z by `node tests/db/run.js` -- **every row belo
 
 ## Summary
 
-224 checks run across 28 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+227 checks run across 29 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -356,6 +356,14 @@ Generated 2026-08-15T15:22:39.942Z by `node tests/db/run.js` -- **every row belo
 | Reactivate an archived project | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) |
 | Archiving a project does NOT clear or delete project_id on Firm Work that references it | employeeA | ALLOWED | ALLOW | PASS | project_id untouched, history intact |
 | Delete a project outright (even as admin) -- no delete policy exists, by design | admin | DENIED | DENY | PASS | CRITICAL: a project was deleted -- historical Firm Work under it would lose its label with no way back |
+
+### My Work combined Client+Firm (Handbook Task 20)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| "My Work"'s Firm Work query returns only items assigned to the caller, not a colleague's unassigned-to-them item | employeeA | ALLOWED | ALLOW | PASS | 2 row(s), correctly excludes the colleague's item |
+| My Work's Client Work query never includes a Firm Work item, even one assigned to the same person | employeeA | ALLOWED | ALLOW | PASS | Firm Work correctly excluded from the client-scope query |
+| A personal to-do never appears in a work_items query, regardless of scope | employeeA | ALLOWED | ALLOW | PASS | 0 row(s) found (expected 0 -- personal_todos is a separate table, never joined into work_items) |
 
 ### SECURITY DEFINER function grants (catalog inspection)
 

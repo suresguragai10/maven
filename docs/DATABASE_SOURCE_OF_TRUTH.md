@@ -602,6 +602,43 @@ wrapped a written row in an array even when `.single()` asked for a bare
 object, so `res.data` came back unusable right after a write. Fixed in
 the mock only, same technique, see `docs/UI_TESTING.md`.
 
+### My Work: combined Client + Firm view (Handbook Task 20)
+
+No schema or RLS change — Firm Work's read policy has been open to every
+active teammate since Task 6/16, and Client Work's assignee-scoped read
+was already correct; this task is entirely a `staff/staff.js` UI change.
+`renderWorkListView`'s `mode === 'mine'` branch now fetches Client Work
+(`loadWork('mine')`, unchanged) and Firm Work assigned to the caller
+(new `loadMyFirmWork()`, `.eq('work_scope','firm').eq('assignee_id',
+state.user.id)` — server-side, never a client-side download-then-filter
+of every Firm Work row) in parallel, then hands both to a new
+`renderMyWorkCombined()`. Client Work's existing grouped-by-status
+sections (Overdue/Ready for Review/etc, `renderGroupedWork`, untouched
+in behavior) always render before a new "Firm Work" section
+(`renderFirmWorkGroups`, Firm's own 5-status grouping) — a Firm target
+due tomorrow can never visually outrank an overdue Client compliance
+item. Every row is now tagged CLIENT or FIRM (`.badge-scope-client`/
+`.badge-scope-firm`); Firm Work's own row renderer (`firmWorkRow`,
+deliberately separate from the Client-only `workRow`) never applies the
+`.due.overdue` red styling `workRow` uses for Client Work, per this
+task's explicit "do not style a missed Firm target as if it were a
+statutory filing breach" instruction. The exact "All/Client/Firm" scope
+filter is a `<select>` that only toggles which of the two already-loaded
+sets render — both sets were already correctly scoped at fetch time.
+Personal To-Do (`personal_todos`) was never queried by this change at
+all, so there's no code path that could fold it in. Review and All Work
+(the other two `renderWorkListView` modes) are byte-for-byte unchanged.
+
+`tests/db/matrices/my_work_combined.matrix.js` (4 checks, real
+RLS-filtered queries proving the Firm-Work-half query excludes a
+colleague's item, the Client-Work-half query excludes a Firm Work item
+assigned to the same person, and a personal to-do never surfaces via
+`work_items`). `tests/ui/app/my-work.spec.js` (6 tests: combined
+labeling, the exact 3-option scope filter, unassigned Firm Work absent
+plus the underlying request's own `assignee_id=eq.<caller>` filter,
+overdue styling preserved for Client but never applied to Firm, Client
+groups rendering before the Firm section, Personal To-Do isolation).
+
 ## 3. Confirmed live drift (2026-08-14)
 
 The owner ran the consolidated RLS/functions/extensions/cron query

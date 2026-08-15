@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T15:22:39.942Z",
+    "generatedAt": "2026-08-15T16:31:09.637Z",
     "migrationCount": 30
   },
   "results": [
@@ -1866,6 +1866,33 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "CRITICAL: a project was deleted -- historical Firm Work under it would lose its label with no way back"
+    },
+    {
+      "area": "My Work combined Client+Firm (Handbook Task 20)",
+      "action": "\"My Work\"'s Firm Work query returns only items assigned to the caller, not a colleague's unassigned-to-them item",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 row(s), correctly excludes the colleague's item"
+    },
+    {
+      "area": "My Work combined Client+Firm (Handbook Task 20)",
+      "action": "My Work's Client Work query never includes a Firm Work item, even one assigned to the same person",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "Firm Work correctly excluded from the client-scope query"
+    },
+    {
+      "area": "My Work combined Client+Firm (Handbook Task 20)",
+      "action": "A personal to-do never appears in a work_items query, regardless of scope",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "0 row(s) found (expected 0 -- personal_todos is a separate table, never joined into work_items)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

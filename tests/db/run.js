@@ -36,6 +36,7 @@ const MATRIX_FILES = [
   'firm_work_form_validation',
   'firm_work_detail_handoff',
   'projects_management',
+  'my_work_combined',
   'security_definer_grants',
 ];
 
