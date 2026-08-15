@@ -9,6 +9,7 @@
 const {
   IDENTITIES, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE,
   SERVICE_TEMPLATE_QUARTERLY, CLIENT_SERVICE_QUARTERLY, SERVICE_TEMPLATE_YEARLY, CLIENT_SERVICE_YEARLY,
+  SERVICE_TEMPLATE_UNGOVERNED, CLIENT_SERVICE_UNGOVERNED,
 } = require('./ids');
 
 async function seed(client) {
@@ -29,6 +30,12 @@ async function seed(client) {
   }
 
   // ---- service template (+ one checklist item, for recurring generation) ----
+  // filing_deadline_day is still seeded here (legacy column, Handbook
+  // Task 12) purely so the requires_external_deadline backfill in
+  // 20260824090000_deadline_governance.sql has something to flip to
+  // true when replayed against this harness, exactly like it did live —
+  // the actual day-of-month generation reads now comes from the
+  // deadline_rules row inserted below, not this column.
   await client.query(
     `insert into public.service_templates (id, title, category, recurrence, filing_deadline_day, internal_offset_days)
      values ($1, $2, 'Tax & Compliance', 'monthly', 25, 3)`,
@@ -67,6 +74,45 @@ async function seed(client) {
     `insert into public.client_services (id, client_id, service_template_id, assignee_id, reviewer_id)
      values ($1, $2, $3, $4, $5)`,
     [CLIENT_SERVICE_YEARLY.id, CLIENTS.alpha.id, SERVICE_TEMPLATE_YEARLY.id, IDENTITIES.employeeA.id, IDENTITIES.reviewerA.id]
+  );
+
+  // ---- Handbook Task 12: active, governed deadline_rules rows for the
+  // three templates above -- inserted directly (bypassing add_deadline_
+  // rule(), same as every other privileged seed row in this file) so
+  // period_normalization.matrix.js's existing due-date assertions keep
+  // holding under the new governed lookup, exactly mirroring what a real
+  // admin-entered rule looks like. NOT real Nepal tax data -- a fabricated
+  // source_title makes that explicit, never to be mistaken for an actual
+  // citation.
+  await client.query(
+    `insert into public.deadline_rules (service_template_id, financial_year_label, filing_deadline_day, source_title, verified_date, verified_by, status)
+     values ($1, 'Test harness seed — not a real citation', 25, 'Test harness seed data, not a real legal source', current_date, $2, 'active')`,
+    [SERVICE_TEMPLATE.id, IDENTITIES.admin.id]
+  );
+  await client.query(
+    `insert into public.deadline_rules (service_template_id, financial_year_label, filing_deadline_day, source_title, verified_date, verified_by, status)
+     values ($1, 'Test harness seed — not a real citation', 15, 'Test harness seed data, not a real legal source', current_date, $2, 'active')`,
+    [SERVICE_TEMPLATE_QUARTERLY.id, IDENTITIES.admin.id]
+  );
+  await client.query(
+    `insert into public.deadline_rules (service_template_id, financial_year_label, filing_deadline_day, source_title, verified_date, verified_by, status)
+     values ($1, 'Test harness seed — not a real citation', 10, 'Test harness seed data, not a real legal source', current_date, $2, 'active')`,
+    [SERVICE_TEMPLATE_YEARLY.id, IDENTITIES.admin.id]
+  );
+
+  // ---- Handbook Task 12: the ungoverned monthly template -- requires_
+  // external_deadline is set directly (not backfilled from a legacy
+  // filing_deadline_day, which this template deliberately never has),
+  // and NO deadline_rules row exists for it yet.
+  await client.query(
+    `insert into public.service_templates (id, title, category, recurrence, requires_external_deadline)
+     values ($1, $2, 'Tax & Compliance', 'monthly', true)`,
+    [SERVICE_TEMPLATE_UNGOVERNED.id, SERVICE_TEMPLATE_UNGOVERNED.title]
+  );
+  await client.query(
+    `insert into public.client_services (id, client_id, service_template_id, assignee_id, reviewer_id)
+     values ($1, $2, $3, $4, $5)`,
+    [CLIENT_SERVICE_UNGOVERNED.id, CLIENTS.alpha.id, SERVICE_TEMPLATE_UNGOVERNED.id, IDENTITIES.employeeA.id, IDENTITIES.reviewerA.id]
   );
 
   // ---- work_items: client scope (normal + ready_for_review), + firm scope ----

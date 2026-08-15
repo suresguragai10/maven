@@ -139,15 +139,15 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260823090000` (last applied)
+## 2. Expected schema, as of migration `20260824090000` (last applied)
 
-### Tables (16)
+### Tables (17)
 
 | Table | Origin | RLS | Notable columns added by later migrations |
 |---|---|---|---|
 | `profiles` | reconstructed | enabled | — |
 | `clients` | reconstructed | enabled | `attention_level`, `attention_reason`, `attention_set_by`, `attention_set_at` (20260814090000) |
-| `service_templates` | original (20260811090300) | enabled | `is_active` (20260813100000-era Task 13); `requires_review` boolean default `true` (20260820090000) |
+| `service_templates` | original (20260811090300) | enabled | `is_active` (20260813100000-era Task 13); `requires_review` boolean default `true` (20260820090000); `requires_external_deadline` boolean default `false` (20260824090000, Task 12) — `filing_deadline_day` legacy/no longer read as of the same migration, see §2 note below |
 | `service_template_items` | original | enabled | `is_required` (Task 13) |
 | `work_items` | original (20260811090400) | enabled | `submission_*` fields, `completed_at`, `submitted_at/by`, `created_by` (later Task 13-era additions); `work_scope`, `firm_category` + scope-conditional checks (20260816090000); `client_id` NOT NULL dropped (20260816090000); `review_required` boolean default `true`, `status_override_reason` text (write-only, always reset to `NULL`) (20260820090000); `period_type`, `period_start_date`, `period_end_date` (20260823090000, Task 11) — nullable, additive only; NULL on every row generated before this migration (intentionally not backfilled, see the migration's own header) |
 | `work_checklist_items` | reconstructed (bundled in 20260811090500) | enabled | `is_required` (Task 13) |
@@ -159,6 +159,7 @@ original source, not a reconstruction.
 | `personal_todos` | original (20260811090800) | enabled | — |
 | `app_settings` | original (20260811090900) | enabled | `app_settings_insert_admin` policy (Task 18) |
 | `notifications` | original (20260813100000) | enabled | — |
+| `deadline_rules` | original (20260824090000, Task 12) | enabled, **no insert/update/delete policy** | Governed replacement for `service_templates.filing_deadline_day` — every write goes through `add_deadline_rule()`, see [FINANCE_RULE_GOVERNANCE.md](FINANCE_RULE_GOVERNANCE.md) |
 | (no separate "projects/initiatives" table yet — handbook Task 19, not built) | | | |
 
 Full column-by-column, constraint-by-constraint detail is intentionally
@@ -244,9 +245,10 @@ findings as of Task 9.
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
 | `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by` |
 | `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
-| `_generate_period_work_core(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated. Task 8 added `requires_submission`/`requires_review` copy-through from the template. Task 11 (`20260823090000`) added the two new required date params — `month_start`/`month_end` for `filing_deadline_day`/`internal_offset_days` now derive from `period_end`, never from `current_date` (the bug this task existed to fix) — and both are validated non-null with `period_end >= period_start` before anything else runs. |
+| `_generate_period_work_core(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated. Task 8 added `requires_submission`/`requires_review` copy-through from the template. Task 11 (`20260823090000`) added the two new required date params — `month_start`/`month_end` for `filing_deadline_day`/`internal_offset_days` now derive from `period_end`, never from `current_date` (the bug this task existed to fix) — and both are validated non-null with `period_end >= period_start` before anything else runs. Task 12 (`20260824090000`, signature unchanged) left-joins the active `deadline_rules` row per template instead of reading `service_templates.filing_deadline_day` directly — no active rule means `external_due_date` stays `NULL`, never a guess. |
 | `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | NULL-safe + grant-restricted to `authenticated` as of Task 9 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Fixed bug class"); `add_client_credential`/`reveal_client_credential` additionally Vault-backed as of Task 10 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Secret setup, rotation, and recovery") |
 | `generate_period_work_for_period(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | public wrapper; NULL-safe + grant-restricted to `authenticated` as of Task 9; new required date params as of Task 11, see above |
+| `add_deadline_rule(service_template_id, financial_year_label, effective_from, effective_to, filing_deadline_day, source_title, source_url, source_reference, source_page_section, verified_date)` | DEFINER, plpgsql | `public` | Task 12 (`20260824090000`) — admin-only (stricter than the admin/reviewer pattern elsewhere, deliberately, for legal-deadline governance); the ONLY way any row enters/changes in `deadline_rules` (the table itself has no insert/update policy); atomically supersedes whatever rule was active for the template, then inserts the new one; rejects missing `source_title`/`verified_date`/out-of-range `filing_deadline_day`; `verified_by` forced from `auth.uid()`, never client-supplied. Grant-restricted to `authenticated`, anon-revoked, from its own original migration (no live-drift risk the way the older six functions had from Task 1). See [FINANCE_RULE_GOVERNANCE.md](FINANCE_RULE_GOVERNANCE.md). |
 | `set_client_attention(client_id, level, reason)` | DEFINER, plpgsql | `public` | see §0 — NOT NULL-safe, but grant-restricted to `authenticated` |
 | `pg_temp.drop_policies_for(table, cmd)` | invoker, plpgsql | n/a | migration-time helper only, session-temporary, not part of live schema after the migration finishes |
 
@@ -321,6 +323,28 @@ every row generated before this migration keeps `period` (its free-text
 label) as its only period information — NULL on the three new columns is
 intentional, not a gap to backfill (see the migration's own header for
 why a template-recurrence-based backfill was considered and rejected).
+
+### Deadline governance: `deadline_rules` replaces a bare integer (Handbook Task 12)
+
+Full detail in [FINANCE_RULE_GOVERNANCE.md](FINANCE_RULE_GOVERNANCE.md);
+summarized here for the schema record. `service_templates.
+filing_deadline_day` is legacy as of `20260824090000_deadline_governance.sql`
+— `_generate_period_work_core` no longer reads it. The governed
+replacement, `deadline_rules`, holds at most one `active` row per
+`service_template_id` (partial unique index), each requiring a
+`source_title` and `verified_date` and stamping `verified_by` from
+`auth.uid()` — enforced by `add_deadline_rule()`, the only function
+permitted to write to the table at all (zero insert/update policy,
+same defense-in-depth pattern as `client_credentials`). A template
+flagged `requires_external_deadline` with no active rule generates work
+with `external_due_date` left `NULL`, not a guess. This migration's own
+one-time backfill (`update service_templates set
+requires_external_deadline = true where filing_deadline_day is not
+null`) sets the CATEGORY flag from existing data — it does not fabricate
+or carry forward any date value, and does not insert any `deadline_rules`
+row; every template that previously had a `filing_deadline_day` value
+generates with an unset external deadline, flagged for verification,
+until an admin enters a real, sourced rule live.
 
 ## 3. Confirmed live drift (2026-08-14)
 

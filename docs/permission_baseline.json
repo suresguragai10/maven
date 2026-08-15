@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T08:47:10.891Z",
-    "migrationCount": 23
+    "generatedAt": "2026-08-15T09:10:00.674Z",
+    "migrationCount": 24
   },
   "results": [
     {
@@ -110,7 +110,7 @@
       "allowed": true,
       "expectedSecure": "allow",
       "secure": true,
-      "note": "3 row(s)"
+      "note": "4 row(s)"
     },
     {
       "area": "clients/client_services",
@@ -1010,7 +1010,7 @@
       "allowed": true,
       "expectedSecure": "allow",
       "secure": true,
-      "note": "succeeded, count=1"
+      "note": "succeeded, count=2"
     },
     {
       "area": "recurring generation functions",
@@ -1100,7 +1100,7 @@
       "allowed": true,
       "expectedSecure": "allow",
       "secure": true,
-      "note": "first created 1, second created 0 — idempotent, no duplicate work_items row"
+      "note": "first created 2, second created 0 — idempotent, no duplicate work_items row"
     },
     {
       "area": "period normalization (Handbook Task 11)",
@@ -1130,6 +1130,123 @@
       "note": "p_period_end cannot be before p_period_start."
     },
     {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "SELECT deadline_rules as a plain employee",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) — reading the rule (not writing it) is fine for anyone authenticated"
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "Direct INSERT into deadline_rules, even as admin (bypassing add_deadline_rule)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"deadline_rules\""
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "CALL add_deadline_rule as a plain employee",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Only an admin can add or update a deadline rule."
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "CALL add_deadline_rule as reviewer",
+      "identity": "reviewerA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Only an admin can add or update a deadline rule."
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "CALL add_deadline_rule as anonymous",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "permission denied for function add_deadline_rule"
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "CALL add_deadline_rule with no source_title",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "A source title is required — a deadline rule cannot be added without a citation."
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "CALL add_deadline_rule with no verified_date",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "A verified date is required."
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "CALL add_deadline_rule with filing_deadline_day = 32 (out of range)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "filing_deadline_day must be between 1 and 31."
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "Add a second rule for a template that already has an active one — must supersede, not duplicate",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "exactly 1 active row (day 28), old rule correctly superseded and linked"
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "Generate work for a template with requires_external_deadline=true but no active rule — external must stay unset, never guessed",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external_due_date and internal_due_date both correctly NULL — no fabricated deadline"
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "Generate work for the same template after a rule is added — external now derives from the governed rule",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external_due_date=2026-03-20, matches the new rule's day 20"
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "Manually override external_due_date on an existing work item — must be logged to work_activity",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "work_activity recorded: \"Internal: — → —. Filing: — → 2026-12-25\""
+    },
+    {
+      "area": "deadline_rules governance (Handbook Task 12)",
+      "action": "has_function_privilege(anon, add_deadline_rule, EXECUTE) — direct grant inspection",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "anon_can_execute = false"
+    },
+    {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text, p_period_start date, p_period_end date)",
       "identity": "n/a (catalog check)",
@@ -1146,6 +1263,15 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on add_deadline_rule(p_service_template_id uuid, p_financial_year_label text, p_effective_from date, p_effective_to date, p_filing_deadline_day integer, p_source_title text, p_source_url text, p_source_reference text, p_source_page_section text, p_verified_date date)",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

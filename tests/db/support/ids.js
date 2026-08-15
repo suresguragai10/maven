@@ -38,6 +38,14 @@ const CLIENT_SERVICE_QUARTERLY = { id: 'cccccccc-0000-0000-0000-000000000004' };
 const SERVICE_TEMPLATE_YEARLY = { id: 'cccccccc-0000-0000-0000-000000000005', title: 'Annual Tax Return' };
 const CLIENT_SERVICE_YEARLY = { id: 'cccccccc-0000-0000-0000-000000000006' };
 
+// Handbook Task 12: a monthly template explicitly flagged requires_
+// external_deadline = true but with NO deadline_rules row seeded for it
+// -- the deliberate "governance not set up yet" fixture, so
+// deadline_governance.matrix.js can prove generation leaves external_
+// due_date unset (never guesses) until an admin adds a rule live.
+const SERVICE_TEMPLATE_UNGOVERNED = { id: 'cccccccc-0000-0000-0000-000000000007', title: 'Ungoverned Monthly Filing' };
+const CLIENT_SERVICE_UNGOVERNED = { id: 'cccccccc-0000-0000-0000-000000000008' };
+
 const WORK_ITEMS = {
   // Client scope, employeeA/reviewerA's own item, ordinary in-progress status.
   normal: { id: 'dddddddd-0000-0000-0000-000000000001', clientId: CLIENTS.alpha.id, title: 'Alpha VAT Return - Shrawan' },
@@ -63,4 +71,5 @@ const TEST_VAULT_PASSPHRASE = 'local-test-harness-passphrase-never-used-in-produ
 module.exports = {
   IDENTITIES, ANON, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE,
   SERVICE_TEMPLATE_QUARTERLY, CLIENT_SERVICE_QUARTERLY, SERVICE_TEMPLATE_YEARLY, CLIENT_SERVICE_YEARLY,
+  SERVICE_TEMPLATE_UNGOVERNED, CLIENT_SERVICE_UNGOVERNED,
 };

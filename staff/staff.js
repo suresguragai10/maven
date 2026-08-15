@@ -111,6 +111,7 @@
     profiles: [],
     clients: [],
     templates: [],
+    deadlineRules: [],
     settings: Object.assign({}, WORKFLOW_SETTING_DEFAULTS),
     view: 'today',
     workId: null,
@@ -311,16 +312,26 @@
   }
   // Explicitly labeled so it's never ambiguous which date is which —
   // used everywhere a work item's due date shows in list form (Today,
-  // My Work, All Work, Deadlines). Internal is the primary/urgency date
-  // (see isOverdue/effectiveDue); filing only appears when it's set and
-  // actually different, so a work item with just one date doesn't show
-  // a redundant second label.
+  // My Work, All Work, Deadlines). Internal Target is the primary/urgency
+  // date (see isOverdue/effectiveDue); External only appears when it's
+  // set and actually different, so a work item with just one date
+  // doesn't show a redundant second label.
+  //
+  // Handbook Task 12: a work item with NEITHER date set is no longer
+  // just "No due date" — if its template is flagged requires_external_
+  // deadline and no governed deadline_rules row has fired yet (or ever
+  // existed), that's a real gap that should be visibly flagged, not
+  // presented the same as ordinary work that genuinely has no deadline
+  // (e.g. Firm Work, or a Client Work template with no filing deadline
+  // at all).
   function dueDateText(w) {
     if (w.internal_due_date && w.external_due_date && w.internal_due_date !== w.external_due_date) {
-      return 'Internal ' + fmtDate(w.internal_due_date) + ' · Filing ' + fmtDate(w.external_due_date);
+      return 'Internal Target ' + fmtDate(w.internal_due_date) + ' · External ' + fmtDate(w.external_due_date);
     }
-    if (w.internal_due_date) return 'Internal ' + fmtDate(w.internal_due_date);
-    if (w.external_due_date) return 'Filing ' + fmtDate(w.external_due_date);
+    if (w.internal_due_date) return 'Internal Target ' + fmtDate(w.internal_due_date);
+    if (w.external_due_date) return 'External ' + fmtDate(w.external_due_date);
+    var tmpl = templateById(w.service_template_id);
+    if (tmpl && tmpl.requires_external_deadline) return 'Deadline requires verification';
     return 'No due date';
   }
   // A waiting-on-client requirement counts as "waiting too long" once its
@@ -342,6 +353,20 @@
   }
   function templateById(id) {
     return state.templates.find(function (t) { return t.id === id; }) || null;
+  }
+  // Handbook Task 12: the single currently-active deadline_rules row for
+  // a template, or null if none exists yet — mirrors the DB's own
+  // deadline_rules_one_active_per_template unique index (at most one
+  // active row per template), so this lookup is never ambiguous.
+  function activeDeadlineRuleFor(templateId) {
+    return state.deadlineRules.find(function (r) { return r.service_template_id === templateId && r.status === 'active'; }) || null;
+  }
+  // Full history for a template (active first, then superseded newest
+  // first — state.deadlineRules is already ordered by created_at desc),
+  // for the Templates page's "trace this deadline to its approved
+  // rule/version" history view.
+  function deadlineRuleHistoryFor(templateId) {
+    return state.deadlineRules.filter(function (r) { return r.service_template_id === templateId; });
   }
   function profileName(id) {
     var p = state.profiles.find(function (x) { return x.id === id; });
@@ -438,7 +463,7 @@
     // otherwise fail silently (the header renders, then nothing) — this
     // surfaces it instead of leaving a blank page with no clue why.
     try {
-      await Promise.all([loadProfiles(), loadClients(), loadTemplates(), loadWorkflowSettings()]);
+      await Promise.all([loadProfiles(), loadClients(), loadTemplates(), loadDeadlineRules(), loadWorkflowSettings()]);
       renderSidebar();
       routeFromHash();
       if (isAdmin()) runAutoGenerateOnOpen();
@@ -473,6 +498,18 @@
     var res = await sb.from('service_templates').select('*').order('title');
     if (res.error) { toast('Could not load service templates: ' + res.error.message, true); return; }
     state.templates = res.data || [];
+  }
+  // Handbook Task 12: the full deadline_rules table (active AND
+  // superseded rows) — loaded once, like templates/clients/profiles.
+  // Kept small deliberately (see docs/FINANCE_RULE_GOVERNANCE.md): one
+  // row per service per verification event, not per work item. Superseded
+  // rows are included so the Templates page can show a rule's full
+  // history, satisfying "trace every statutory deadline to a specific
+  // approved rule/version."
+  async function loadDeadlineRules() {
+    var res = await sb.from('deadline_rules').select('*').order('created_at', { ascending: false });
+    if (res.error) { toast('Could not load deadline rules: ' + res.error.message, true); return; }
+    state.deadlineRules = res.data || [];
   }
   // Loads into state.settings on top of WORKFLOW_SETTING_DEFAULTS (not
   // replacing it), so a missing row, a blank value, or a non-numeric
@@ -2252,9 +2289,9 @@
     wrap.appendChild(field('Reviewer', reviewerSel));
 
     var internalDueInput = el('input'); internalDueInput.type = 'date';
-    wrap.appendChild(field('Internal Due', internalDueInput));
+    wrap.appendChild(field('Internal Target', internalDueInput));
     var externalDueInput = el('input'); externalDueInput.type = 'date';
-    wrap.appendChild(field('Filing / Client Due (optional)', externalDueInput));
+    wrap.appendChild(field('External / Filing Deadline (optional)', externalDueInput));
 
     var prioritySel = el('select');
     ['low', 'normal', 'high'].forEach(function (p) { prioritySel.appendChild(new Option(p.charAt(0).toUpperCase() + p.slice(1), p)); });
@@ -2264,11 +2301,17 @@
     var descInput = el('textarea'); descInput.rows = 3;
     wrap.appendChild(field('Description / Instructions', descInput));
 
-    // Same day-of-month-in-the-current-month rule used by bulk generation
-    // (see supabase/migrations/20260811091000_recurring_work_generation.
-    // sql) — clamps to the month's real last day, then derives internal
-    // FROM filing (not independently). Only fills a date the user hasn't
-    // already typed something into, and stays fully editable/overridable
+    // Handbook Task 12: prefills from the template's ACTIVE, governed
+    // deadline_rules row (state.deadlineRules), never from a raw
+    // filing_deadline_day integer — a template with no active rule
+    // simply doesn't prefill an external date, same "leave it unset
+    // rather than guess" principle used at bulk-generation time. Still
+    // uses this month as the basis (unlike bulk generation, which takes
+    // an explicit requested period) because this modal creates a work
+    // item for right now, not a backfilled past/future period. Clamps to
+    // the month's real last day, then derives internal FROM external
+    // (not independently). Only fills a date the user hasn't already
+    // typed something into, and stays fully editable/overridable
     // afterward like any default — internal_due_date and external_due_
     // date remain two separate fields either can be changed without
     // touching the other.
@@ -2289,9 +2332,12 @@
       if (!titleInput.value.trim() || titleInput.dataset.auto === '1') { titleInput.value = t.title; titleInput.dataset.auto = '1'; }
       if (t.default_assignee_id && isReviewerOrAdmin()) assigneeSel.value = t.default_assignee_id;
       if (t.default_reviewer_id) reviewerSel.value = t.default_reviewer_id;
-      if (t.filing_deadline_day != null) {
-        if (!externalDueInput.value) externalDueInput.value = computeFilingDate(t.filing_deadline_day);
+      var rule = activeDeadlineRuleFor(t.id);
+      if (rule) {
+        if (!externalDueInput.value) externalDueInput.value = computeFilingDate(rule.filing_deadline_day);
         if (t.internal_offset_days != null && !internalDueInput.value) internalDueInput.value = subtractDays(externalDueInput.value, t.internal_offset_days);
+      } else if (t.requires_external_deadline) {
+        toast('No verified deadline rule exists yet for ' + t.title + ' — enter the External / Filing Deadline manually, or set one up on the Templates page first.');
       }
     }
     titleInput.addEventListener('input', function () { titleInput.dataset.auto = '0'; });
@@ -2457,8 +2503,16 @@
     metaGrid.appendChild(metaItem('Service', template ? template.title : 'Ad-hoc', 'idcard'));
     metaGrid.appendChild(metaItem('Assignee', profileName(work.assignee_id), 'user', true));
     metaGrid.appendChild(metaItem('Reviewer', work.reviewer_id ? profileName(work.reviewer_id) : '—', 'user', !!work.reviewer_id));
-    metaGrid.appendChild(metaItem('Internal Due', fmtDate(work.internal_due_date), 'calendar'));
-    metaGrid.appendChild(metaItem('Filing Due', fmtDate(work.external_due_date), 'calendar'));
+    metaGrid.appendChild(metaItem('Internal Target', fmtDate(work.internal_due_date), 'calendar'));
+    // Handbook Task 12: distinct from "—" (no date, and none needed) —
+    // a template flagged requires_external_deadline with no external_
+    // due_date set means a governed rule hasn't been entered yet, not
+    // that this work genuinely has no filing deadline.
+    var needsDeadlineVerification = !work.external_due_date && !!(template && template.requires_external_deadline);
+    var externalDeadlineText = work.external_due_date ? fmtDate(work.external_due_date) : (needsDeadlineVerification ? 'Requires verification' : '—');
+    var externalDeadlineItem = metaItem('External / Filing Deadline', externalDeadlineText, 'calendar');
+    if (needsDeadlineVerification) { var edv = externalDeadlineItem.querySelector('.value'); if (edv) edv.style.color = 'var(--amber)'; }
+    metaGrid.appendChild(externalDeadlineItem);
     metaGrid.appendChild(metaItem('Priority', work.priority.charAt(0).toUpperCase() + work.priority.slice(1), 'flag'));
     overviewPane.appendChild(metaGrid);
 
@@ -2853,9 +2907,9 @@
     var periodInput = el('input'); periodInput.type = 'text'; periodInput.value = work.period || ''; periodInput.placeholder = 'e.g. Shrawan 2083';
     wrap.appendChild(field('Period (optional)', periodInput));
     var internalDueInput = el('input'); internalDueInput.type = 'date'; internalDueInput.value = work.internal_due_date || '';
-    wrap.appendChild(field('Internal Due', internalDueInput));
+    wrap.appendChild(field('Internal Target', internalDueInput));
     var externalDueInput = el('input'); externalDueInput.type = 'date'; externalDueInput.value = work.external_due_date || '';
-    wrap.appendChild(field('Filing / Client Due (optional)', externalDueInput));
+    wrap.appendChild(field('External / Filing Deadline (optional)', externalDueInput));
 
     var assigneeSel, reviewerSel;
     if (canReassign) {
@@ -3429,7 +3483,9 @@
         var tmplMeta = el('div', 'meta');
         var tmplBits = [tmpl.category, tmpl.recurrence === 'none' ? 'One-off' : tmpl.recurrence.charAt(0).toUpperCase() + tmpl.recurrence.slice(1)];
         if (tmpl.requires_submission) tmplBits.push('Requires submission');
-        if (tmpl.filing_deadline_day != null) tmplBits.push('Filing day ' + tmpl.filing_deadline_day + (tmpl.internal_offset_days != null ? ' (internal -' + tmpl.internal_offset_days + 'd)' : ''));
+        var tmplRule = activeDeadlineRuleFor(tmpl.id);
+        if (tmplRule) tmplBits.push('Filing day ' + tmplRule.filing_deadline_day + (tmpl.internal_offset_days != null ? ' (internal -' + tmpl.internal_offset_days + 'd)' : ''));
+        else if (tmpl.requires_external_deadline) tmplBits.push('Filing deadline requires verification');
         tmplMeta.textContent = tmplBits.join(' · ');
         body.appendChild(tmplMeta);
       }
@@ -4045,14 +4101,34 @@
   function templateCard(t) {
     var card = el('div', 'card' + (t.is_active ? '' : ' is-inactive'));
     var h2 = el('h2'); h2.textContent = t.title + (t.is_active ? '' : ' — Inactive'); card.appendChild(h2);
+    var rule = activeDeadlineRuleFor(t.id);
     var meta = el('p', 'desc');
     meta.textContent = (t.recurrence !== 'none' ? 'Recurs ' + t.recurrence : 'One-off') +
       (t.requires_submission ? ' · Includes a submission step' : '') +
       (t.default_assignee_id ? ' · Default assignee: ' + profileName(t.default_assignee_id) : '') +
-      (t.filing_deadline_day != null ? ' · Filing due on day ' + t.filing_deadline_day + ' of the month' : '') +
-      (t.filing_deadline_day != null && t.internal_offset_days != null ? ' · Internal due ' + t.internal_offset_days + 'd before filing' : '');
+      (rule ? ' · Filing due on day ' + rule.filing_deadline_day + ' of the month' : '') +
+      (rule && t.internal_offset_days != null ? ' · Internal target ' + t.internal_offset_days + 'd before filing' : '');
     card.appendChild(meta);
     if (t.description) { var d = el('p'); d.textContent = t.description; card.appendChild(d); }
+    // Handbook Task 12: every statutory deadline traces to a specific
+    // approved rule, right here — its source citation and who verified
+    // it, or a visible flag that none exists yet (never a silently
+    // reused, unsourced number).
+    if (t.requires_external_deadline) {
+      var deadlineInfo = el('p', 'desc');
+      if (rule) {
+        deadlineInfo.innerHTML = '';
+        deadlineInfo.appendChild(icon('calendar'));
+        deadlineInfo.appendChild(document.createTextNode(
+          ' Deadline rule: day ' + rule.filing_deadline_day + ' (' + rule.financial_year_label + ') — verified ' + fmtDate(rule.verified_date) +
+          ' by ' + profileName(rule.verified_by) + ', source: ' + rule.source_title + (rule.source_url ? ' (' + rule.source_url + ')' : '')
+        ));
+      } else {
+        deadlineInfo.style.color = 'var(--amber)';
+        deadlineInfo.textContent = '⚠ No verified deadline rule yet — filing deadlines will not auto-generate for this service until one is added.';
+      }
+      card.appendChild(deadlineInfo);
+    }
     var items = t.service_template_items || [];
     STAGES.forEach(function (stage) {
       var stageItems = items.filter(function (i) { return i.stage === stage; }).sort(function (a, b) { return a.sort_order - b.sort_order; });
@@ -4079,6 +4155,13 @@
       editBtn.addEventListener('click', function () { openEditTemplateModal(t); });
       card.appendChild(editBtn);
 
+      if (t.requires_external_deadline) {
+        var ruleBtn = el('button', 'btn btn-outline btn-sm'); ruleBtn.type = 'button';
+        ruleBtn.style.marginTop = '14px'; ruleBtn.style.marginLeft = '8px'; ruleBtn.textContent = 'Manage Deadline Rule';
+        ruleBtn.addEventListener('click', function () { openDeadlineRuleModal(t); });
+        card.appendChild(ruleBtn);
+      }
+
       var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
       toggleBtn.style.marginTop = '14px'; toggleBtn.style.marginLeft = '8px';
       toggleBtn.textContent = t.is_active ? 'Deactivate' : 'Reactivate';
@@ -4093,6 +4176,112 @@
       card.appendChild(toggleBtn);
     }
     return card;
+  }
+
+  // Handbook Task 12: the entire governed-deadline-rule surface for one
+  // template — full history (so every filing deadline this app has ever
+  // computed traces to a specific, dated, sourced rule/version) plus the
+  // one and only way to add a new one. add_deadline_rule() itself
+  // enforces admin-only, a required source_title, and a required
+  // verified_date server-side — this form mirrors those same
+  // requirements client-side just for a faster error message, not as the
+  // real gate.
+  function openDeadlineRuleModal(t) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Deadline Rule — ' + t.title;
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var history = deadlineRuleHistoryFor(t.id);
+    if (history.length) {
+      var histLabel = el('div', 'section-h'); histLabel.textContent = 'History'; wrap.appendChild(histLabel);
+      var histList = el('div');
+      history.forEach(function (r) {
+        var row = el('div'); row.style.cssText = 'border-bottom:1px solid var(--border);padding:8px 0;font-size:.87rem;';
+        var badge = el('span', 'badge badge-' + (r.status === 'active' ? 'approved' : 'completed'));
+        badge.textContent = r.status === 'active' ? 'Active' : 'Superseded';
+        badge.style.marginRight = '8px';
+        row.appendChild(badge);
+        row.appendChild(document.createTextNode(
+          'Day ' + r.filing_deadline_day + ' · ' + r.financial_year_label +
+          (r.effective_from || r.effective_to ? ' (' + (r.effective_from ? fmtDate(r.effective_from) : '…') + ' – ' + (r.effective_to ? fmtDate(r.effective_to) : '…') + ')' : '')
+        ));
+        var srcLine = el('div'); srcLine.style.cssText = 'color:var(--ink-soft);margin-top:2px;';
+        srcLine.textContent = 'Source: ' + r.source_title + (r.source_page_section ? ', ' + r.source_page_section : '') +
+          (r.source_reference ? ' (' + r.source_reference + ')' : '') +
+          ' · Verified ' + fmtDate(r.verified_date) + ' by ' + profileName(r.verified_by);
+        row.appendChild(srcLine);
+        if (r.source_url) {
+          var srcLink = el('div'); srcLink.style.cssText = 'color:var(--ink-soft);word-break:break-all;';
+          srcLink.textContent = r.source_url;
+          row.appendChild(srcLink);
+        }
+        histList.appendChild(row);
+      });
+      wrap.appendChild(histList);
+    } else {
+      var noHist = el('p', 'desc'); noHist.textContent = 'No deadline rule has ever been recorded for this service.';
+      wrap.appendChild(noHist);
+    }
+
+    var formLabel = el('div', 'section-h'); formLabel.style.marginTop = '18px'; formLabel.textContent = 'Add / Replace Rule';
+    wrap.appendChild(formLabel);
+    var formNote = el('p', 'desc');
+    formNote.textContent = 'DO NOT guess this from memory or a generic website — enter it only from an owner-approved primary source (Finance Act/IRD notice, confirmed with the firm owner). Saving this replaces whichever rule is currently active.';
+    wrap.appendChild(formNote);
+
+    var fyInput = el('input'); fyInput.type = 'text'; fyInput.placeholder = 'e.g. FY 2082/83 onwards';
+    wrap.appendChild(field('Financial Year / Effective Period Label', fyInput));
+    var effFromInput = el('input'); effFromInput.type = 'date';
+    wrap.appendChild(field('Effective From (optional)', effFromInput));
+    var effToInput = el('input'); effToInput.type = 'date';
+    wrap.appendChild(field('Effective To (optional)', effToInput));
+    var dayInput = el('input'); dayInput.type = 'number'; dayInput.min = '1'; dayInput.max = '31'; dayInput.placeholder = 'e.g. 25';
+    wrap.appendChild(field('Filing Deadline — day of month', dayInput));
+    var sourceTitleInput = el('input'); sourceTitleInput.type = 'text'; sourceTitleInput.placeholder = 'e.g. Income Tax Act 2058, Finance Act 2082 amendment';
+    wrap.appendChild(field('Source Title', sourceTitleInput));
+    var sourceUrlInput = el('input'); sourceUrlInput.type = 'text'; sourceUrlInput.placeholder = 'https://... (optional)';
+    wrap.appendChild(field('Source URL (optional)', sourceUrlInput));
+    var sourceRefInput = el('input'); sourceRefInput.type = 'text'; sourceRefInput.placeholder = 'e.g. IRD Circular 2082/083-45 (optional)';
+    wrap.appendChild(field('Source Reference (optional)', sourceRefInput));
+    var sourcePageInput = el('input'); sourcePageInput.type = 'text'; sourcePageInput.placeholder = 'e.g. Page 12, Section 3.2 (optional)';
+    wrap.appendChild(field('Source Page/Section (optional)', sourcePageInput));
+    var verifiedDateInput = el('input'); verifiedDateInput.type = 'date'; verifiedDateInput.value = localDateStr();
+    wrap.appendChild(field('Verified Date', verifiedDateInput));
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Rule';
+    saveBtn.addEventListener('click', async function () {
+      if (!fyInput.value.trim()) { toast('Give the financial year / effective period a label.', true); return; }
+      if (!dayInput.value.trim()) { toast('Set the filing deadline day of month.', true); return; }
+      if (!sourceTitleInput.value.trim()) { toast('A source title is required — this cannot be saved without a citation.', true); return; }
+      if (!verifiedDateInput.value) { toast('A verified date is required.', true); return; }
+      saveBtn.disabled = true;
+      var res = await sb.rpc('add_deadline_rule', {
+        p_service_template_id: t.id,
+        p_financial_year_label: fyInput.value.trim(),
+        p_effective_from: effFromInput.value || null,
+        p_effective_to: effToInput.value || null,
+        p_filing_deadline_day: parseInt(dayInput.value, 10),
+        p_source_title: sourceTitleInput.value.trim(),
+        p_source_url: sourceUrlInput.value.trim() || null,
+        p_source_reference: sourceRefInput.value.trim() || null,
+        p_source_page_section: sourcePageInput.value.trim() || null,
+        p_verified_date: verifiedDateInput.value,
+      });
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save rule: ' + res.error.message, true); return; }
+      await loadDeadlineRules();
+      closeModal();
+      toast('Deadline rule saved and is now active.');
+      render();
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
   }
 
   // Reusable checklist editor shared by New/Edit Template — one section per
@@ -4230,12 +4419,23 @@
     state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { defaultReviewerSel.appendChild(new Option(p.full_name, p.id)); });
     wrap.appendChild(field('Default Reviewer (optional)', defaultReviewerSel));
 
-    // Optional deadline rule: days after a work item's own generation date
-    // (not the period's calendar start, which this app can't safely
-    // compute — see the migration note). Leave blank to keep due dates
-    // manual, same as before this existed.
-    var filingDayInput = el('input'); filingDayInput.type = 'number'; filingDayInput.min = '1'; filingDayInput.max = '31'; filingDayInput.placeholder = 'e.g. 25';
-    wrap.appendChild(field('Filing/Client Deadline — day of month (optional)', filingDayInput));
+    // Handbook Task 12: the statutory filing day-of-month is no longer set
+    // here directly — a legal deadline needs a source citation and a
+    // verified date, which this checkbox-and-number-field modal has no
+    // room for, and typing a bare day-of-month in here with no
+    // verification is exactly the "believable guess" this task exists to
+    // close off. This checkbox only marks WHETHER the category has a
+    // statutory deadline at all; the actual governed rule (day of month,
+    // source, verified-by) is entered separately via "Manage Deadline
+    // Rule" on the template card, once the template itself exists.
+    var requiresExternalDeadlineWrap = el('div', 'f');
+    var requiresExternalDeadlineLabel = el('label');
+    var requiresExternalDeadlineCb = el('input'); requiresExternalDeadlineCb.type = 'checkbox'; requiresExternalDeadlineCb.style.width = 'auto'; requiresExternalDeadlineCb.style.marginRight = '8px';
+    requiresExternalDeadlineLabel.appendChild(requiresExternalDeadlineCb);
+    requiresExternalDeadlineLabel.appendChild(document.createTextNode('This service has a statutory filing deadline (govern it separately via "Manage Deadline Rule" after saving)'));
+    requiresExternalDeadlineWrap.appendChild(requiresExternalDeadlineLabel);
+    wrap.appendChild(requiresExternalDeadlineWrap);
+
     var internalOffsetInput = el('input'); internalOffsetInput.type = 'number'; internalOffsetInput.min = '0'; internalOffsetInput.placeholder = 'e.g. 3';
     // Pre-filled from Workflow Settings (V2 Task 18) as a starting
     // suggestion for a BRAND NEW template only — still fully editable/
@@ -4261,7 +4461,7 @@
         requires_review: reviewCb.checked,
         default_assignee_id: defaultAssigneeSel.value || null,
         default_reviewer_id: defaultReviewerSel.value || null,
-        filing_deadline_day: filingDayInput.value.trim() ? parseInt(filingDayInput.value, 10) : null,
+        requires_external_deadline: requiresExternalDeadlineCb.checked,
         internal_offset_days: internalOffsetInput.value.trim() ? parseInt(internalOffsetInput.value, 10) : null,
       }).select().single();
       if (res.error) { toast('Could not create template: ' + res.error.message, true); return; }
@@ -4354,9 +4554,18 @@
     defaultReviewerSel.value = t.default_reviewer_id || '';
     wrap.appendChild(field('Default Reviewer (optional)', defaultReviewerSel));
 
-    var filingDayInput = el('input'); filingDayInput.type = 'number'; filingDayInput.min = '1'; filingDayInput.max = '31'; filingDayInput.placeholder = 'e.g. 25';
-    filingDayInput.value = t.filing_deadline_day != null ? t.filing_deadline_day : '';
-    wrap.appendChild(field('Filing/Client Deadline — day of month (optional)', filingDayInput));
+    // Handbook Task 12: see the New Template modal's matching comment —
+    // the statutory day-of-month is governed separately (source-cited,
+    // verified-by, versioned) via "Manage Deadline Rule" on the template
+    // card, not editable here as a bare number.
+    var requiresExternalDeadlineWrap = el('div', 'f');
+    var requiresExternalDeadlineLabel = el('label');
+    var requiresExternalDeadlineCb = el('input'); requiresExternalDeadlineCb.type = 'checkbox'; requiresExternalDeadlineCb.checked = !!t.requires_external_deadline; requiresExternalDeadlineCb.style.width = 'auto'; requiresExternalDeadlineCb.style.marginRight = '8px';
+    requiresExternalDeadlineLabel.appendChild(requiresExternalDeadlineCb);
+    requiresExternalDeadlineLabel.appendChild(document.createTextNode('This service has a statutory filing deadline (govern it separately via "Manage Deadline Rule")'));
+    requiresExternalDeadlineWrap.appendChild(requiresExternalDeadlineLabel);
+    wrap.appendChild(requiresExternalDeadlineWrap);
+
     var internalOffsetInput = el('input'); internalOffsetInput.type = 'number'; internalOffsetInput.min = '0'; internalOffsetInput.placeholder = 'e.g. 3';
     internalOffsetInput.value = t.internal_offset_days != null ? t.internal_offset_days : '';
     wrap.appendChild(field('Internal Deadline — days before filing (optional)', internalOffsetInput));
@@ -4379,7 +4588,7 @@
         requires_review: reviewCb.checked,
         default_assignee_id: defaultAssigneeSel.value || null,
         default_reviewer_id: defaultReviewerSel.value || null,
-        filing_deadline_day: filingDayInput.value.trim() ? parseInt(filingDayInput.value, 10) : null,
+        requires_external_deadline: requiresExternalDeadlineCb.checked,
         internal_offset_days: internalOffsetInput.value.trim() ? parseInt(internalOffsetInput.value, 10) : null,
       }).eq('id', t.id);
       if (res.error) { saveBtn.disabled = false; toast('Could not save: ' + res.error.message, true); return; }

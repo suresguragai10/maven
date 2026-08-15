@@ -119,7 +119,12 @@ module.exports = async function periodNormalizationMatrix({ asRole, IDENTITIES, 
     const second = await tryQuery(c, `select public.generate_period_work_for_period($1, $2, $3, $4)`, ['Magh 2082 (dup test)', 'monthly', '2026-01-15', '2026-02-13']);
     const firstCount = first.rows[0]?.generate_period_work_for_period;
     const secondCount = second.rows[0]?.generate_period_work_for_period;
-    const ok = first.ok && second.ok && firstCount === 1 && secondCount === 0;
+    // firstCount isn't pinned to a literal (it's however many active
+    // monthly client_services the seed happens to have -- currently more
+    // than one, see SERVICE_TEMPLATE_UNGOVERNED) -- idempotency is about
+    // the SECOND identical call creating nothing new, not the exact size
+    // of the first.
+    const ok = first.ok && second.ok && firstCount > 0 && secondCount === 0;
     record({
       area, action: 'Call generate_period_work_for_period twice for the identical client+service+period', identity: 'admin',
       allowed: ok, expectedSecure: 'allow',
