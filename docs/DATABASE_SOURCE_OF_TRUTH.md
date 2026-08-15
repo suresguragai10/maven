@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260824090000` (last applied)
+## 2. Expected schema, as of migration `20260825090000` (last applied)
 
 ### Tables (17)
 
@@ -154,7 +154,7 @@ original source, not a reconstruction.
 | `work_comments` | reconstructed (bundled in 20260811090500) | enabled | — |
 | `work_waiting_items` | reconstructed (bundled in 20260811090500) | enabled | `requested_by`, `follow_up_date`, `last_followed_up_at`, `follow_up_count`, `note` (added across the Waiting-checklist work, pre-handbook) |
 | `work_activity` | reconstructed (bundled in 20260811090500) | enabled | `source` text, `'system'`\|`'client'`, default `'system'` (20260819090000) |
-| `client_services` | reconstructed (20260811090600) | enabled | `start_period`, `end_period` (Task 12-era) |
+| `client_services` | reconstructed (20260811090600) | enabled | `start_period`, `end_period` (Task 12-era, free-text/documentation only, never compared); `start_date`, `end_date` (20260825090000, Task 13) — explicit Gregorian, DB-enforced bounds on generation eligibility |
 | `client_credentials` | original (20260811090700) | enabled, **zero policies** | — |
 | `personal_todos` | original (20260811090800) | enabled | — |
 | `app_settings` | original (20260811090900) | enabled | `app_settings_insert_admin` policy (Task 18) |
@@ -245,7 +245,7 @@ findings as of Task 9.
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
 | `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by` |
 | `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
-| `_generate_period_work_core(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated. Task 8 added `requires_submission`/`requires_review` copy-through from the template. Task 11 (`20260823090000`) added the two new required date params — `month_start`/`month_end` for `filing_deadline_day`/`internal_offset_days` now derive from `period_end`, never from `current_date` (the bug this task existed to fix) — and both are validated non-null with `period_end >= period_start` before anything else runs. Task 12 (`20260824090000`, signature unchanged) left-joins the active `deadline_rules` row per template instead of reading `service_templates.filing_deadline_day` directly — no active rule means `external_due_date` stays `NULL`, never a guess. |
+| `_generate_period_work_core(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated. Task 8 added `requires_submission`/`requires_review` copy-through from the template. Task 11 (`20260823090000`) added the two new required date params — `month_start`/`month_end` for `filing_deadline_day`/`internal_offset_days` now derive from `period_end`, never from `current_date` (the bug this task existed to fix) — and both are validated non-null with `period_end >= period_start` before anything else runs. Task 12 (`20260824090000`, signature unchanged) left-joins the active `deadline_rules` row per template instead of reading `service_templates.filing_deadline_day` directly — no active rule means `external_due_date` stays `NULL`, never a guess. Task 13 (`20260825090000`, signature unchanged) adds `client_services.start_date`/`end_date` window filtering to the eligibility `WHERE`; fixes `created_by` to `auth.uid()` (the real caller) instead of the arbitrary assignee-fallback admin; skips (not crashes on) a service with neither its own assignee nor any active admin to fall back to. |
 | `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | NULL-safe + grant-restricted to `authenticated` as of Task 9 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Fixed bug class"); `add_client_credential`/`reveal_client_credential` additionally Vault-backed as of Task 10 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Secret setup, rotation, and recovery") |
 | `generate_period_work_for_period(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | public wrapper; NULL-safe + grant-restricted to `authenticated` as of Task 9; new required date params as of Task 11, see above |
 | `add_deadline_rule(service_template_id, financial_year_label, effective_from, effective_to, filing_deadline_day, source_title, source_url, source_reference, source_page_section, verified_date)` | DEFINER, plpgsql | `public` | Task 12 (`20260824090000`) — admin-only (stricter than the admin/reviewer pattern elsewhere, deliberately, for legal-deadline governance); the ONLY way any row enters/changes in `deadline_rules` (the table itself has no insert/update policy); atomically supersedes whatever rule was active for the template, then inserts the new one; rejects missing `source_title`/`verified_date`/out-of-range `filing_deadline_day`; `verified_by` forced from `auth.uid()`, never client-supplied. Grant-restricted to `authenticated`, anon-revoked, from its own original migration (no live-drift risk the way the older six functions had from Task 1). See [FINANCE_RULE_GOVERNANCE.md](FINANCE_RULE_GOVERNANCE.md). |
@@ -345,6 +345,48 @@ or carry forward any date value, and does not insert any `deadline_rules`
 row; every template that previously had a `filing_deadline_day` value
 generates with an unset external deadline, flagged for verification,
 until an admin enters a real, sourced rule live.
+
+### Client-service effective periods and creator-vs-assignee (Handbook Task 13)
+
+`client_services.start_period`/`end_period` had existed since before the
+handbook (free-text, e.g. "Shrawan 2083") but, per that migration's own
+comment, were "NOT compared against the period being generated" — a
+service configured with a start/end period label would still generate
+work for ANY requested period, before its start or after its end,
+because nothing ever checked. `20260825090000_client_service_effective_
+periods.sql` adds `start_date`/`end_date` (Gregorian, explicit, optional
+— same "keep the label, add an explicit Gregorian value" principle as
+Tasks 11/12) and `_generate_period_work_core`'s eligibility `WHERE` now
+requires the service's window to overlap the requested period's own
+range: `(start_date is null or start_date <= period_end) and (end_date is
+null or end_date >= period_start)`. `NULL` on either bound (every
+pre-Task-13 row) means unrestricted, matching prior behavior exactly for
+anyone who hasn't set them.
+
+Separately, verified by reading: `created_by` on every generated
+`work_items` row had always been `fallback_admin` — an arbitrary
+(unordered `LIMIT 1`), non-deterministic active admin selected only
+because `assignee_id` is `NOT NULL` and a service might have none
+configured. That fallback is legitimate for `assignee_id`; reusing it for
+`created_by` recorded whichever admin the query planner happened to pick
+as having "created" work they may have never triggered. Fixed to
+`auth.uid()` — the real caller, guaranteed non-null by
+`generate_period_work_for_period`'s own admin/reviewer authorization
+check running first. A service with neither its own `assignee_id` nor
+any active admin to fall back to now safely skips (no insert, no
+constraint-violation crash aborting the rest of the batch) rather than
+hitting `work_items.assignee_id`'s `NOT NULL` constraint mid-loop.
+
+Unchanged, re-verified rather than re-implemented: `work_items_client_
+service_period_unique` + `ON CONFLICT DO NOTHING` was already the real,
+DB-level (not frontend-only) uniqueness guarantee, and already correct
+under genuine concurrent execution — proven directly in this task's test
+matrix via two separately-committed transactions on independent
+connections, not just two sequential calls in one transaction. Editing a
+`service_templates`/`client_services` row was already structurally
+incapable of rewriting an existing `work_items` row (generation only
+ever `INSERT`s; no `UPDATE` path touches historical rows) — also
+unchanged, now covered by an explicit test rather than left assumed.
 
 ## 3. Confirmed live drift (2026-08-14)
 

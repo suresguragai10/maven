@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T09:10:00.674Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T11:33:52.269Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 24 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 25 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-154 checks run across 20 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+162 checks run across 21 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -247,6 +247,19 @@ Generated 2026-08-15T09:10:00.674Z by `node tests/db/run.js` -- **every row belo
 | Generate work for the same template after a rule is added — external now derives from the governed rule | admin | ALLOWED | ALLOW | PASS | external_due_date=2026-03-20, matches the new rule's day 20 |
 | Manually override external_due_date on an existing work item — must be logged to work_activity | admin | ALLOWED | ALLOW | PASS | work_activity recorded: "Internal: — → —. Filing: — → 2026-12-25" |
 | has_function_privilege(anon, add_deadline_rule, EXECUTE) — direct grant inspection | n/a (catalog check) | DENIED | DENY | PASS | anon_can_execute = false |
+
+### client_services effective periods (Handbook Task 13)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| Generate for a period entirely before the service's start_date | admin | ALLOWED | ALLOW | PASS | correctly skipped — no work item created before service start |
+| Generate for a period starting exactly on the service's start_date (inclusive boundary) | admin | ALLOWED | ALLOW | PASS | correctly generated — on-or-after start is allowed |
+| Generate for a period entirely after the service's end_date | admin | ALLOWED | ALLOW | PASS | correctly skipped — no work item created after service end |
+| Generate for a deactivated (is_active=false) service | admin | ALLOWED | ALLOW | PASS | correctly skipped — inactive services never generate |
+| Generate as reviewerA (who is not the service's assignee) — created_by must record reviewerA, not the assignee or any fallback admin | reviewerA | ALLOWED | ALLOW | PASS | created_by correctly = reviewerA (assignee_id = 22222222-2222-2222-2222-222222222222, a different person) |
+| Generate when a service has no assignee and no active admin exists to fall back to — must skip that service safely, without crashing or affecting other services in the same call | reviewerA | ALLOWED | ALLOW | PASS | call succeeded overall; the assignee-less service was skipped (no row, no crash); the other, properly-assigned service in the same call still generated normally |
+| Historical work is unchanged after service deactivation and template edits | admin | ALLOWED | ALLOW | PASS | work item's title/assignee/dates/status are byte-identical after deactivating its service and renaming its template |
+| Two genuinely concurrent, separately-committed generate_period_work_for_period calls for the identical period | admin (x2 connections) | ALLOWED | ALLOW | PASS | 2 total row(s) created across both calls, zero duplicate (client, service, period) combinations — the unique index held under real concurrency |
 
 ### SECURITY DEFINER function grants (catalog inspection)
 

@@ -3529,6 +3529,12 @@
       state.profiles.filter(function (p) { return p.is_active && (p.role === 'admin' || p.role === 'reviewer'); }).forEach(function (p) { svcReviewerSel.appendChild(new Option(p.full_name, p.id)); });
       var svcStartInput = el('input'); svcStartInput.type = 'text'; svcStartInput.placeholder = 'Start period (optional)'; svcStartInput.style.width = 'auto';
       var svcEndInput = el('input'); svcEndInput.type = 'text'; svcEndInput.placeholder = 'End period (optional)'; svcEndInput.style.width = 'auto';
+      // Handbook Task 13: the Gregorian dates that actually gate
+      // generation — start_period/end_period above stay purely
+      // cosmetic labels, unchanged. Leaving these blank means
+      // unrestricted, same as every service before this task.
+      var svcStartDateInput = el('input'); svcStartDateInput.type = 'date'; svcStartDateInput.title = 'Effective start date (optional) — generation skips this service before this date'; svcStartDateInput.style.width = 'auto';
+      var svcEndDateInput = el('input'); svcEndDateInput.type = 'date'; svcEndDateInput.title = 'Effective end date (optional) — generation skips this service after this date'; svcEndDateInput.style.width = 'auto';
       var addSvcBtn = el('button', 'btn btn-outline btn-sm'); addSvcBtn.type = 'button'; addSvcBtn.textContent = 'Add Service';
       addSvcBtn.addEventListener('click', async function () {
         if (!svcTemplateSel.value) { toast('Create a template first under Templates.', true); return; }
@@ -3552,6 +3558,8 @@
           reviewer_id: svcReviewerSel.value || null,
           start_period: svcStartInput.value.trim() || null,
           end_period: svcEndInput.value.trim() || null,
+          start_date: svcStartDateInput.value || null,
+          end_date: svcEndDateInput.value || null,
         });
         addSvcBtn.disabled = false;
         if (res.error) { toast('Could not add service: ' + res.error.message, true); return; }
@@ -3562,7 +3570,9 @@
         var noTmpl = el('p', 'desc'); noTmpl.textContent = 'Create an active service template first (under Templates) before adding active services.'; svcCard.appendChild(noTmpl);
       } else {
         addSvcRow.appendChild(svcTemplateSel); addSvcRow.appendChild(svcAssigneeSel); addSvcRow.appendChild(svcReviewerSel);
-        addSvcRow.appendChild(svcStartInput); addSvcRow.appendChild(svcEndInput); addSvcRow.appendChild(addSvcBtn);
+        addSvcRow.appendChild(svcStartInput); addSvcRow.appendChild(svcEndInput);
+        addSvcRow.appendChild(svcStartDateInput); addSvcRow.appendChild(svcEndDateInput);
+        addSvcRow.appendChild(addSvcBtn);
         svcCard.appendChild(addSvcRow);
       }
     }
@@ -3688,15 +3698,29 @@
     var endInput = el('input'); endInput.type = 'text'; endInput.value = s.end_period || ''; endInput.placeholder = 'e.g. Ashad 2084 — leave blank if ongoing';
     wrap.appendChild(field('End Period (optional)', endInput));
 
+    // Handbook Task 13: the Gregorian dates that actually gate
+    // generation, independent of the free-text labels above (which stay
+    // cosmetic). Leaving both blank keeps this service unrestricted.
+    var startDateInput = el('input'); startDateInput.type = 'date'; startDateInput.value = s.start_date || '';
+    wrap.appendChild(field('Effective Start Date (optional)', startDateInput));
+    var endDateInput = el('input'); endDateInput.type = 'date'; endDateInput.value = s.end_date || '';
+    wrap.appendChild(field('Effective End Date (optional) — leave blank if ongoing', endDateInput));
+
     var actions = el('div', 'modal-actions');
     var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
     saveBtn.addEventListener('click', async function () {
+      if (startDateInput.value && endDateInput.value && endDateInput.value < startDateInput.value) {
+        toast('Effective End Date cannot be before Effective Start Date.', true);
+        return;
+      }
       saveBtn.disabled = true;
       var res = await sb.from('client_services').update({
         assignee_id: assigneeSel.value || null,
         reviewer_id: reviewerSel.value || null,
         start_period: startInput.value.trim() || null,
         end_period: endInput.value.trim() || null,
+        start_date: startDateInput.value || null,
+        end_date: endDateInput.value || null,
       }).eq('id', s.id);
       saveBtn.disabled = false;
       if (res.error) { toast('Could not save: ' + res.error.message, true); return; }

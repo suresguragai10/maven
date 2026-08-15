@@ -28,6 +28,7 @@ const MATRIX_FILES = [
   'recurring_generation',
   'period_normalization',
   'deadline_governance',
+  'client_service_effective_periods',
   'security_definer_grants',
 ];
 

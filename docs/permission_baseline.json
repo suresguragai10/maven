@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T09:10:00.674Z",
-    "migrationCount": 24
+    "generatedAt": "2026-08-15T11:33:52.269Z",
+    "migrationCount": 25
   },
   "results": [
     {
@@ -1245,6 +1245,78 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "anon_can_execute = false"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Generate for a period entirely before the service's start_date",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "correctly skipped — no work item created before service start"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Generate for a period starting exactly on the service's start_date (inclusive boundary)",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "correctly generated — on-or-after start is allowed"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Generate for a period entirely after the service's end_date",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "correctly skipped — no work item created after service end"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Generate for a deactivated (is_active=false) service",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "correctly skipped — inactive services never generate"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Generate as reviewerA (who is not the service's assignee) — created_by must record reviewerA, not the assignee or any fallback admin",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "created_by correctly = reviewerA (assignee_id = 22222222-2222-2222-2222-222222222222, a different person)"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Generate when a service has no assignee and no active admin exists to fall back to — must skip that service safely, without crashing or affecting other services in the same call",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "call succeeded overall; the assignee-less service was skipped (no row, no crash); the other, properly-assigned service in the same call still generated normally"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Historical work is unchanged after service deactivation and template edits",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "work item's title/assignee/dates/status are byte-identical after deactivating its service and renaming its template"
+    },
+    {
+      "area": "client_services effective periods (Handbook Task 13)",
+      "action": "Two genuinely concurrent, separately-committed generate_period_work_for_period calls for the identical period",
+      "identity": "admin (x2 connections)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 total row(s) created across both calls, zero duplicate (client, service, period) combinations — the unique index held under real concurrency"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
