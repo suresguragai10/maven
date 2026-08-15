@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T13:44:00.581Z",
-    "migrationCount": 28
+    "generatedAt": "2026-08-15T15:01:47.540Z",
+    "migrationCount": 29
   },
   "results": [
     {
@@ -1695,6 +1695,114 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "1 row(s) - historical records are never locked out of routine editing just because they predate this rule"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with update_type='progress'",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "accepted"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with update_type='result'",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "accepted"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with update_type='blocker'",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "accepted"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with update_type='handoff'",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "accepted"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with update_type='note'",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "accepted"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with no update_type at all",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "accepted -- type is optional"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Post an update with update_type='decision_needed' (the explicitly rejected hierarchy)",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_comments\" violates check constraint \"work_comments_update_type_check\""
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Set follow_up_date on a Firm Work item",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Mark Blocked with a real reason and a follow-up date in the same write",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "project_id change is logged to work_activity as old -> new (Task 18 HISTORY requirement)",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "logged: \"Office Search → Marketing Campaign\""
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "Clearing project_id (back to no project) is also logged as old -> —",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "logged: \"Office Search → —\""
+    },
+    {
+      "area": "Firm Work async handoff (Handbook Task 18)",
+      "action": "A different active teammate can read a typed update on someone else's Firm Work (peer model, unchanged)",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

@@ -114,11 +114,18 @@ test.describe('Firm Work — list and create/edit form (Handbook Task 17)', () =
     expect(decodeURIComponent(searchReq)).toContain('internet');
   });
 
-  test('edit an existing item and reassign it — the right PATCH request is sent', async ({ page }) => {
+  // Handbook Task 18: clicking a row now navigates to a dedicated detail
+  // page (renderFirmWorkDetail) instead of opening an edit modal — see
+  // tests/ui/app/firm-work-detail.spec.js for full detail-page coverage.
+  // Reassignment specifically moved into that page's "Edit Basics" modal.
+  test('clicking a row opens the detail page, and reassigning via Edit Basics sends the right PATCH request', async ({ page }) => {
     await loginToFirmWork(page);
     await page.getByRole('row', { name: /Renew office internet contract/ }).click();
+    await expect(page.getByRole('heading', { name: 'Renew office internet contract' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Edit Basics' }).click();
     const modal = page.locator('#modalCard');
-    await expect(modal.getByRole('heading', { name: 'Firm Work' })).toBeVisible();
+    await expect(modal.getByRole('heading', { name: 'Edit Firm Work' })).toBeVisible();
 
     const patches = [];
     page.on('request', (req) => { if (req.method() === 'PATCH' && req.url().includes('/rest/v1/work_items')) patches.push(req.postDataJSON()); });

@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260828090000` (last applied)
+## 2. Expected schema, as of migration `20260829090000` (last applied)
 
 ### Tables (18)
 
@@ -241,7 +241,7 @@ findings as of Task 9.
 | `current_user_active()` | DEFINER, `sql`, stable | `public` | is_active, coalesced false |
 | `handle_new_user()` | DEFINER, trigger | `public` | creates a profile row on `auth.users` insert |
 | `guard_profile_update()` | DEFINER, trigger | `public` | blocks non-admins changing `role`/`is_active` (NULL-safe: positive-list pattern, but see §0 residual note — RLS is the real gate here anyway) |
-| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally, forces `submitted_by` from `auth.uid()`. Extended again by Task 8 (`20260820090000`) — adds the Client Work valid-transition map + required-checklist gates (preparation/review/submission stages) + the admin-only, reason-required, permanently-logged override path (`status_override_reason` → `work_activity` action `status_override`). Firm Work is exempt from all of this (unchanged 5-status model). Task 16 (`20260827090000`) adds one check to the firm branch: on reassignment (`assignee_id` actually changing), the new assignee must be an active profile. Task 17 (`20260828090000`) adds one more: transitioning `status` INTO `'blocked'` (not merely being blocked already) requires `blocker_reason` to be at least 10 characters — scoped to the transition moment specifically so a historical row that predates this rule is never locked out of routine editing. |
+| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally, forces `submitted_by` from `auth.uid()`. Extended again by Task 8 (`20260820090000`) — adds the Client Work valid-transition map + required-checklist gates (preparation/review/submission stages) + the admin-only, reason-required, permanently-logged override path (`status_override_reason` → `work_activity` action `status_override`). Firm Work is exempt from all of this (unchanged 5-status model). Task 16 (`20260827090000`) adds one check to the firm branch: on reassignment (`assignee_id` actually changing), the new assignee must be an active profile. Task 17 (`20260828090000`) adds one more: transitioning `status` INTO `'blocked'` (not merely being blocked already) requires `blocker_reason` to be at least 10 characters — scoped to the transition moment specifically so a historical row that predates this rule is never locked out of routine editing. Task 18 (`20260829090000`) adds one more unconditional activity-logging block: `project_id` changes now log `project_changed` (old → new project name) to `work_activity`, closing the one field Task 15 added that was never logged. |
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
 | `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by`. Task 16 (`20260827090000`) adds: for `work_scope = 'firm'`, `assignee_id` must be an active profile at creation time too. |
 | `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
@@ -489,6 +489,66 @@ what caught both the mobile-overflow bug and a `.single()` response-
 shape mismatch in the mock itself, neither of which the DB permission
 harness alone could have found, since that harness never renders a
 browser at all.
+
+### Firm Work async handoff (Handbook Task 18)
+
+Verified first: title/category/project/owner/status/priority/target
+date/next_action/blocker_reason/description/checklist/updates/activity
+already existed and were already stored (Task 15/16/17) — the gap this
+task closes is mostly SURFACING them properly, not new storage. Three
+real schema gaps closed by `20260829090000_firm_work_detail_handoff.sql`:
+
+1. `work_comments.update_type` — a new nullable column, checked against
+   exactly `progress`/`result`/`blocker`/`handoff`/`note`. Deliberately
+   NOT a Decision Needed / Owner Approval hierarchy — the owner rejected
+   that shape in an earlier task, and the DB check constraint (not just
+   the UI's `<select>`) enforces it can't sneak back in.
+2. `work_items.follow_up_date` — previously constrained to client scope
+   only (`work_items_scope_fields_check`'s firm branch required it
+   `NULL`, built for Client Work's "waiting for client" callback date).
+   Relaxed to allow Firm Work too, reusing the same column rather than
+   adding a fourth near-duplicate date field — `waiting_since`/
+   `waiting_requested_by` stay firm-`NULL` since those are specifically
+   "waiting on someone outside the firm" semantics that don't apply to
+   Firm Work's peer model. This is a pure relaxation of an existing NULL
+   requirement, so (unlike this project's usual NOT VALID caution around
+   brand-new restrictions) no follow-up validate step is needed — nothing
+   that satisfied the old constraint can ever violate the relaxed one.
+3. `guard_work_item_update()` — one more unconditional activity-logging
+   block added (`project_changed`, logging old → new project name),
+   closing the one gap in Task 18's own "HISTORY" requirement
+   ("Reassignment/status/project/target changes must show old -> new").
+   `project_id` was added by Task 15 but never logged until now.
+
+UI: `staff/staff.js`'s Firm Work item view moved from a modal
+(`openFirmWorkModal`, now create-only) to a dedicated page
+(`renderFirmWorkDetail`, route `#firmwork/<id>`), mirroring Client Work's
+`renderWorkDetail` page pattern but firm-scope-only (Client Work's page
+assumes `client_id`/`service_template_id`/submission/waiting-for-client
+fields throughout, none of which apply to Firm Work). Top summary shows
+every field this task lists (including `updated_at` as "Last Updated");
+Next Action is inline-editable right in the summary (not buried in an
+edit modal); a Blocked status reveals a Blocker Context box requiring a
+real reason (reusing Task 17's DB rule) with an optional follow-up date.
+Reassignment/title/category/priority/due date/description/project moved
+to a smaller "Edit Basics" modal.
+
+Building the direct-link route (`#firmwork/<id>`, reachable by bookmark
+or shared link — itself part of what "asynchronous handoff" means)
+surfaced a real, previously-latent race: several `render*Page` functions
+(`renderTodayPage`, `renderManagerDashboard`, `renderDeadlinesPage`,
+`renderPeriodSummaryPage`, and `renderSearchPage`) removed their own
+"Loading…" placeholder with a bare `main.removeChild(loading)` after an
+`await`; if a hash navigation (a bookmarked link opened right after
+login, before the default view's initial fetch resolves) lands in
+between, a newer render can already have cleared `#main`, and the older
+render's `removeChild` then throws `"Failed to execute 'removeChild' ...
+not a child of this node"` — caught by a Playwright test that navigates
+straight to a Firm Work detail link immediately post-login and asserts
+zero console errors. Fixed by guarding all five sites with `if
+(loading.parentNode) loading.parentNode.removeChild(loading)` instead of
+an unguarded `main.removeChild(loading)` — a plain safety guard, not a
+behavior change, in every non-race case.
 
 ## 3. Confirmed live drift (2026-08-14)
 

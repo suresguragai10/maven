@@ -72,6 +72,11 @@
   // DB check constraint exactly; keep the two in sync if this ever changes.
   var FIRM_CATEGORIES = ['Business Development', 'Marketing', 'Website / Digital', 'Administration', 'Firm Setup', 'Research', 'Other'];
   var FIRM_STATUSES = ['to_do', 'in_progress', 'blocked', 'review', 'completed'];
+  // Handbook Task 18: optional tag on a Firm Work update — deliberately
+  // NOT a Decision Needed / Owner Approval hierarchy (the owner rejected
+  // that shape in an earlier task). Matches work_comments.update_type's
+  // check constraint exactly; keep the two in sync if this ever changes.
+  var UPDATE_TYPE_LABELS = { progress: 'Progress', result: 'Result', blocker: 'Blocker', handoff: 'Handoff', note: 'Note' };
   // 'normal' deliberately has no label here — it never renders a badge
   // anywhere (see attentionBadge()), only the two flagged states do.
   var ATTENTION_LABELS = { needs_attention: 'Needs Attention', high_attention: 'High Attention' };
@@ -784,6 +789,15 @@
       renderClientDetail(state.clientDetailId);
       return;
     }
+    // Handbook Task 18: Firm Work gets its own detail page (not
+    // renderWorkDetail — that page assumes client-scope fields like
+    // client_id/service_template_id/waiting_for_client throughout).
+    if (hash.indexOf('firmwork/') === 0) {
+      state.view = 'firmwork-detail';
+      state.workId = hash.slice(9);
+      renderFirmWorkDetail(state.workId);
+      return;
+    }
     // Search keeps its filters in the URL as a query string (?q=...&status=
     // ...) so a search is a shareable/reloadable link, not just in-memory
     // state — but renderSearchPage writes to it via history.replaceState
@@ -802,6 +816,7 @@
   function goto(view) { location.hash = view; }
   function gotoWork(id) { location.hash = 'work/' + id; }
   function gotoClient(id) { location.hash = 'client/' + id; }
+  function gotoFirmWork(id) { location.hash = 'firmwork/' + id; }
 
   // ============================================================
   // Sidebar
@@ -902,7 +917,15 @@
       var reviewItems = await loadWork('review');
       reviewCount = reviewItems.length;
     }
-    main.removeChild(loading);
+    // Guarded rather than a bare removeChild: if a hash navigation lands
+    // (e.g. a direct/shared link, or a notification click) before this
+    // page's own initial fetch resolves, a newer render may have already
+    // cleared #main out from under this one -- an unguarded removeChild
+    // on a node that's no longer main's child throws "not a child of
+    // this node" (found via Handbook Task 18's direct-link Playwright
+    // test, a real race, not new since only that test happened to await
+    // an immediate post-login hash change and check for console errors).
+    if (loading.parentNode) loading.parentNode.removeChild(loading);
 
     var open = mine.filter(function (w) { return w.status !== 'completed'; });
     var overdue = open.filter(isOverdue);
@@ -1018,7 +1041,15 @@
     // (internal, falling back to filing) so it lands where it actually
     // belongs.
     items = items.slice().sort(compareByDue);
-    main.removeChild(loading);
+    // Guarded rather than a bare removeChild: if a hash navigation lands
+    // (e.g. a direct/shared link, or a notification click) before this
+    // page's own initial fetch resolves, a newer render may have already
+    // cleared #main out from under this one -- an unguarded removeChild
+    // on a node that's no longer main's child throws "not a child of
+    // this node" (found via Handbook Task 18's direct-link Playwright
+    // test, a real race, not new since only that test happened to await
+    // an immediate post-login hash change and check for console errors).
+    if (loading.parentNode) loading.parentNode.removeChild(loading);
 
     if (mode === 'all') renderWorkloadSummary(main, items);
 
@@ -1330,7 +1361,15 @@
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
     var items = await loadWork('all');
-    main.removeChild(loading);
+    // Guarded rather than a bare removeChild: if a hash navigation lands
+    // (e.g. a direct/shared link, or a notification click) before this
+    // page's own initial fetch resolves, a newer render may have already
+    // cleared #main out from under this one -- an unguarded removeChild
+    // on a node that's no longer main's child throws "not a child of
+    // this node" (found via Handbook Task 18's direct-link Playwright
+    // test, a real race, not new since only that test happened to await
+    // an immediate post-login hash change and check for console errors).
+    if (loading.parentNode) loading.parentNode.removeChild(loading);
 
     var open = items.filter(function (w) { return w.status !== 'completed'; });
     var todayStr = localDateStr();
@@ -1874,7 +1913,15 @@
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
     var items = await loadWork(isReviewerOrAdmin() ? 'all' : 'mine');
-    main.removeChild(loading);
+    // Guarded rather than a bare removeChild: if a hash navigation lands
+    // (e.g. a direct/shared link, or a notification click) before this
+    // page's own initial fetch resolves, a newer render may have already
+    // cleared #main out from under this one -- an unguarded removeChild
+    // on a node that's no longer main's child throws "not a child of
+    // this node" (found via Handbook Task 18's direct-link Playwright
+    // test, a real race, not new since only that test happened to await
+    // an immediate post-login hash change and check for console errors).
+    if (loading.parentNode) loading.parentNode.removeChild(loading);
 
     var filters = { period: '', service: '', assignee: '', reviewer: '', status: '', client: '', overdueOnly: false };
 
@@ -4026,7 +4073,15 @@
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
     var res = await sb.from('service_templates').select('*, service_template_items(*)').order('title');
-    main.removeChild(loading);
+    // Guarded rather than a bare removeChild: if a hash navigation lands
+    // (e.g. a direct/shared link, or a notification click) before this
+    // page's own initial fetch resolves, a newer render may have already
+    // cleared #main out from under this one -- an unguarded removeChild
+    // on a node that's no longer main's child throws "not a child of
+    // this node" (found via Handbook Task 18's direct-link Playwright
+    // test, a real race, not new since only that test happened to await
+    // an immediate post-login hash change and check for console errors).
+    if (loading.parentNode) loading.parentNode.removeChild(loading);
     if (res.error) { toast('Could not load templates: ' + res.error.message, true); return; }
     var templates = res.data || [];
     if (!templates.length) {
@@ -4790,7 +4845,7 @@
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Firm Work'; head.appendChild(h1);
     var addBtn = el('button', 'btn btn-sm'); addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Firm Work'));
-    addBtn.addEventListener('click', function () { openFirmWorkModal(null, refresh); });
+    addBtn.addEventListener('click', function () { openFirmWorkModal(refresh); });
     head.appendChild(addBtn);
     main.appendChild(head);
 
@@ -4927,7 +4982,7 @@
       var tbody = el('tbody');
       items.forEach(function (w) {
         var tr = el('tr'); tr.style.cursor = 'pointer';
-        tr.addEventListener('click', function () { openFirmWorkModal(w, refresh); });
+        tr.addEventListener('click', function () { gotoFirmWork(w.id); });
         var tdTitle = el('td'); tdTitle.style.fontWeight = '700'; tdTitle.style.color = 'var(--navy-950)'; tdTitle.textContent = w.title; tr.appendChild(tdTitle);
         var tdCat = el('td'); tdCat.textContent = w.firm_category || '—'; tr.appendChild(tdCat);
         var tdProject = el('td'); var proj = w.project_id ? projectById(w.project_id) : null; tdProject.textContent = proj ? proj.name : '—'; tr.appendChild(tdProject);
@@ -4962,96 +5017,408 @@
     await refresh();
   }
 
-  // Handbook Task 16: "every active teammate may edit... regardless of
-  // who currently owns it" — ownership identifies responsibility, not
-  // exclusive edit rights. Every active team member (any role) can fully
-  // edit ANY Firm Work item, including reassigning it, exactly matching
-  // what guard_work_item_update() already enforces at the database layer
-  // (see 20260827090000_firm_work_peer_permissions.sql) — this is no
-  // longer a frontend convention layered on top of a narrower DB rule,
-  // it's the same rule expressed in both places. canEdit/canEditFull are
-  // kept as named variables (rather than inlining `true` at each call
-  // site) only to minimize the diff against the rest of this function;
-  // both are now unconditionally true for any signed-in user viewing
-  // this modal at all. The DB is still the real enforcement layer
-  // regardless (an inactive session, or an attempt to assign to an
-  // inactive teammate, is rejected there even if these controls were
-  // somehow bypassed) — this UI change only stops hiding controls that
-  // were never actually exclusive.
-  function openFirmWorkModal(existing, onDone) {
-    var isEdit = !!existing;
-    var canEditFull = true;
-    var canEdit = true;
+  // ============================================================
+  // Firm Work Detail — Handbook Task 18: a dedicated page (not a modal)
+  // so a teammate coming online later — possibly in a different time
+  // zone, without a meeting — can see current position, next action, and
+  // blocker context all at once, then dig into description/checklist/
+  // updates/history below. Mirrors renderWorkDetail's card/meta-grid
+  // conventions but is its own function: Client Work's page assumes
+  // client-scope fields (client_id, service_template_id, submission,
+  // waiting_for_client) throughout, none of which apply here.
+  //
+  // Every active teammate may edit any Firm Work item, including
+  // reassigning it — the peer model confirmed in Task 16 and enforced at
+  // the DB layer by guard_work_item_update() regardless of what this UI
+  // shows, so no canEdit gating is needed here at all.
+  // ============================================================
+  async function renderFirmWorkDetail(id) {
+    var main = qs('#main');
+    clear(main);
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
+    main.appendChild(loading);
 
+    var workRes = await sb.from('work_items').select('*').eq('id', id).eq('work_scope', 'firm').single();
+    var checklistRes = await sb.from('work_checklist_items').select('*').eq('work_item_id', id).order('sort_order').order('created_at');
+    var commentsRes = await sb.from('work_comments').select('*').eq('work_item_id', id).order('created_at', { ascending: false });
+    var activityRes = await sb.from('work_activity').select('*').eq('work_item_id', id).order('created_at', { ascending: false }).limit(30);
+    clear(main);
+
+    if (workRes.error || !workRes.data) {
+      var empty = el('div', 'empty-note'); empty.textContent = "That Firm Work item doesn't exist, or you don't have access to it.";
+      main.appendChild(empty);
+      var back = el('button', 'btn btn-outline btn-sm'); back.type = 'button'; back.textContent = '← Back to Firm Work';
+      back.addEventListener('click', function () { goto('firm-work'); });
+      main.appendChild(back);
+      return;
+    }
+    var work = workRes.data;
+    var checklist = checklistRes.data || [];
+    var comments = commentsRes.data || [];
+    var activity = activityRes.data || [];
+    var project = work.project_id ? projectById(work.project_id) : null;
+
+    // ---- TOP SUMMARY ----
+    var card = el('div', 'card');
+    var head = el('div', 'detail-head');
+    var titleWrap = el('div');
+    var h1 = el('h1'); h1.style.fontSize = '1.25rem'; h1.textContent = work.title;
+    var sub = el('div'); sub.style.cssText = 'color:var(--ink-soft);font-size:.88rem;margin-top:2px;';
+    sub.textContent = (work.firm_category || 'Uncategorized') + (project ? ' · ' + project.name : '');
+    titleWrap.appendChild(h1); titleWrap.appendChild(sub);
+    var badge = el('span', 'badge badge-' + work.status); badge.textContent = STATUS_LABELS[work.status] || work.status;
+    head.appendChild(titleWrap); head.appendChild(badge);
+    card.appendChild(head);
+
+    var headRow2 = el('div'); headRow2.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;';
+    var backLink = el('a'); backLink.href = '#firm-work'; backLink.textContent = '← Back to Firm Work'; backLink.style.fontSize = '.85rem';
+    headRow2.appendChild(backLink);
+    var editBtn = el('button', 'btn btn-outline btn-sm'); editBtn.type = 'button'; editBtn.textContent = 'Edit Basics';
+    editBtn.addEventListener('click', function () { openEditFirmWorkModal(work, function () { renderFirmWorkDetail(id); }); });
+    headRow2.appendChild(editBtn);
+    card.appendChild(headRow2);
+
+    var metaGrid = el('div', 'meta-grid');
+    metaGrid.appendChild(metaItem('Category', work.firm_category || '—', 'idcard'));
+    metaGrid.appendChild(metaItem('Project', project ? project.name : '—', 'folder'));
+    metaGrid.appendChild(metaItem('Owner', profileName(work.assignee_id), 'user', true));
+    metaGrid.appendChild(metaItem('Priority', work.priority.charAt(0).toUpperCase() + work.priority.slice(1), 'flag'));
+    metaGrid.appendChild(metaItem('Target Date', work.internal_due_date ? fmtDate(work.internal_due_date) : '—', 'calendar'));
+    metaGrid.appendChild(metaItem('Last Updated', fmtDateTime(work.updated_at), 'calendar'));
+    card.appendChild(metaGrid);
+
+    // Status — every active teammate may change it (peer model, Task 16).
+    var statusWrap = el('div', 'f');
+    var statusLabel = el('label'); statusLabel.textContent = 'Status'; statusWrap.appendChild(statusLabel);
+    var statusSel = el('select');
+    FIRM_STATUSES.forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
+    statusSel.value = work.status;
+    statusWrap.appendChild(statusSel);
+    card.appendChild(statusWrap);
+
+    // Next Action — Task 18's own "make next_action easy to edit by any
+    // active teammate... answer 'what happens next?' in plain text" —
+    // right in the top summary, not buried in an edit modal.
+    var naWrap = el('div', 'f'); naWrap.style.marginTop = '10px';
+    var naLabel = el('label'); naLabel.textContent = 'Next Action — what happens next?'; naWrap.appendChild(naLabel);
+    var naRow = el('div'); naRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    var naInput = el('input'); naInput.type = 'text'; naInput.placeholder = 'e.g. Send follow-up email to landlord';
+    naInput.value = work.next_action || ''; naInput.style.flex = '1'; naInput.style.minWidth = '180px';
+    var naSaveBtn = el('button', 'btn btn-outline btn-sm'); naSaveBtn.type = 'button'; naSaveBtn.textContent = 'Save';
+    naSaveBtn.addEventListener('click', async function () {
+      naSaveBtn.disabled = true;
+      var res = await sb.from('work_items').update({ next_action: naInput.value.trim() || null }).eq('id', work.id);
+      naSaveBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      work.next_action = naInput.value.trim() || null;
+      toast('Next action updated.');
+    });
+    naRow.appendChild(naInput); naRow.appendChild(naSaveBtn);
+    naWrap.appendChild(naRow);
+    card.appendChild(naWrap);
+
+    // Blocker context — Task 18: "When status becomes Blocked, require a
+    // short blocker reason. Optional review/follow-up date is acceptable
+    // if it clearly remains an operational target, not a statutory
+    // deadline." follow_up_date is the same column Client Work's Waiting
+    // for Client uses, relaxed to firm scope by this task's own migration
+    // — reused rather than adding a fourth near-duplicate date column.
+    var blockerBox = el('div', 'action-box'); blockerBox.style.marginTop = '10px';
+    var blockerTitle = el('div', 'action-title'); blockerTitle.textContent = 'Blocker Context'; blockerBox.appendChild(blockerTitle);
+    var blockerInput = el('textarea'); blockerInput.rows = 2;
+    blockerInput.placeholder = "What's blocking this? (required, at least a short sentence)";
+    blockerInput.value = work.blocker_reason || '';
+    blockerBox.appendChild(blockerInput);
+    var fuInput = el('input'); fuInput.type = 'date'; fuInput.value = work.follow_up_date || '';
+    blockerBox.appendChild(field('Review / follow-up date (optional — an operational target, not a statutory deadline)', fuInput));
+    var blockerSaveBtn = el('button', 'btn btn-outline btn-sm'); blockerSaveBtn.type = 'button';
+    blockerSaveBtn.style.marginTop = '6px';
+    blockerBox.appendChild(blockerSaveBtn);
+    card.appendChild(blockerBox);
+
+    var prevStatus = work.status;
+    function refreshBlockerVisibility() {
+      blockerBox.classList.toggle('hidden', statusSel.value !== 'blocked');
+      blockerSaveBtn.textContent = (statusSel.value === 'blocked' && prevStatus !== 'blocked')
+        ? 'Save Blocker Context & Mark Blocked' : 'Save Blocker Context';
+    }
+    refreshBlockerVisibility();
+    statusSel.addEventListener('change', function () {
+      refreshBlockerVisibility();
+      // Any transition that ISN'T into Blocked has no extra requirement —
+      // save immediately, matching the DB trigger's own scoping (only the
+      // moment of transitioning into Blocked needs a reason attached).
+      if (statusSel.value !== 'blocked') {
+        (async function () {
+          var res = await sb.from('work_items').update({ status: statusSel.value }).eq('id', work.id);
+          if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = prevStatus; refreshBlockerVisibility(); return; }
+          toast('Status updated.');
+          renderFirmWorkDetail(id);
+        })();
+      }
+      // Selecting Blocked just reveals the box — nothing saves until
+      // "Save Blocker Context & Mark Blocked" is clicked below, since the
+      // DB requires the reason and the status change together.
+    });
+    blockerSaveBtn.addEventListener('click', async function () {
+      if (blockerInput.value.trim().length < 10) { toast("Explain what's blocking this (at least a short sentence).", true); return; }
+      blockerSaveBtn.disabled = true;
+      var patch = { blocker_reason: blockerInput.value.trim(), follow_up_date: fuInput.value || null };
+      if (statusSel.value === 'blocked' && prevStatus !== 'blocked') patch.status = 'blocked';
+      var res = await sb.from('work_items').update(patch).eq('id', work.id);
+      blockerSaveBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      toast(patch.status ? 'Marked Blocked.' : 'Blocker context saved.');
+      renderFirmWorkDetail(id);
+    });
+
+    if (work.description) {
+      var descP = el('p'); descP.style.cssText = 'white-space:pre-wrap;margin-top:14px;'; descP.textContent = work.description;
+      card.appendChild(descP);
+    }
+    main.appendChild(card);
+
+    // ---- DETAIL BODY: Checklist ----
+    var checklistCard = el('div', 'card'); checklistCard.style.marginTop = '20px';
+    var clH2 = el('h2');
+    clH2.appendChild(icon('check'));
+    clH2.appendChild(document.createTextNode('Checklist' + (checklist.length ? ' (' + checklist.filter(function (i) { return i.is_done; }).length + '/' + checklist.length + ')' : '')));
+    checklistCard.appendChild(clH2);
+    if (!checklist.length) {
+      var noChecklist = el('p', 'desc'); noChecklist.textContent = 'No checklist items yet.'; checklistCard.appendChild(noChecklist);
+    }
+    checklist.forEach(function (ci) {
+      var row = el('label', 'checklist-item' + (ci.is_done ? ' done' : ''));
+      var cb = el('input'); cb.type = 'checkbox'; cb.checked = ci.is_done;
+      cb.addEventListener('change', async function () {
+        var r = await sb.from('work_checklist_items').update({ is_done: cb.checked }).eq('id', ci.id);
+        if (r.error) { toast('Could not update: ' + r.error.message, true); cb.checked = !cb.checked; return; }
+        row.classList.toggle('done', cb.checked);
+      });
+      row.appendChild(cb);
+      row.appendChild(document.createTextNode(ci.title));
+      checklistCard.appendChild(row);
+    });
+    var clAddRow = el('div'); clAddRow.style.cssText = 'display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;';
+    var clInput = el('input'); clInput.type = 'text'; clInput.placeholder = 'Add a checklist item…'; clInput.style.flex = '1'; clInput.style.minWidth = '160px';
+    var clAddBtn = el('button', 'btn btn-outline btn-sm'); clAddBtn.type = 'button'; clAddBtn.textContent = 'Add';
+    clAddBtn.addEventListener('click', async function () {
+      if (!clInput.value.trim()) return;
+      clAddBtn.disabled = true;
+      var r = await sb.from('work_checklist_items').insert({ work_item_id: work.id, title: clInput.value.trim(), sort_order: checklist.length });
+      clAddBtn.disabled = false;
+      if (r.error) { toast('Could not add: ' + r.error.message, true); return; }
+      renderFirmWorkDetail(id);
+    });
+    clAddRow.appendChild(clInput); clAddRow.appendChild(clAddBtn);
+    checklistCard.appendChild(clAddRow);
+    main.appendChild(checklistCard);
+
+    // ---- DETAIL BODY: Updates — newest first, with an optional type tag
+    // (Task 18: Progress/Result/Blocker/Handoff/Note — explicitly NOT a
+    // Decision Needed/Owner Approval hierarchy). The latest one is
+    // visually called out so "what's the latest update" never requires
+    // scrolling a full thread.
+    var updatesCard = el('div', 'card'); updatesCard.style.marginTop = '20px';
+    var upH2 = el('h2'); upH2.appendChild(icon('message')); upH2.appendChild(document.createTextNode('Updates')); updatesCard.appendChild(upH2);
+    if (!comments.length) {
+      var noUpdates = el('p', 'desc'); noUpdates.textContent = 'No updates yet.'; updatesCard.appendChild(noUpdates);
+    }
+    comments.forEach(function (c, i) {
+      var row = el('div', 'comment');
+      if (i === 0) row.style.cssText = 'background:var(--mist);border-radius:8px;padding:10px 12px;margin-bottom:4px;border-bottom:none;';
+      var who = el('span', 'who'); who.textContent = profileName(c.author_id);
+      if (c.update_type) {
+        var typeBadge = el('span', 'badge badge-type'); typeBadge.style.marginLeft = '8px';
+        typeBadge.textContent = UPDATE_TYPE_LABELS[c.update_type] || c.update_type;
+        who.appendChild(typeBadge);
+      }
+      var when = el('span', 'when'); when.textContent = fmtDateTime(c.created_at);
+      who.appendChild(when);
+      var body = el('p'); body.textContent = c.body;
+      row.appendChild(who); row.appendChild(body);
+      updatesCard.appendChild(row);
+    });
+    var typeSel = el('select'); typeSel.style.cssText = 'width:auto;margin-top:12px;';
+    typeSel.appendChild(new Option('No type', ''));
+    Object.keys(UPDATE_TYPE_LABELS).forEach(function (t) { typeSel.appendChild(new Option(UPDATE_TYPE_LABELS[t], t)); });
+    updatesCard.appendChild(typeSel);
+    var updateInput = el('textarea'); updateInput.rows = 2; updateInput.placeholder = 'Post a short update…'; updateInput.style.marginTop = '8px';
+    updatesCard.appendChild(updateInput);
+    var postBtn = el('button', 'btn btn-outline btn-sm'); postBtn.type = 'button'; postBtn.textContent = 'Post Update'; postBtn.style.marginTop = '8px';
+    postBtn.addEventListener('click', async function () {
+      if (!updateInput.value.trim()) return;
+      postBtn.disabled = true;
+      var res = await sb.from('work_comments').insert({ work_item_id: work.id, author_id: state.user.id, body: updateInput.value.trim(), update_type: typeSel.value || null });
+      postBtn.disabled = false;
+      if (res.error) { toast('Could not post: ' + res.error.message, true); return; }
+      renderFirmWorkDetail(id);
+    });
+    updatesCard.appendChild(postBtn);
+    main.appendChild(updatesCard);
+
+    // ---- DETAIL BODY: Activity History — trusted system activity only
+    // (reassigned/status_changed/due_date_changed/project_changed), all
+    // logged unconditionally by guard_work_item_update() — never
+    // client-inserted, so it can't be spoofed by whoever's looking at it.
+    var activityCard = el('div', 'card'); activityCard.style.marginTop = '20px';
+    var actH2 = el('h2'); actH2.appendChild(icon('flag')); actH2.appendChild(document.createTextNode('Activity History')); activityCard.appendChild(actH2);
+    if (!activity.length) {
+      var noActivity = el('p', 'desc'); noActivity.textContent = 'Nothing logged yet — status, reassignment, project, and due-date changes show up here.'; activityCard.appendChild(noActivity);
+    }
+    activity.forEach(function (a) {
+      var row = el('div', 'activity-row');
+      var who = el('span', 'who'); who.textContent = a.actor_id ? profileName(a.actor_id) : 'System';
+      var when = el('span', 'when'); when.textContent = fmtDateTime(a.created_at);
+      who.appendChild(when);
+      row.appendChild(who);
+      if (a.detail) { var detailEl = el('div', 'detail'); detailEl.textContent = a.detail; row.appendChild(detailEl); }
+      activityCard.appendChild(row);
+    });
+    main.appendChild(activityCard);
+  }
+
+  // Title/category/owner/priority/due date/description/project — the
+  // more static identity/classification fields, edited via a small modal
+  // (mirrors Client Work's openEditWorkModal). Status, Next Action, and
+  // Blocker Context are inline on the detail page itself (see above) —
+  // those are the "async coordination" fields Task 18 asks to be easy to
+  // update in the moment, not buried behind an Edit button.
+  function openEditFirmWorkModal(work, onDone) {
     var wrap = el('div');
     var head = el('div', 'modal-head');
-    var h2 = el('h2'); h2.textContent = isEdit ? 'Firm Work' : 'New Firm Work';
+    var h2 = el('h2'); h2.textContent = 'Edit Firm Work';
     var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
     closeBtn.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
 
-    var titleInput = el('input'); titleInput.type = 'text'; titleInput.disabled = isEdit && !canEdit;
-    if (isEdit) titleInput.value = existing.title;
+    var titleInput = el('input'); titleInput.type = 'text'; titleInput.value = work.title;
     wrap.appendChild(field('Title', titleInput));
 
-    // Handbook Task 17: Category is required (was optional) — still
-    // starts blank so a real choice has to be made, rather than
-    // defaulting to the first real category in the list.
-    var categorySel = el('select'); categorySel.disabled = isEdit && !canEdit;
+    var categorySel = el('select');
     categorySel.appendChild(new Option('— Choose a category —', ''));
     FIRM_CATEGORIES.forEach(function (c) { categorySel.appendChild(new Option(c, c)); });
-    if (isEdit) categorySel.value = existing.firm_category || '';
+    categorySel.value = work.firm_category || '';
     wrap.appendChild(field('Category', categorySel));
 
-    var ownerSel = el('select'); ownerSel.disabled = isEdit && !canEditFull;
+    var ownerSel = el('select');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
-    if (isEdit) ownerSel.value = existing.assignee_id;
-    else ownerSel.value = state.user.id; // default to self, freely changeable to any active colleague
+    ownerSel.value = work.assignee_id;
     wrap.appendChild(field('Owner', ownerSel));
 
-    var statusSel = null;
-    if (isEdit) {
-      statusSel = el('select'); statusSel.disabled = !canEdit;
-      FIRM_STATUSES.forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
-      statusSel.value = existing.status;
-      wrap.appendChild(field('Status', statusSel));
-    }
-    // (new items always start at To Do — no status field on create,
-    // same convention as Client Work's New Work modal.)
-
-    var prioritySel = el('select'); prioritySel.disabled = isEdit && !canEdit;
+    var prioritySel = el('select');
     [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']].forEach(function (p) { prioritySel.appendChild(new Option(p[1], p[0])); });
-    prioritySel.value = isEdit ? existing.priority : 'normal';
+    prioritySel.value = work.priority;
     wrap.appendChild(field('Priority', prioritySel));
 
-    var dueInput = el('input'); dueInput.type = 'date'; dueInput.disabled = isEdit && !canEdit;
-    if (isEdit) dueInput.value = existing.internal_due_date || '';
+    var dueInput = el('input'); dueInput.type = 'date'; dueInput.value = work.internal_due_date || '';
     wrap.appendChild(field('Due Date (optional)', dueInput));
 
-    var descInput = el('textarea'); descInput.rows = 3; descInput.disabled = isEdit && !canEdit;
-    if (isEdit) descInput.value = existing.description || '';
+    var descInput = el('textarea'); descInput.rows = 3; descInput.value = work.description || '';
     wrap.appendChild(field('Description (optional)', descInput));
 
-    // Handbook Task 15: project/initiative grouping, next action, and
-    // blocker context — the three genuinely new structured fields this
-    // task adds. All optional, all freely editable by the item's own
-    // owner (not admin-gated) — same "any active team member manages
-    // their own Firm Work" model the rest of this modal already follows.
-    var projectSel = el('select'); projectSel.disabled = isEdit && !canEdit;
+    var projectSel = el('select');
+    projectSel.appendChild(new Option('— No project —', ''));
+    state.projects.filter(function (p) { return p.status === 'active'; }).forEach(function (p) { projectSel.appendChild(new Option(p.name, p.id)); });
+    if (work.project_id && !projectById(work.project_id)) {
+      // Same "don't silently drop the reference" reasoning as the create
+      // modal's own project select.
+      projectSel.appendChild(new Option('Archived project', work.project_id));
+    }
+    projectSel.value = work.project_id || '';
+    var projectField = field('Project / Initiative (optional)', projectSel);
+    var newProjectBtn = el('button', 'btn btn-outline btn-sm'); newProjectBtn.type = 'button'; newProjectBtn.textContent = '+ New Project'; newProjectBtn.style.marginTop = '6px';
+    newProjectBtn.addEventListener('click', async function () {
+      var name = prompt('New project/initiative name (e.g. "Office Search", "Marketing Campaign"):');
+      if (!name || !name.trim()) return;
+      var res = await sb.from('projects').insert({ name: name.trim(), created_by: state.user.id }).select().single();
+      if (res.error) { toast('Could not create project: ' + res.error.message, true); return; }
+      state.projects.push(res.data);
+      projectSel.appendChild(new Option(res.data.name, res.data.id));
+      projectSel.value = res.data.id;
+      toast('Project created.');
+    });
+    projectField.appendChild(newProjectBtn);
+    wrap.appendChild(projectField);
+
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Save Changes';
+    saveBtn.addEventListener('click', async function () {
+      if (!titleInput.value.trim()) { toast('Give it a title.', true); return; }
+      if (!categorySel.value) { toast('Choose a category.', true); return; }
+      if (!ownerSel.value) { toast('Choose an owner.', true); return; }
+      saveBtn.disabled = true;
+      // Reassignment/due-date/project changes are logged automatically by
+      // guard_work_item_update() (Handbook Task 7/18) — nothing to do
+      // here beyond the update itself.
+      var res = await sb.from('work_items').update({
+        title: titleInput.value.trim(),
+        firm_category: categorySel.value,
+        assignee_id: ownerSel.value,
+        priority: prioritySel.value,
+        internal_due_date: dueInput.value || null,
+        description: descInput.value.trim() || null,
+        project_id: projectSel.value || null,
+      }).eq('id', work.id);
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      closeModal();
+      toast('Firm Work updated.');
+      onDone();
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
+  // New Firm Work — create only. Editing an existing item now happens on
+  // its own detail page (renderFirmWorkDetail), not this modal.
+  function openFirmWorkModal(onDone) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'New Firm Work';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var titleInput = el('input'); titleInput.type = 'text';
+    wrap.appendChild(field('Title', titleInput));
+
+    // Category is required — starts blank so a real choice has to be
+    // made, rather than defaulting to the first real category in the
+    // list (Handbook Task 17).
+    var categorySel = el('select');
+    categorySel.appendChild(new Option('— Choose a category —', ''));
+    FIRM_CATEGORIES.forEach(function (c) { categorySel.appendChild(new Option(c, c)); });
+    wrap.appendChild(field('Category', categorySel));
+
+    var ownerSel = el('select');
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
+    ownerSel.value = state.user.id; // default to self, freely changeable to any active colleague
+    wrap.appendChild(field('Owner', ownerSel));
+
+    // (new items always start at To Do — no status field on create, same
+    // convention as Client Work's New Work modal.)
+
+    var prioritySel = el('select');
+    [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']].forEach(function (p) { prioritySel.appendChild(new Option(p[1], p[0])); });
+    prioritySel.value = 'normal';
+    wrap.appendChild(field('Priority', prioritySel));
+
+    var dueInput = el('input'); dueInput.type = 'date';
+    wrap.appendChild(field('Due Date (optional)', dueInput));
+
+    var descInput = el('textarea'); descInput.rows = 3;
+    wrap.appendChild(field('Description (optional)', descInput));
+
+    var projectSel = el('select');
     projectSel.appendChild(new Option('— No project —', ''));
     state.projects.filter(function (p) { return p.status === 'active'; })
       .forEach(function (p) { projectSel.appendChild(new Option(p.name, p.id)); });
-    if (isEdit && existing.project_id && !projectById(existing.project_id)) {
-      // This item's project isn't in the active list (archived, or
-      // otherwise not loaded) — keep it selectable and visible rather
-      // than silently dropping the reference out from under the item.
-      projectSel.appendChild(new Option('Archived project', existing.project_id));
-    }
-    if (isEdit) projectSel.value = existing.project_id || '';
     var projectField = field('Project / Initiative (optional)', projectSel);
     var newProjectBtn = el('button', 'btn btn-outline btn-sm'); newProjectBtn.type = 'button'; newProjectBtn.textContent = '+ New Project';
-    newProjectBtn.disabled = isEdit && !canEdit;
     newProjectBtn.style.marginTop = '6px';
     newProjectBtn.addEventListener('click', async function () {
       var name = prompt('New project/initiative name (e.g. "Office Search", "Marketing Campaign"):');
@@ -5067,205 +5434,37 @@
     projectField.appendChild(newProjectBtn);
     wrap.appendChild(projectField);
 
-    var nextActionInput = el('input'); nextActionInput.type = 'text'; nextActionInput.disabled = isEdit && !canEdit;
+    var nextActionInput = el('input'); nextActionInput.type = 'text';
     nextActionInput.placeholder = 'e.g. Send follow-up email to landlord';
-    if (isEdit) nextActionInput.value = existing.next_action || '';
     wrap.appendChild(field('Next Action (optional)', nextActionInput));
 
-    // Handbook Task 17: required only at the moment of transitioning
-    // INTO Blocked (matches the DB trigger's own scoping — see
-    // 20260828090000_firm_work_form_validation.sql's header for why an
-    // already-Blocked historical item without context stays editable).
-    // Not an approval flow: the same person marking it Blocked just has
-    // to say why, in the same save.
-    var blockerInput = el('input'); blockerInput.type = 'text'; blockerInput.disabled = isEdit && !canEdit;
-    blockerInput.placeholder = 'e.g. Waiting on landlord to confirm viewing date';
-    if (isEdit) blockerInput.value = existing.blocker_reason || '';
-    wrap.appendChild(field('Blocker Reason (required when Status is Blocked)', blockerInput));
-
-    if (!isEdit || canEdit) {
-      var actions = el('div', 'modal-actions');
-      var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Firm Work';
-      saveBtn.addEventListener('click', async function () {
-        if (!titleInput.value.trim()) { toast('Give it a title.', true); return; }
-        if (!categorySel.value) { toast('Choose a category.', true); return; }
-        if (!ownerSel.value) { toast('Choose an owner.', true); return; }
-        var becomingBlocked = isEdit && statusSel.value === 'blocked' && existing.status !== 'blocked';
-        if (becomingBlocked && blockerInput.value.trim().length < 10) {
-          toast('Explain what\'s blocking this (at least a short sentence) before marking it Blocked.', true);
-          return;
-        }
-        saveBtn.disabled = true;
-        var res;
-        if (isEdit) {
-          res = await sb.from('work_items').update({
-            title: titleInput.value.trim(),
-            firm_category: categorySel.value || null,
-            assignee_id: ownerSel.value,
-            status: statusSel.value,
-            priority: prioritySel.value,
-            internal_due_date: dueInput.value || null,
-            description: descInput.value.trim() || null,
-            project_id: projectSel.value || null,
-            next_action: nextActionInput.value.trim() || null,
-            blocker_reason: blockerInput.value.trim() || null,
-          }).eq('id', existing.id);
-        } else {
-          res = await sb.from('work_items').insert({
-            work_scope: 'firm',
-            title: titleInput.value.trim(),
-            firm_category: categorySel.value || null,
-            assignee_id: ownerSel.value,
-            priority: prioritySel.value,
-            internal_due_date: dueInput.value || null,
-            description: descInput.value.trim() || null,
-            project_id: projectSel.value || null,
-            next_action: nextActionInput.value.trim() || null,
-            blocker_reason: blockerInput.value.trim() || null,
-            created_by: state.user.id,
-          });
-        }
-        saveBtn.disabled = false;
-        if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
-        closeModal();
-        toast(isEdit ? 'Firm Work updated.' : 'Firm Work created.');
-        onDone();
+    var actions = el('div', 'modal-actions');
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Create Firm Work';
+    saveBtn.addEventListener('click', async function () {
+      if (!titleInput.value.trim()) { toast('Give it a title.', true); return; }
+      if (!categorySel.value) { toast('Choose a category.', true); return; }
+      if (!ownerSel.value) { toast('Choose an owner.', true); return; }
+      saveBtn.disabled = true;
+      var res = await sb.from('work_items').insert({
+        work_scope: 'firm',
+        title: titleInput.value.trim(),
+        firm_category: categorySel.value,
+        assignee_id: ownerSel.value,
+        priority: prioritySel.value,
+        internal_due_date: dueInput.value || null,
+        description: descInput.value.trim() || null,
+        project_id: projectSel.value || null,
+        next_action: nextActionInput.value.trim() || null,
+        created_by: state.user.id,
       });
-      actions.appendChild(saveBtn);
-      wrap.appendChild(actions);
-    }
-
-    // ---- Checklist — Handbook Task 15's "optional where sensible"
-    // structured field. Reuses work_checklist_items exactly as Client
-    // Work does; needed zero schema/RLS change (its read policy already
-    // has a work_scope='firm' branch, and INSERT/UPDATE already allow
-    // the item's own assignee, same as this modal's other owner-editable
-    // fields — see 20260811090500_work_item_children.sql). Simple
-    // add/toggle, no stages (Firm Work has no preparation/review/
-    // submission concept) — just a flat list, matching "a small table...
-    // rather than a complex project-management system."
-    if (isEdit) {
-      var checklistHead = el('div', 'checklist-stage'); checklistHead.style.marginTop = '18px'; checklistHead.textContent = 'Checklist';
-      wrap.appendChild(checklistHead);
-      var checklistList = el('div');
-      wrap.appendChild(checklistList);
-      async function refreshChecklist() {
-        clear(checklistList);
-        var res = await sb.from('work_checklist_items').select('*').eq('work_item_id', existing.id).order('sort_order').order('created_at');
-        var checkItems = res.data || [];
-        if (!checkItems.length) {
-          var noneP = el('p', 'desc'); noneP.style.margin = '4px 0'; noneP.textContent = 'No checklist items yet.';
-          checklistList.appendChild(noneP);
-        }
-        checkItems.forEach(function (ci) {
-          var row = el('label', 'checklist-item' + (ci.is_done ? ' done' : ''));
-          var cb = el('input'); cb.type = 'checkbox'; cb.checked = ci.is_done; cb.disabled = !canEdit;
-          cb.addEventListener('change', async function () {
-            var r = await sb.from('work_checklist_items').update({ is_done: cb.checked }).eq('id', ci.id);
-            if (r.error) { toast('Could not update: ' + r.error.message, true); cb.checked = !cb.checked; return; }
-            row.classList.toggle('done', cb.checked);
-          });
-          row.appendChild(cb);
-          row.appendChild(document.createTextNode(ci.title));
-          checklistList.appendChild(row);
-        });
-      }
-      if (canEdit) {
-        var checklistAddRow = el('div'); checklistAddRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
-        var checklistInput = el('input'); checklistInput.type = 'text'; checklistInput.placeholder = 'Add a checklist item…'; checklistInput.style.flex = '1';
-        var checklistAddBtn = el('button', 'btn btn-outline btn-sm'); checklistAddBtn.type = 'button'; checklistAddBtn.textContent = 'Add';
-        checklistAddBtn.addEventListener('click', async function () {
-          if (!checklistInput.value.trim()) return;
-          checklistAddBtn.disabled = true;
-          var r = await sb.from('work_checklist_items').insert({ work_item_id: existing.id, title: checklistInput.value.trim() });
-          checklistAddBtn.disabled = false;
-          if (r.error) { toast('Could not add: ' + r.error.message, true); return; }
-          checklistInput.value = '';
-          refreshChecklist();
-        });
-        checklistAddRow.appendChild(checklistInput); checklistAddRow.appendChild(checklistAddBtn);
-        wrap.appendChild(checklistAddRow);
-      }
-      refreshChecklist();
-    }
-
-    // ---- Activity — Handbook Task 15's "activity history" field.
-    // Reuses work_activity exactly as Client Work does (read-only here,
-    // same as Work Details' Activity tab); already logs status/
-    // reassignment changes for Firm Work unconditionally via
-    // guard_work_item_update(), and its read policy already has its own
-    // work_scope='firm' branch — no new schema/RLS needed.
-    if (isEdit) {
-      var activityHead = el('div', 'checklist-stage'); activityHead.style.marginTop = '18px'; activityHead.textContent = 'Activity';
-      wrap.appendChild(activityHead);
-      var activityList = el('div');
-      wrap.appendChild(activityList);
-      (async function loadActivity() {
-        var res = await sb.from('work_activity').select('*').eq('work_item_id', existing.id).order('created_at', { ascending: false }).limit(20);
-        var rows = res.data || [];
-        if (!rows.length) {
-          var noneP2 = el('p', 'desc'); noneP2.style.margin = '4px 0'; noneP2.textContent = 'No activity yet.';
-          activityList.appendChild(noneP2);
-          return;
-        }
-        rows.forEach(function (a) {
-          var row = el('div', 'activity-row');
-          var who = el('span'); who.style.cssText = 'font-size:.8rem;font-weight:700;color:var(--navy-900);'; who.textContent = profileName(a.actor_id);
-          var when = el('span'); when.style.cssText = 'font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;'; when.textContent = fmtDateTime(a.created_at);
-          who.appendChild(when);
-          var body = el('p'); body.style.cssText = 'margin:3px 0 0;font-size:.87rem;'; body.textContent = a.detail || a.action;
-          row.appendChild(who); row.appendChild(body);
-          activityList.appendChild(row);
-        });
-      })();
-    }
-
-    // ---- Updates — short progress/status notes, newest first. Reuses
-    // work_comments exactly as Client Work does; posting stays open to
-    // anyone who can see the item (see this section's own header
-    // comment on why that's already true for every Firm Work status
-    // with no new RLS needed) — a teammate chiming in on someone else's
-    // Firm Work is normal collaboration, not something to lock down.
-    if (isEdit) {
-      var updatesHead = el('div', 'checklist-stage'); updatesHead.style.marginTop = '18px'; updatesHead.textContent = 'Updates';
-      wrap.appendChild(updatesHead);
-      var updatesList = el('div');
-      wrap.appendChild(updatesList);
-      async function refreshUpdates() {
-        clear(updatesList);
-        var res = await sb.from('work_comments').select('*').eq('work_item_id', existing.id).order('created_at', { ascending: false });
-        var comments = res.data || [];
-        if (!comments.length) {
-          var noneP = el('p', 'desc'); noneP.style.margin = '4px 0'; noneP.textContent = 'No updates yet.';
-          updatesList.appendChild(noneP);
-        } else {
-          comments.forEach(function (c) {
-            var row = el('div', 'comment');
-            var who = el('span'); who.style.cssText = 'font-size:.8rem;font-weight:700;color:var(--navy-900);'; who.textContent = profileName(c.author_id);
-            var when = el('span'); when.style.cssText = 'font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;'; when.textContent = fmtDateTime(c.created_at);
-            who.appendChild(when);
-            var body = el('p'); body.style.cssText = 'margin:5px 0 0;font-size:.9rem;white-space:pre-wrap;'; body.textContent = c.body;
-            row.appendChild(who); row.appendChild(body);
-            updatesList.appendChild(row);
-          });
-        }
-      }
-      var updateInput = el('textarea'); updateInput.rows = 2; updateInput.placeholder = 'Post a short update…';
-      wrap.appendChild(field('Post an update', updateInput));
-      var updateBtn = el('button', 'btn btn-outline btn-sm'); updateBtn.type = 'button'; updateBtn.textContent = 'Post Update';
-      updateBtn.addEventListener('click', async function () {
-        if (!updateInput.value.trim()) return;
-        updateBtn.disabled = true;
-        var res = await sb.from('work_comments').insert({ work_item_id: existing.id, author_id: state.user.id, body: updateInput.value.trim() });
-        updateBtn.disabled = false;
-        if (res.error) { toast('Could not post: ' + res.error.message, true); return; }
-        updateInput.value = '';
-        refreshUpdates();
-      });
-      wrap.appendChild(updateBtn);
-      refreshUpdates();
-    }
-
+      saveBtn.disabled = false;
+      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
+      closeModal();
+      toast('Firm Work created.');
+      onDone();
+    });
+    actions.appendChild(saveBtn);
+    wrap.appendChild(actions);
     openModal(wrap);
   }
 
