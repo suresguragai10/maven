@@ -9,7 +9,7 @@
 const {
   IDENTITIES, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE,
   SERVICE_TEMPLATE_QUARTERLY, CLIENT_SERVICE_QUARTERLY, SERVICE_TEMPLATE_YEARLY, CLIENT_SERVICE_YEARLY,
-  SERVICE_TEMPLATE_UNGOVERNED, CLIENT_SERVICE_UNGOVERNED,
+  SERVICE_TEMPLATE_UNGOVERNED, CLIENT_SERVICE_UNGOVERNED, PROJECT,
 } = require('./ids');
 
 async function seed(client) {
@@ -113,6 +113,16 @@ async function seed(client) {
     `insert into public.client_services (id, client_id, service_template_id, assignee_id, reviewer_id)
      values ($1, $2, $3, $4, $5)`,
     [CLIENT_SERVICE_UNGOVERNED.id, CLIENTS.alpha.id, SERVICE_TEMPLATE_UNGOVERNED.id, IDENTITIES.employeeA.id, IDENTITIES.reviewerA.id]
+  );
+
+  // ---- Handbook Task 15: one project/initiative, plus WORK_ITEMS.firm
+  // below is deliberately left WITHOUT a project_id/next_action/
+  // blocker_reason -- it's the pre-Task-15 historical fixture, proving
+  // the new columns default to NULL and the new constraint doesn't
+  // reject an existing row that predates them.
+  await client.query(
+    `insert into public.projects (id, name, description, created_by) values ($1, $2, 'Find and lease a new office space', $3)`,
+    [PROJECT.id, PROJECT.name, IDENTITIES.admin.id]
   );
 
   // ---- work_items: client scope (normal + ready_for_review), + firm scope ----

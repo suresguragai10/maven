@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T11:49:58.574Z",
-    "migrationCount": 25
+    "generatedAt": "2026-08-15T12:05:58.593Z",
+    "migrationCount": 26
   },
   "results": [
     {
@@ -1398,6 +1398,141 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "confirmed present"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a client-scope work item with project_id set",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_scope_fields_check\""
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a client-scope work item with next_action set",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_scope_fields_check\""
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a client-scope work item with blocker_reason set",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_scope_fields_check\""
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a firm-scope work item with period_type/period_start_date/period_end_date set",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_scope_fields_check\""
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a valid firm-scope work item with project_id, next_action, and blocker_reason all set",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a firm-scope work item with a project_id that does not exist",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "insert or update on table \"work_items\" violates foreign key constraint \"work_items_project_id_fkey\""
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a firm-scope work item with project_id/next_action/blocker_reason all omitted",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - all three genuinely optional"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "Pre-existing (pre-Task-15) Firm Work item still readable, with NULL on every new column",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "historical record intact and unmodified by the migration"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "SELECT a project as a plain employee",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a new project as a plain employee",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - matches \"any active team member\" creating Firm Work groupings"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "UPDATE (archive) a project as a plain employee",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "SELECT any project as anonymous",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "INSERT a project as anonymous",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"projects\""
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "SELECT a project as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "projects / Firm Work async fields (Handbook Task 15)",
+      "action": "DELETE a project, even as admin (no delete policy -- archive is the intended retirement path)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - CRITICAL: a project was deleted despite no delete policy existing, which would orphan any work_items still referencing it"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

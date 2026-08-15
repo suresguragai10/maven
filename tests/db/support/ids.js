@@ -46,6 +46,9 @@ const CLIENT_SERVICE_YEARLY = { id: 'cccccccc-0000-0000-0000-000000000006' };
 const SERVICE_TEMPLATE_UNGOVERNED = { id: 'cccccccc-0000-0000-0000-000000000007', title: 'Ungoverned Monthly Filing' };
 const CLIENT_SERVICE_UNGOVERNED = { id: 'cccccccc-0000-0000-0000-000000000008' };
 
+// Handbook Task 15: one seeded project/initiative, for RLS + FK checks.
+const PROJECT = { id: 'eeeeeeee-0000-0000-0000-000000000001', name: 'Office Search' };
+
 const WORK_ITEMS = {
   // Client scope, employeeA/reviewerA's own item, ordinary in-progress status.
   normal: { id: 'dddddddd-0000-0000-0000-000000000001', clientId: CLIENTS.alpha.id, title: 'Alpha VAT Return - Shrawan' },
@@ -71,5 +74,5 @@ const TEST_VAULT_PASSPHRASE = 'local-test-harness-passphrase-never-used-in-produ
 module.exports = {
   IDENTITIES, ANON, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE,
   SERVICE_TEMPLATE_QUARTERLY, CLIENT_SERVICE_QUARTERLY, SERVICE_TEMPLATE_YEARLY, CLIENT_SERVICE_YEARLY,
-  SERVICE_TEMPLATE_UNGOVERNED, CLIENT_SERVICE_UNGOVERNED,
+  SERVICE_TEMPLATE_UNGOVERNED, CLIENT_SERVICE_UNGOVERNED, PROJECT,
 };

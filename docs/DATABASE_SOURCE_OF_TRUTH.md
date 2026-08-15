@@ -139,9 +139,9 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260825090000` (last applied)
+## 2. Expected schema, as of migration `20260826090000` (last applied)
 
-### Tables (17)
+### Tables (18)
 
 | Table | Origin | RLS | Notable columns added by later migrations |
 |---|---|---|---|
@@ -149,7 +149,7 @@ original source, not a reconstruction.
 | `clients` | reconstructed | enabled | `attention_level`, `attention_reason`, `attention_set_by`, `attention_set_at` (20260814090000) |
 | `service_templates` | original (20260811090300) | enabled | `is_active` (20260813100000-era Task 13); `requires_review` boolean default `true` (20260820090000); `requires_external_deadline` boolean default `false` (20260824090000, Task 12) — `filing_deadline_day` legacy/no longer read as of the same migration, see §2 note below |
 | `service_template_items` | original | enabled | `is_required` (Task 13) |
-| `work_items` | original (20260811090400) | enabled | `submission_*` fields, `completed_at`, `submitted_at/by`, `created_by` (later Task 13-era additions); `work_scope`, `firm_category` + scope-conditional checks (20260816090000); `client_id` NOT NULL dropped (20260816090000); `review_required` boolean default `true`, `status_override_reason` text (write-only, always reset to `NULL`) (20260820090000); `period_type`, `period_start_date`, `period_end_date` (20260823090000, Task 11) — nullable, additive only; NULL on every row generated before this migration (intentionally not backfilled, see the migration's own header) |
+| `work_items` | original (20260811090400) | enabled | `submission_*` fields, `completed_at`, `submitted_at/by`, `created_by` (later Task 13-era additions); `work_scope`, `firm_category` + scope-conditional checks (20260816090000); `client_id` NOT NULL dropped (20260816090000); `review_required` boolean default `true`, `status_override_reason` text (write-only, always reset to `NULL`) (20260820090000); `period_type`, `period_start_date`, `period_end_date` (20260823090000, Task 11) — nullable, additive only; NULL on every row generated before this migration (intentionally not backfilled, see the migration's own header); `project_id`, `next_action`, `blocker_reason` (20260826090000, Task 15) — Firm Work only, see §2 note below |
 | `work_checklist_items` | reconstructed (bundled in 20260811090500) | enabled | `is_required` (Task 13) |
 | `work_comments` | reconstructed (bundled in 20260811090500) | enabled | — |
 | `work_waiting_items` | reconstructed (bundled in 20260811090500) | enabled | `requested_by`, `follow_up_date`, `last_followed_up_at`, `follow_up_count`, `note` (added across the Waiting-checklist work, pre-handbook) |
@@ -160,7 +160,7 @@ original source, not a reconstruction.
 | `app_settings` | original (20260811090900) | enabled | `app_settings_insert_admin` policy (Task 18) |
 | `notifications` | original (20260813100000) | enabled | — |
 | `deadline_rules` | original (20260824090000, Task 12) | enabled, **no insert/update/delete policy** | Governed replacement for `service_templates.filing_deadline_day` — every write goes through `add_deadline_rule()`, see [FINANCE_RULE_GOVERNANCE.md](FINANCE_RULE_GOVERNANCE.md) |
-| (no separate "projects/initiatives" table yet — handbook Task 19, not built) | | | |
+| `projects` | original (20260826090000, Task 15) | enabled, **no delete policy** | Lightweight Firm Work groupings (id, name, description, status active/archived) — read/insert/update open to any active teammate; archiving is the intended retirement path, no delete offered. Handbook Task 19 ("Projects/Initiatives") should re-verify this table's current state before assuming it still needs building from scratch. |
 
 Full column-by-column, constraint-by-constraint detail is intentionally
 not duplicated here — it is fully recoverable by reading the 16 migration
@@ -387,6 +387,37 @@ connections, not just two sequential calls in one transaction. Editing a
 incapable of rewriting an existing `work_items` row (generation only
 ever `INSERT`s; no `UPDATE` path touches historical rows) — also
 unchanged, now covered by an explicit test rather than left assumed.
+
+### Firm Work: projects/initiatives and async fields (Handbook Task 15)
+
+Verified first, not assumed: of the approved Firm Work model's required
+fields (title, firm_category, assignee_id-as-owner, status), all four
+already existed and were already wired into the Firm Work UI before this
+task. Of the optional fields, several also already worked with zero
+schema change — `internal_due_date` (Firm Work's single "Due Date"),
+`priority`, `description`, and `work_checklist_items`/`work_comments`/
+`work_activity` (all three already had a `work_scope = 'firm'` branch in
+their read policies, added by `20260817090000`). `20260826090000_firm_
+work_projects_and_async_fields.sql` adds exactly the three genuinely
+missing pieces: the `projects` table (see above), and `work_items.
+project_id`/`next_action`/`blocker_reason` — all nullable, all Firm Work
+only.
+
+`work_items_scope_fields_check` (originally Task 6) is extended, not
+replaced in spirit: the client branch now also requires `project_id`/
+`next_action`/`blocker_reason` to be `NULL` (symmetric with how the firm
+branch has always required `client_id`/`period`/etc. to be `NULL`). While
+touching this constraint, also closed a latent gap: `period_type`/
+`period_start_date`/`period_end_date` (Task 11) were added to
+`work_items` without ever being added to this constraint's firm-branch
+exclusion list — no live code path has ever set them on a `work_scope =
+'firm'` row (`_generate_period_work_core` hardcodes `'client'`, and no
+edit UI exposes these fields at all), but the constraint itself didn't
+prevent it. Added `NOT VALID` (not assumed clean, given this
+environment's standing inability to directly inspect live drift) — still
+fully enforced for every new write, only the retroactive check of
+existing rows is deferred. See the migration's own header for the
+verification query to run live before an optional `VALIDATE CONSTRAINT`.
 
 ## 3. Confirmed live drift (2026-08-14)
 

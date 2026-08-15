@@ -112,6 +112,7 @@
     clients: [],
     templates: [],
     deadlineRules: [],
+    projects: [],
     settings: Object.assign({}, WORKFLOW_SETTING_DEFAULTS),
     view: 'today',
     workId: null,
@@ -463,7 +464,7 @@
     // otherwise fail silently (the header renders, then nothing) — this
     // surfaces it instead of leaving a blank page with no clue why.
     try {
-      await Promise.all([loadProfiles(), loadClients(), loadTemplates(), loadDeadlineRules(), loadWorkflowSettings()]);
+      await Promise.all([loadProfiles(), loadClients(), loadTemplates(), loadDeadlineRules(), loadProjects(), loadWorkflowSettings()]);
       renderSidebar();
       routeFromHash();
       if (isAdmin()) runAutoGenerateOnOpen();
@@ -510,6 +511,18 @@
     var res = await sb.from('deadline_rules').select('*').order('created_at', { ascending: false });
     if (res.error) { toast('Could not load deadline rules: ' + res.error.message, true); return; }
     state.deadlineRules = res.data || [];
+  }
+  // Handbook Task 15: Firm Work's project/initiative groupings — small,
+  // loaded once like clients/templates. Every active teammate can read
+  // and create these (see projects_read/projects_insert), matching Firm
+  // Work's own open-collaboration model.
+  async function loadProjects() {
+    var res = await sb.from('projects').select('*').order('name');
+    if (res.error) { toast('Could not load projects: ' + res.error.message, true); return; }
+    state.projects = res.data || [];
+  }
+  function projectById(id) {
+    return state.projects.find(function (p) { return p.id === id; }) || null;
   }
   // Loads into state.settings on top of WORKFLOW_SETTING_DEFAULTS (not
   // replacing it), so a missing row, a blank value, or a non-numeric
@@ -4806,11 +4819,16 @@
     statusSel.appendChild(new Option('All Statuses', 'all'));
     var prioritySel = el('select'); prioritySel.style.width = 'auto';
     [['', 'All Priorities'], ['low', 'Low'], ['normal', 'Normal'], ['high', 'High']].forEach(function (p) { prioritySel.appendChild(new Option(p[1], p[0])); });
+    // Handbook Task 15
+    var projectSel = el('select'); projectSel.style.width = 'auto';
+    projectSel.appendChild(new Option('All Projects', ''));
+    state.projects.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
+      .forEach(function (p) { projectSel.appendChild(new Option(p.name + (p.status === 'archived' ? ' (archived)' : ''), p.id)); });
     var dueFromInput = el('input'); dueFromInput.type = 'date'; dueFromInput.style.width = 'auto';
     var dueToInput = el('input'); dueToInput.type = 'date'; dueToInput.style.width = 'auto';
     var dueToLabel = el('span'); dueToLabel.textContent = 'to'; dueToLabel.style.cssText = 'font-size:.8rem;color:var(--ink-soft);';
 
-    [searchInput, ownerSel, categorySel, statusSel, prioritySel].forEach(function (elm) { filterRow.appendChild(elm); });
+    [searchInput, ownerSel, categorySel, projectSel, statusSel, prioritySel].forEach(function (elm) { filterRow.appendChild(elm); });
     var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
     dueWrap.appendChild(dueFromInput); dueWrap.appendChild(dueToLabel); dueWrap.appendChild(dueToInput);
     filterRow.appendChild(dueWrap);
@@ -4835,12 +4853,13 @@
     searchInput.addEventListener('input', function () { onFilterChange(false); });
     ownerSel.addEventListener('change', function () { onFilterChange(true); });
     categorySel.addEventListener('change', function () { onFilterChange(true); });
+    projectSel.addEventListener('change', function () { onFilterChange(true); });
     statusSel.addEventListener('change', function () { onFilterChange(true); });
     prioritySel.addEventListener('change', function () { onFilterChange(true); });
     dueFromInput.addEventListener('change', function () { onFilterChange(true); });
     dueToInput.addEventListener('change', function () { onFilterChange(true); });
     clearBtn.addEventListener('click', function () {
-      searchInput.value = ''; ownerSel.value = ''; categorySel.value = ''; statusSel.value = ''; prioritySel.value = '';
+      searchInput.value = ''; ownerSel.value = ''; categorySel.value = ''; projectSel.value = ''; statusSel.value = ''; prioritySel.value = '';
       dueFromInput.value = ''; dueToInput.value = '';
       onFilterChange(true);
     });
@@ -4854,6 +4873,7 @@
       else if (statusSel.value !== 'all') query = query.eq('status', statusSel.value);
       if (ownerSel.value) query = query.eq('assignee_id', ownerSel.value);
       if (categorySel.value) query = query.eq('firm_category', categorySel.value);
+      if (projectSel.value) query = query.eq('project_id', projectSel.value);
       if (prioritySel.value) query = query.eq('priority', prioritySel.value);
       if (dueFromInput.value) query = query.gte('internal_due_date', dueFromInput.value);
       if (dueToInput.value) query = query.lte('internal_due_date', dueToInput.value);
@@ -4886,7 +4906,7 @@
       var card = el('div', 'card');
       var table = el('table');
       var thead = el('thead'); var trh = el('tr');
-      ['Title', 'Category', 'Owner', 'Status', 'Due Date', 'Priority', 'Latest Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+      ['Title', 'Category', 'Project', 'Owner', 'Status', 'Due Date', 'Priority', 'Latest Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
       thead.appendChild(trh); table.appendChild(thead);
       var tbody = el('tbody');
       items.forEach(function (w) {
@@ -4894,6 +4914,7 @@
         tr.addEventListener('click', function () { openFirmWorkModal(w, refresh); });
         var tdTitle = el('td'); tdTitle.style.fontWeight = '700'; tdTitle.style.color = 'var(--navy-950)'; tdTitle.textContent = w.title; tr.appendChild(tdTitle);
         var tdCat = el('td'); tdCat.textContent = w.firm_category || '—'; tr.appendChild(tdCat);
+        var tdProject = el('td'); var proj = w.project_id ? projectById(w.project_id) : null; tdProject.textContent = proj ? proj.name : '—'; tr.appendChild(tdProject);
         var tdOwner = el('td'); tdOwner.textContent = profileName(w.assignee_id); tr.appendChild(tdOwner);
         var tdStatus = el('td'); var badge = el('span', 'badge badge-' + w.status); badge.textContent = STATUS_LABELS[w.status] || w.status; tdStatus.appendChild(badge); tr.appendChild(tdStatus);
         // Plain date only — no "Internal"/"Filing" framing (that's
@@ -4987,6 +5008,50 @@
     if (isEdit) descInput.value = existing.description || '';
     wrap.appendChild(field('Description (optional)', descInput));
 
+    // Handbook Task 15: project/initiative grouping, next action, and
+    // blocker context — the three genuinely new structured fields this
+    // task adds. All optional, all freely editable by the item's own
+    // owner (not admin-gated) — same "any active team member manages
+    // their own Firm Work" model the rest of this modal already follows.
+    var projectSel = el('select'); projectSel.disabled = isEdit && !canEdit;
+    projectSel.appendChild(new Option('— No project —', ''));
+    state.projects.filter(function (p) { return p.status === 'active'; })
+      .forEach(function (p) { projectSel.appendChild(new Option(p.name, p.id)); });
+    if (isEdit && existing.project_id && !projectById(existing.project_id)) {
+      // This item's project isn't in the active list (archived, or
+      // otherwise not loaded) — keep it selectable and visible rather
+      // than silently dropping the reference out from under the item.
+      projectSel.appendChild(new Option('Archived project', existing.project_id));
+    }
+    if (isEdit) projectSel.value = existing.project_id || '';
+    var projectField = field('Project / Initiative (optional)', projectSel);
+    var newProjectBtn = el('button', 'btn btn-outline btn-sm'); newProjectBtn.type = 'button'; newProjectBtn.textContent = '+ New Project';
+    newProjectBtn.disabled = isEdit && !canEdit;
+    newProjectBtn.style.marginTop = '6px';
+    newProjectBtn.addEventListener('click', async function () {
+      var name = prompt('New project/initiative name (e.g. "Office Search", "Marketing Campaign"):');
+      if (!name || !name.trim()) return;
+      var res = await sb.from('projects').insert({ name: name.trim(), created_by: state.user.id }).select().single();
+      if (res.error) { toast('Could not create project: ' + res.error.message, true); return; }
+      state.projects.push(res.data);
+      var opt = new Option(res.data.name, res.data.id);
+      projectSel.appendChild(opt);
+      projectSel.value = res.data.id;
+      toast('Project created.');
+    });
+    projectField.appendChild(newProjectBtn);
+    wrap.appendChild(projectField);
+
+    var nextActionInput = el('input'); nextActionInput.type = 'text'; nextActionInput.disabled = isEdit && !canEdit;
+    nextActionInput.placeholder = 'e.g. Send follow-up email to landlord';
+    if (isEdit) nextActionInput.value = existing.next_action || '';
+    wrap.appendChild(field('Next Action (optional)', nextActionInput));
+
+    var blockerInput = el('input'); blockerInput.type = 'text'; blockerInput.disabled = isEdit && !canEdit;
+    blockerInput.placeholder = 'e.g. Waiting on landlord to confirm viewing date';
+    if (isEdit) blockerInput.value = existing.blocker_reason || '';
+    wrap.appendChild(field('Blocker Reason (optional, most useful when Status is Blocked)', blockerInput));
+
     if (!isEdit || canEdit) {
       var actions = el('div', 'modal-actions');
       var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = isEdit ? 'Save Changes' : 'Create Firm Work';
@@ -5004,6 +5069,9 @@
             priority: prioritySel.value,
             internal_due_date: dueInput.value || null,
             description: descInput.value.trim() || null,
+            project_id: projectSel.value || null,
+            next_action: nextActionInput.value.trim() || null,
+            blocker_reason: blockerInput.value.trim() || null,
           }).eq('id', existing.id);
         } else {
           res = await sb.from('work_items').insert({
@@ -5014,6 +5082,9 @@
             priority: prioritySel.value,
             internal_due_date: dueInput.value || null,
             description: descInput.value.trim() || null,
+            project_id: projectSel.value || null,
+            next_action: nextActionInput.value.trim() || null,
+            blocker_reason: blockerInput.value.trim() || null,
             created_by: state.user.id,
           });
         }
@@ -5025,6 +5096,91 @@
       });
       actions.appendChild(saveBtn);
       wrap.appendChild(actions);
+    }
+
+    // ---- Checklist — Handbook Task 15's "optional where sensible"
+    // structured field. Reuses work_checklist_items exactly as Client
+    // Work does; needed zero schema/RLS change (its read policy already
+    // has a work_scope='firm' branch, and INSERT/UPDATE already allow
+    // the item's own assignee, same as this modal's other owner-editable
+    // fields — see 20260811090500_work_item_children.sql). Simple
+    // add/toggle, no stages (Firm Work has no preparation/review/
+    // submission concept) — just a flat list, matching "a small table...
+    // rather than a complex project-management system."
+    if (isEdit) {
+      var checklistHead = el('div', 'checklist-stage'); checklistHead.style.marginTop = '18px'; checklistHead.textContent = 'Checklist';
+      wrap.appendChild(checklistHead);
+      var checklistList = el('div');
+      wrap.appendChild(checklistList);
+      async function refreshChecklist() {
+        clear(checklistList);
+        var res = await sb.from('work_checklist_items').select('*').eq('work_item_id', existing.id).order('sort_order').order('created_at');
+        var checkItems = res.data || [];
+        if (!checkItems.length) {
+          var noneP = el('p', 'desc'); noneP.style.margin = '4px 0'; noneP.textContent = 'No checklist items yet.';
+          checklistList.appendChild(noneP);
+        }
+        checkItems.forEach(function (ci) {
+          var row = el('label', 'checklist-item' + (ci.is_done ? ' done' : ''));
+          var cb = el('input'); cb.type = 'checkbox'; cb.checked = ci.is_done; cb.disabled = !canEdit;
+          cb.addEventListener('change', async function () {
+            var r = await sb.from('work_checklist_items').update({ is_done: cb.checked }).eq('id', ci.id);
+            if (r.error) { toast('Could not update: ' + r.error.message, true); cb.checked = !cb.checked; return; }
+            row.classList.toggle('done', cb.checked);
+          });
+          row.appendChild(cb);
+          row.appendChild(document.createTextNode(ci.title));
+          checklistList.appendChild(row);
+        });
+      }
+      if (canEdit) {
+        var checklistAddRow = el('div'); checklistAddRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        var checklistInput = el('input'); checklistInput.type = 'text'; checklistInput.placeholder = 'Add a checklist item…'; checklistInput.style.flex = '1';
+        var checklistAddBtn = el('button', 'btn btn-outline btn-sm'); checklistAddBtn.type = 'button'; checklistAddBtn.textContent = 'Add';
+        checklistAddBtn.addEventListener('click', async function () {
+          if (!checklistInput.value.trim()) return;
+          checklistAddBtn.disabled = true;
+          var r = await sb.from('work_checklist_items').insert({ work_item_id: existing.id, title: checklistInput.value.trim() });
+          checklistAddBtn.disabled = false;
+          if (r.error) { toast('Could not add: ' + r.error.message, true); return; }
+          checklistInput.value = '';
+          refreshChecklist();
+        });
+        checklistAddRow.appendChild(checklistInput); checklistAddRow.appendChild(checklistAddBtn);
+        wrap.appendChild(checklistAddRow);
+      }
+      refreshChecklist();
+    }
+
+    // ---- Activity — Handbook Task 15's "activity history" field.
+    // Reuses work_activity exactly as Client Work does (read-only here,
+    // same as Work Details' Activity tab); already logs status/
+    // reassignment changes for Firm Work unconditionally via
+    // guard_work_item_update(), and its read policy already has its own
+    // work_scope='firm' branch — no new schema/RLS needed.
+    if (isEdit) {
+      var activityHead = el('div', 'checklist-stage'); activityHead.style.marginTop = '18px'; activityHead.textContent = 'Activity';
+      wrap.appendChild(activityHead);
+      var activityList = el('div');
+      wrap.appendChild(activityList);
+      (async function loadActivity() {
+        var res = await sb.from('work_activity').select('*').eq('work_item_id', existing.id).order('created_at', { ascending: false }).limit(20);
+        var rows = res.data || [];
+        if (!rows.length) {
+          var noneP2 = el('p', 'desc'); noneP2.style.margin = '4px 0'; noneP2.textContent = 'No activity yet.';
+          activityList.appendChild(noneP2);
+          return;
+        }
+        rows.forEach(function (a) {
+          var row = el('div', 'activity-row');
+          var who = el('span'); who.style.cssText = 'font-size:.8rem;font-weight:700;color:var(--navy-900);'; who.textContent = profileName(a.actor_id);
+          var when = el('span'); when.style.cssText = 'font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;'; when.textContent = fmtDateTime(a.created_at);
+          who.appendChild(when);
+          var body = el('p'); body.style.cssText = 'margin:3px 0 0;font-size:.87rem;'; body.textContent = a.detail || a.action;
+          row.appendChild(who); row.appendChild(body);
+          activityList.appendChild(row);
+        });
+      })();
     }
 
     // ---- Updates — short progress/status notes, newest first. Reuses

@@ -94,6 +94,8 @@ or admin — has the same Firm Work powers:
 | Create Firm Work, assign to anyone active | Yes |
 | Reassign / change status / change target date / edit checklist / post updates, on ANY Firm Work item (not just their own) | Yes — this is the intended rule |
 | Delete a Firm Work item | Admin only (no product decision yet to open this to peers; matches Client Work's existing delete-is-admin-only convention) |
+| Create/rename a project (`projects`), or archive one (Handbook Task 15) | Yes — same open-collaboration model as Firm Work itself; no delete offered to anyone, archiving is the retirement path |
+| Set `project_id`/`next_action`/`blocker_reason` on a Firm Work item (Handbook Task 15) | Yes, via the same channel as any other field edit on that item (see the row above) |
 
 **Enforcement gap closed, Handbook Task 6:** the database previously
 restricted write access on someone else's Firm Work item to admin (or

@@ -31,6 +31,7 @@ const MATRIX_FILES = [
   'client_service_effective_periods',
   'client_work_full_lifecycle',
   'firm_work_isolation',
+  'firm_work_projects',
   'security_definer_grants',
 ];
 
