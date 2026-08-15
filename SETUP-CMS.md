@@ -1,5 +1,13 @@
 # Setting up the CMS on your existing GitHub repo
 
+> **Historical reference — a one-time bootstrap guide, fully
+> superseded.** The CMS/admin panel and GitHub Actions deploy pipeline
+> described here are long since set up and live; nothing in this
+> project currently needs these steps repeated. Kept for historical
+> record only (per `docs/CURRENT_BASELINE.md` §8, "safe to archive" —
+> not deleted here since it may still have value if the deploy pipeline
+> is ever rebuilt from scratch).
+
 This turns your site into: **edit `content/site.yaml` on GitHub → site rebuilds and
 goes live automatically.** No Netlify, no separate CMS login — everything stays on GitHub.
 

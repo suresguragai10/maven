@@ -1,5 +1,12 @@
 # Change Log — Maven Consultancy Website Update
 
+> **Historical reference — a dated snapshot of one specific update
+> (2026-07-03), public-site/CMS scope only.** Its description of the
+> deploy workflow (`actions/checkout@v6`, `cloudflare/wrangler-action@v3`)
+> no longer matches the live `.github/workflows/deploy.yml` (see
+> `docs/CURRENT_BASELINE.md` §8). Not a log of Maven Work Desk changes —
+> nothing here describes Client Work, Firm Work, or staff roles.
+
 Date: 2026-07-03
 Base: `maven-main` clean source repo
 Scope: implemented the requirements in `FULL_AUDIT_AND_REQUIREMENTS.md`, fixed the

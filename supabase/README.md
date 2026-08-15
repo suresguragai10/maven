@@ -1,5 +1,15 @@
 # Maven Work Desk — database
 
+> **Partially superseded — for current, evidence-backed schema/RLS/grant
+> detail, see `docs/DATABASE_SOURCE_OF_TRUTH.md`, and for role/workflow
+> product rules see `docs/PRODUCT_BOUNDARIES.md`,
+> `docs/ROLE_CAPABILITIES.md`, and `docs/WORKFLOW_MODEL.md` (Handbook
+> Tasks 1 and 4).** This file's "What's intentionally not here" section
+> is out of date — a `notifications` table and in-app notifications
+> shipped after this was written, and its migration-order table is
+> missing 5 files added since. The provenance/history narrative below is
+> still accurate and useful; the specific claims just noted are not.
+
 This is the Supabase (Postgres) schema behind the staff portal at `/staff`
 (`staff/staff.js` + `staff/index.html`). It's a separate project from the
 public website's own infrastructure — no code here is deployed by

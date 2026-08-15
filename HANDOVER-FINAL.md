@@ -1,5 +1,16 @@
 # Maven Consultancy Website — Complete Project Handover
 
+> **Historical reference — dated July 2026, public-site/CMS scope only.**
+> Kept for its narrative value, not treated as current. Known
+> inaccuracies (self-contradicts on GitHub Pages vs. Cloudflare Workers
+> hosting; never mentions `/staff/` despite it being the largest part of
+> the codebase; points to the wrong file for updating tax slabs) are
+> catalogued in `docs/CURRENT_BASELINE.md` §8. This document has no
+> claims about Maven Work Desk (staff portal) roles, Client Work, or
+> Firm Work — for that, see `docs/PRODUCT_BOUNDARIES.md`,
+> `docs/ROLE_CAPABILITIES.md`, and `docs/WORKFLOW_MODEL.md`, the current
+> authoritative sources as of Handbook Task 4.
+
 **Document prepared:** July 2026
 **Live site:** https://mavennepal.com.np (custom domain, via Cloudflare)
 **GitHub repo:** https://github.com/suresguragai10/maven

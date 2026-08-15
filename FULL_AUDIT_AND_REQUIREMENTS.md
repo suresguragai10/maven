@@ -1,5 +1,13 @@
 # Maven Consultancy Website - Full Audit and Add-on Requirements
 
+> **Historical reference — public-site/CMS scope only, superseded on
+> anything to do with Maven Work Desk.** Everything below predates the
+> Work Desk staff portal entirely (this audit is about the public
+> marketing site's CMS/admin panel). For current, authoritative product
+> boundaries, roles, and workflow for `/staff`, see
+> `docs/PRODUCT_BOUNDARIES.md`, `docs/ROLE_CAPABILITIES.md`, and
+> `docs/WORKFLOW_MODEL.md` (Handbook Task 4).
+
 > **Implementation status (2026-07-03):** All requirements in this document have
 > now been implemented in the codebase, plus three requested extras (Privacy
 > Policy page, contact-form honeypot spam guard, canonical + Open Graph SEO tags).
