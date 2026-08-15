@@ -5,6 +5,15 @@ const { WORK_ITEMS } = require('../support/ids');
 // should be able to record a submission yet, since guard_work_item_update()
 // only allows submission fields to change once old.status is
 // 'ready_to_submit' or 'completed'.
+//
+// HISTORY (kept for context, not a live finding): this file originally
+// documented a real gap -- the submission-timing check lived inside an
+// else-branch that role='reviewer'/'admin' skipped entirely, so either
+// could backfill submission fields on an item never actually marked
+// ready_to_submit. Handbook Task 6 (20260818090000_work_item_update_
+// authorization.sql) rewrote guard_work_item_update() to unify the
+// role-dispatch so this check applies regardless of role -- all three
+// cases below now correctly DENY. Re-confirmed here, not re-discovered.
 module.exports = async function submissionMatrix({ asRole, IDENTITIES, record }) {
   const area = 'submission fields/actions';
 
@@ -30,7 +39,7 @@ module.exports = async function submissionMatrix({ asRole, IDENTITIES, record })
     record({
       area, action: 'UPDATE submission fields (as the item\'s reviewer) while status=in_progress', identity: 'reviewerA',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
-      note: r.error || `${r.rowCount} row(s) - NEW FINDING: the submission-timing check lives INSIDE guard_work_item_update()'s else-branch, which role='reviewer' (matching old/new.reviewer_id) skips entirely along with every other else-branch rule. A reviewer can backfill submission fields on an item that was never actually marked ready_to_submit. This is a workflow-integrity gap, not just a permission one: the rule reads as a compliance-state guard, but it's only enforced against plain employees.`,
+      note: r.error || `${r.rowCount} row(s) - correctly denied since Task 6; see this file's header for the pre-Task-6 history`,
     });
   });
 
@@ -43,7 +52,7 @@ module.exports = async function submissionMatrix({ asRole, IDENTITIES, record })
     record({
       area, action: 'UPDATE submission fields (as admin) while status=in_progress', identity: 'admin',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
-      note: r.error || `${r.rowCount} row(s) - same root cause as the reviewer case above: admin's branch is also "null" (skips the else-branch entirely), so this is not a separate bug, it's the same one, doubly confirmed.`,
+      note: r.error || `${r.rowCount} row(s) - correctly denied since Task 6; see this file's header for the pre-Task-6 history`,
     });
   });
 };

@@ -29,6 +29,8 @@ const MATRIX_FILES = [
   'period_normalization',
   'deadline_governance',
   'client_service_effective_periods',
+  'client_work_full_lifecycle',
+  'firm_work_isolation',
   'security_definer_grants',
 ];
 

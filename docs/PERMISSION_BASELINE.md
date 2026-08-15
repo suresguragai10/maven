@@ -1,6 +1,6 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T11:33:52.269Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T11:49:58.574Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
@@ -11,7 +11,7 @@ Generated 2026-08-15T11:33:52.269Z by `node tests/db/run.js` -- **every row belo
 
 ## Summary
 
-162 checks run across 21 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+171 checks run across 23 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -260,6 +260,25 @@ Generated 2026-08-15T11:33:52.269Z by `node tests/db/run.js` -- **every row belo
 | Generate when a service has no assignee and no active admin exists to fall back to — must skip that service safely, without crashing or affecting other services in the same call | reviewerA | ALLOWED | ALLOW | PASS | call succeeded overall; the assignee-less service was skipped (no row, no crash); the other, properly-assigned service in the same call still generated normally |
 | Historical work is unchanged after service deactivation and template edits | admin | ALLOWED | ALLOW | PASS | work item's title/assignee/dates/status are byte-identical after deactivating its service and renaming its template |
 | Two genuinely concurrent, separately-committed generate_period_work_for_period calls for the identical period | admin (x2 connections) | ALLOWED | ALLOW | PASS | 2 total row(s) created across both calls, zero duplicate (client, service, period) combinations — the unique index held under real concurrency |
+
+### Client Work full lifecycle (Handbook Task 14 regression)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| Full lifecycle: 25 steps (create -> in_progress -> waiting -> received -> blocked/gated review -> changes required -> fixed -> resubmitted -> reassigned -> blocked/gated approval -> ready_to_submit -> blocked completion -> submitted -> acknowledged -> completed -> reopen blocked -> activity verified) | employeeA/reviewerA/admin/employeeB (multi-actor) | ALLOWED | ALLOW | PASS | every step behaved exactly as the transition map, checklist gates, and audit trail are supposed to |
+
+### Firm Work / Client Work reporting isolation (Handbook Task 14)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| Sanity check: the seeded Firm Work item is real and unfiltered queries do see it | admin | ALLOWED | ALLOW | PASS | confirmed work_scope='firm' |
+| loadWork()'s query shape (work_scope='client') excludes the Firm Work item | admin | ALLOWED | ALLOW | PASS | 3 client-scope row(s), Firm Work correctly absent |
+| Reports "active" query (status <> completed) | admin | ALLOWED | ALLOW | PASS | 3 row(s), Firm Work correctly absent |
+| Reports "created in range" query | admin | ALLOWED | ALLOW | PASS | 3 row(s), Firm Work correctly absent |
+| Reports "completed in range" query | admin | ALLOWED | ALLOW | PASS | 0 row(s), Firm Work correctly absent |
+| Firm Work page's own query shape (work_scope='firm') correctly includes Firm Work and nothing else | admin | ALLOWED | ALLOW | PASS | 1 row(s), all work_scope='firm' |
+| INSERT a work_scope='firm' row WITH a client_id set -- proves Client Detail's client_id filter can never structurally match Firm Work | admin | DENIED | DENY | PASS | new row for relation "work_items" violates check constraint "work_items_scope_fields_check" |
+| work_items_scope_fields_check constraint exists on work_items | n/a (catalog check) | ALLOWED | ALLOW | PASS | confirmed present |
 
 ### SECURITY DEFINER function grants (catalog inspection)
 

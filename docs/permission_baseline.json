@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T11:33:52.269Z",
+    "generatedAt": "2026-08-15T11:49:58.574Z",
     "migrationCount": 25
   },
   "results": [
@@ -1317,6 +1317,87 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "2 total row(s) created across both calls, zero duplicate (client, service, period) combinations — the unique index held under real concurrency"
+    },
+    {
+      "area": "Client Work full lifecycle (Handbook Task 14 regression)",
+      "action": "Full lifecycle: 25 steps (create -> in_progress -> waiting -> received -> blocked/gated review -> changes required -> fixed -> resubmitted -> reassigned -> blocked/gated approval -> ready_to_submit -> blocked completion -> submitted -> acknowledged -> completed -> reopen blocked -> activity verified)",
+      "identity": "employeeA/reviewerA/admin/employeeB (multi-actor)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "every step behaved exactly as the transition map, checklist gates, and audit trail are supposed to"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "Sanity check: the seeded Firm Work item is real and unfiltered queries do see it",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "confirmed work_scope='firm'"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "loadWork()'s query shape (work_scope='client') excludes the Firm Work item",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "3 client-scope row(s), Firm Work correctly absent"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "Reports \"active\" query (status <> completed)",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "3 row(s), Firm Work correctly absent"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "Reports \"created in range\" query",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "3 row(s), Firm Work correctly absent"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "Reports \"completed in range\" query",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "0 row(s), Firm Work correctly absent"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "Firm Work page's own query shape (work_scope='firm') correctly includes Firm Work and nothing else",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s), all work_scope='firm'"
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "INSERT a work_scope='firm' row WITH a client_id set -- proves Client Detail's client_id filter can never structurally match Firm Work",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row for relation \"work_items\" violates check constraint \"work_items_scope_fields_check\""
+    },
+    {
+      "area": "Firm Work / Client Work reporting isolation (Handbook Task 14)",
+      "action": "work_items_scope_fields_check constraint exists on work_items",
+      "identity": "n/a (catalog check)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "confirmed present"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
