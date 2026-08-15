@@ -101,6 +101,36 @@ above is especially serious for this table specifically: those four
 functions are its *entire* protection, with nothing else backing them
 up.
 
+## `work_activity`: trustworthy by construction, not by convention
+
+Every material `work_items` state transition (status change, sent for
+review/changes requested/approved/completion — all just specific status
+values, logged generically — due-date change, assignment/reassignment,
+submission tracking) is logged by `guard_work_item_update()` itself, a
+`BEFORE UPDATE` trigger, as of Handbook Task 7. This means the audit
+trail exists because the transition happened at the database — via the
+Staff app, a direct API call, anything — not because the browser
+remembered to make a second, separate, unawaited insert after the
+update succeeded (which is exactly what happened before this task: a
+fire-and-forget client-side `logActivity()` call, easy to silently lose
+on a closed tab or dropped connection, and easy to spoof — its `actor_id`
+came straight from client-supplied data with nothing checking it against
+`auth.uid()`).
+
+`work_activity` now has a `source` column (`'system'` | `'client'`) and
+a tightened `work_activity_insert` policy: a direct client insert is
+only permitted for three specific, non-material action types
+(`checklist_toggled`, `waiting_item_toggled`, `follow_up_recorded` —
+none of them work_items-level events), and only with `source = 'client'`
+and `actor_id = auth.uid()` enforced by the policy itself. Every other
+action value, or any attempt to claim `source = 'system'`, is rejected
+outright — a user cannot fabricate a row that looks like a system event.
+Combined with the pre-existing lack of any `UPDATE`/`DELETE` policy,
+`work_activity` rows are now immutable AND their system-sourced entries
+are unforgeable, closing the actor-spoofing gap Task 3 found. `created_by`
+(on `work_items`) is similarly forced from `auth.uid()` at creation time
+by a new `BEFORE INSERT` trigger, not trusted from client input.
+
 ## What this document does not yet cover
 
 Exhaustive per-table RLS policy text (see

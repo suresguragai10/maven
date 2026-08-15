@@ -178,12 +178,17 @@
     toast('Something went wrong: ' + (e.reason && e.reason.message ? e.reason.message : 'unknown error'), true);
   });
 
-  // Records a work item's Activity-tab entry. Deliberately not called for
-  // creation (redundant with the created_at already shown) or comments
-  // (already visible on Overview) — this is "what changed," not
-  // everything that ever happened.
+  // Records a work item's Activity-tab entry for the handful of actions
+  // that are still legitimately client-logged (checklist/waiting-item
+  // toggles, follow-up records) — everything else material (status,
+  // submission, assignment, due dates) is logged by
+  // guard_work_item_update() itself as of Handbook Task 7, so it can
+  // never be silently skipped by a failed/forgotten client call. source:
+  // 'client' is required by work_activity_insert's own WITH CHECK, which
+  // also restricts `action` to exactly this task's three allowed values
+  // — this helper cannot be used to fabricate a system-looking entry.
   function logActivity(workItemId, action, detail) {
-    sb.from('work_activity').insert({ work_item_id: workItemId, actor_id: state.user.id, action: action, detail: detail || null });
+    sb.from('work_activity').insert({ work_item_id: workItemId, actor_id: state.user.id, action: action, detail: detail || null, source: 'client' });
   }
   // Checklist/waiting-item checkboxes deliberately skip a full page
   // re-render for snappy toggling — so unlike every other mutating action
@@ -2495,7 +2500,7 @@
         if (prevStatus === 'waiting_for_client' && newStatus !== 'waiting_for_client') {
           await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
         }
-        logActivity(work.id, 'status_changed', STATUS_LABELS[prevStatus] + ' → ' + STATUS_LABELS[newStatus]);
+        // Logged automatically by guard_work_item_update() (Handbook Task 7) — no client-side call needed or permitted.
         toast('Status updated.');
         renderWorkDetail(id);
       }
@@ -2563,11 +2568,7 @@
           var res = await sb.from('work_items').update(patch).eq('id', work.id);
           subSaveBtn.disabled = false;
           if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
-          if (newSubStatus !== (work.submission_status || 'not_ready')) {
-            logActivity(work.id, 'submission_status_changed',
-              SUBMISSION_STATUS_LABELS[work.submission_status || 'not_ready'] + ' → ' + SUBMISSION_STATUS_LABELS[newSubStatus]
-              + (patch.submission_reference ? '. Reference: ' + patch.submission_reference : ''));
-          }
+          // Logged automatically by guard_work_item_update() (Handbook Task 7) — no client-side call needed or permitted.
           toast('Submission details saved.');
           renderWorkDetail(id);
         });
@@ -2600,7 +2601,7 @@
       returnBtn.addEventListener('click', async function () {
         var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-        logActivity(work.id, 'waiting_resolved', 'All requirements received — returned to In Progress.');
+        // Status change (waiting_for_client -> in_progress) is logged automatically by guard_work_item_update() (Handbook Task 7).
         toast('Back In Progress.');
         renderWorkDetail(id);
       });
@@ -2612,7 +2613,7 @@
         await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
         var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-        logActivity(work.id, 'waiting_resolved', 'All outstanding documents marked received.');
+        // Status change (waiting_for_client -> in_progress) is logged automatically by guard_work_item_update() (Handbook Task 7).
         toast('Marked as received — back In Progress.');
         renderWorkDetail(id);
       });

@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T06:57:30.520Z",
-    "migrationCount": 18
+    "generatedAt": "2026-08-15T07:14:27.701Z",
+    "migrationCount": 19
   },
   "results": [
     {
@@ -377,10 +377,10 @@
       "area": "work_activity",
       "action": "INSERT an activity row with actor_id set to someone ELSE (not themselves)",
       "identity": "employeeA",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "inserted - NEW FINDING: work_activity_insert's WITH CHECK only verifies the caller is admin/assignee/reviewer on the work item, it never checks actor_id = auth.uid(). Any assignee/reviewer/admin can insert a work_activity row attributing an action to a DIFFERENT profile. The \"immutable audit trail\" (no UPDATE/DELETE policy) is only tamper-proof against edits after the fact, not against a fabricated entry at insert time."
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"work_activity\""
     },
     {
       "area": "work_activity",
@@ -426,6 +426,96 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "0 row(s)"
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "UPDATE status via a plain UPDATE, then check a status_changed row appeared with no separate activity insert issued",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "found: source=system detail=\"In Progress → Waiting for Client\""
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "UPDATE Firm Work assignee via a plain UPDATE, then check a reassigned row appeared with no separate activity insert issued",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "found: source=system detail=\"Assignee: Employee A → Employee B.\""
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "INSERT a forged system-shaped event directly (source=system, action=status_changed)",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"work_activity\""
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "INSERT a forged reassignment event with source=client (action not on the allowlist)",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"work_activity\""
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "INSERT an allowlisted action but with actor_id spoofed to someone else",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"work_activity\""
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "INSERT an allowlisted action, correct actor, but omitting source (defaults to 'system')",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"work_activity\""
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "INSERT a genuinely legitimate allowlisted client action (correct actor, correct source)",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "inserted"
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "UPDATE an existing activity entry, even as admin",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - still no UPDATE policy"
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "SELECT the original \"created\" activity entry, seeded before this migration existed",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 row(s) - pre-existing history survives the migration and stays readable"
+    },
+    {
+      "area": "work_activity (trustworthy audit trail)",
+      "action": "INSERT a new work item with created_by spoofed to someone else",
+      "identity": "employeeB",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "created_by ended up as 33333333-3333-3333-3333-333333333333 (requested spoof: 66666666-6666-6666-6666-666666666666, real caller: 33333333-3333-3333-3333-333333333333) — should always equal the real caller, forced by the new BEFORE INSERT trigger"
     },
     {
       "area": "submission fields/actions",
@@ -867,6 +957,24 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on set_work_item_created_by()",
+      "identity": "n/a (catalog check)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on work_item_status_label(p_status text)",
+      "identity": "n/a (catalog check)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=true"
     }
   ]
 }

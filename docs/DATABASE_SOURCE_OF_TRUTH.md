@@ -129,7 +129,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260818090000` (last applied)
+## 2. Expected schema, as of migration `20260819090000` (last applied)
 
 ### Tables (16)
 
@@ -143,7 +143,7 @@ original source, not a reconstruction.
 | `work_checklist_items` | reconstructed (bundled in 20260811090500) | enabled | `is_required` (Task 13) |
 | `work_comments` | reconstructed (bundled in 20260811090500) | enabled | — |
 | `work_waiting_items` | reconstructed (bundled in 20260811090500) | enabled | `requested_by`, `follow_up_date`, `last_followed_up_at`, `follow_up_count`, `note` (added across the Waiting-checklist work, pre-handbook) |
-| `work_activity` | reconstructed (bundled in 20260811090500) | enabled | — |
+| `work_activity` | reconstructed (bundled in 20260811090500) | enabled | `source` text, `'system'`\|`'client'`, default `'system'` (20260819090000) |
 | `client_services` | reconstructed (20260811090600) | enabled | `start_period`, `end_period` (Task 12-era) |
 | `client_credentials` | original (20260811090700) | enabled, **zero policies** | — |
 | `personal_todos` | original (20260811090800) | enabled | — |
@@ -198,6 +198,17 @@ false) and a `work_items_reviewer_id_idx` index was added to match the
 long-standing `work_items_assignee_id_idx`, since both columns are now
 used identically in these policies.
 
+**Updated by Task 7** (`20260819090000_trustworthy_activity_audit.sql`):
+`work_activity_insert` no longer permits a client to insert any action
+value it likes with any actor it likes — the `WITH CHECK` now requires
+`source = 'client'`, `actor_id = auth.uid()`, and `action` to be one of
+exactly `checklist_toggled`/`waiting_item_toggled`/`follow_up_recorded`
+(the only actions this app still legitimately logs from the client;
+every work_items-level system event — status, submission, assignment,
+due-date — is inserted only by `guard_work_item_update()` itself, which
+bypasses RLS as a table-owner/`SECURITY DEFINER` action). No
+`UPDATE`/`DELETE` policy exists on `work_activity`, unchanged.
+
 `personal_todos` and `notifications` were deliberately left on their
 original ownership-only policies (`auth.uid() = user_id`) — never
 touched by the `is_active` hardening pass, since an already-more-
@@ -214,8 +225,10 @@ still a confirmed low-severity gap, see
 | `current_user_active()` | DEFINER, `sql`, stable | `public` | is_active, coalesced false |
 | `handle_new_user()` | DEFINER, trigger | `public` | creates a profile row on `auth.users` insert |
 | `guard_profile_update()` | DEFINER, trigger | `public` | blocks non-admins changing `role`/`is_active` (NULL-safe: positive-list pattern, but see §0 residual note — RLS is the real gate here anyway) |
-| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000_work_item_update_authorization.sql`) — now branches on `work_scope` before any Client-Work role logic (Firm Work = full peer power for any active user), reviewer's branch no longer skips the reassign/rescope/submission-timing checks the way admin's does, and `work_scope`/`id`/`created_at`/`created_by` are universally immutable after creation. |
+| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000`) — branches on `work_scope` before any Client-Work role logic, reviewer no longer skips reassign/rescope/submission-timing checks, `work_scope`/`id`/`created_at`/`created_by` immutable. Extended by Task 7 (`20260819090000`) — now also logs `status_changed`/`submission_status_changed` to `work_activity` unconditionally (every role, every write path) and forces `submitted_by` from `auth.uid()` rather than client input. |
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
+| `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by` |
+| `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
 | `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | see §0 — NOT NULL-safe, no explicit grant restriction |
 | `_generate_period_work_core(period, period_type)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated |
 | `generate_period_work_for_period(period, period_type)` | DEFINER, plpgsql | `public` | public wrapper; see §0 — NOT NULL-safe, no explicit grant restriction |

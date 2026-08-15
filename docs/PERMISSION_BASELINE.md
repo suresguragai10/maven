@@ -1,23 +1,22 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T06:57:30.520Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T07:14:27.701Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 18 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 19 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-96 checks run across 16 areas. **17 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+108 checks run across 17 areas. **16 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Findings — current behavior does not match the intended model
 
 | Area | Action | Identity | Observed | Note |
 |---|---|---|---|---|
-| work_activity | INSERT an activity row with actor_id set to someone ELSE (not themselves) | employeeA | **ALLOWED** (expected DENY) | inserted - NEW FINDING: work_activity_insert's WITH CHECK only verifies the caller is admin/assignee/reviewer on the work item, it never checks actor_id = auth.uid(). Any assignee/reviewer/admin can insert a work_activity row attributing an action to a DIFFERENT profile. The "immutable audit trail" (no UPDATE/DELETE policy) is only tamper-proof against edits after the fact, not against a fabricated entry at insert time. |
 | notifications | SELECT own notifications (as a deactivated profile with a still-valid session) | inactive | **ALLOWED** (expected DENY) | 1 row(s) - notifications_read is pure auth.uid()=user_id ownership, never touched by the is_active hardening pass (20260815090000's own stated scope excludes it as "moot"). A still-valid deactivated session keeps reading its own old notifications. |
 | personal_todos | SELECT own to-dos (as a deactivated profile with a still-valid session) | inactive | **ALLOWED** (expected DENY) | 1 row(s) - same gap as notifications: pure ownership check, never gated on is_active. |
 | client_attention (set_client_attention RPC) | CALL as a deactivated profile with a still-valid authenticated session | inactive | **ALLOWED** (expected DENY) | succeeded - EMPIRICALLY REPRODUCES the Task 1 NULL-bypass finding: current_user_role() returns NULL for this identity, "NULL not in ('admin','reviewer')" evaluates to NULL, PL/pgSQL treats a NULL IF-condition as false, the RAISE never fires. This is the exact residual risk documented in maven_critical_finding_anon_execute_bypass.md, now proven against a real query instead of reasoned about. |
@@ -107,7 +106,7 @@ Generated 2026-08-15T06:57:30.520Z by `node tests/db/run.js` -- **every row belo
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
 | SELECT activity log for a colleague's (in_progress) item | employeeB | DENIED | DENY | PASS | FIXED by Handbook Task 5, matching the parent work_items_read fix. |
-| INSERT an activity row with actor_id set to someone ELSE (not themselves) | employeeA | ALLOWED | DENY | FAIL | inserted - NEW FINDING: work_activity_insert's WITH CHECK only verifies the caller is admin/assignee/reviewer on the work item, it never checks actor_id = auth.uid(). Any assignee/reviewer/admin can insert a work_activity row attributing an action to a DIFFERENT profile. The "immutable audit trail" (no UPDATE/DELETE policy) is only tamper-proof against edits after the fact, not against a fabricated entry at insert time. |
+| INSERT an activity row with actor_id set to someone ELSE (not themselves) | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "work_activity" |
 | UPDATE an existing activity entry | admin | DENIED | DENY | PASS | 0 row(s) - correctly immutable even for admin, no update policy exists |
 
 ### work_waiting_items
@@ -118,6 +117,21 @@ Generated 2026-08-15T06:57:30.520Z by `node tests/db/run.js` -- **every row belo
 | INSERT a waiting item on a colleague's work | employeeB | DENIED | DENY | PASS | new row violates row-level security policy for table "work_waiting_items" |
 | UPDATE (mark received) waiting item on own work | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | SELECT any waiting item | anon | DENIED | DENY | PASS | 0 row(s) |
+
+### work_activity (trustworthy audit trail)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| UPDATE status via a plain UPDATE, then check a status_changed row appeared with no separate activity insert issued | employeeA | ALLOWED | ALLOW | PASS | found: source=system detail="In Progress → Waiting for Client" |
+| UPDATE Firm Work assignee via a plain UPDATE, then check a reassigned row appeared with no separate activity insert issued | admin | ALLOWED | ALLOW | PASS | found: source=system detail="Assignee: Employee A → Employee B." |
+| INSERT a forged system-shaped event directly (source=system, action=status_changed) | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "work_activity" |
+| INSERT a forged reassignment event with source=client (action not on the allowlist) | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "work_activity" |
+| INSERT an allowlisted action but with actor_id spoofed to someone else | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "work_activity" |
+| INSERT an allowlisted action, correct actor, but omitting source (defaults to 'system') | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "work_activity" |
+| INSERT a genuinely legitimate allowlisted client action (correct actor, correct source) | employeeA | ALLOWED | ALLOW | PASS | inserted |
+| UPDATE an existing activity entry, even as admin | admin | DENIED | DENY | PASS | 0 row(s) - still no UPDATE policy |
+| SELECT the original "created" activity entry, seeded before this migration existed | employeeA | ALLOWED | ALLOW | PASS | 2 row(s) - pre-existing history survives the migration and stays readable |
+| INSERT a new work item with created_by spoofed to someone else | employeeB | DENIED | DENY | PASS | created_by ended up as 33333333-3333-3333-3333-333333333333 (requested spoof: 66666666-6666-6666-6666-666666666666, real caller: 33333333-3333-3333-3333-333333333333) — should always equal the real caller, forced by the new BEFORE INSERT trigger |
 
 ### submission fields/actions
 
@@ -212,6 +226,8 @@ Generated 2026-08-15T06:57:30.520Z by `node tests/db/run.js` -- **every row belo
 | EXECUTE grant to 'anon' on log_work_item_created() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on reveal_client_credential(p_id uuid) | n/a (catalog check) | ALLOWED | DENY | FAIL | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on set_client_attention(p_client_id uuid, p_level text, p_reason text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on set_work_item_created_by() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
+| EXECUTE grant to 'anon' on work_item_status_label(p_status text) | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=true |
 
 ## How to re-run
 
