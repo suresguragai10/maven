@@ -10,12 +10,21 @@ module.exports = async function workItemsClientMatrix({ asRole, IDENTITIES, ANON
     record({ area, action: 'SELECT own assigned item', identity: 'employeeA', allowed: r.rowCount > 0, expectedSecure: 'allow' });
   });
 
+  await asRole(IDENTITIES.reviewerB, async (c) => {
+    const r = await tryQuery(c, 'select id from public.work_items where id = $1', [WORK_ITEMS.normal.id]);
+    record({
+      area, action: 'SELECT an item where they are neither assignee nor the assigned reviewer (reviewer role alone does not grant broad access)', identity: 'reviewerB',
+      allowed: r.rowCount > 0, expectedSecure: 'deny',
+      note: 'Confirms Handbook Task 5\'s design decision directly: reviewer scope is reviewer_id=them specifically, not blanket reviewer-role visibility into every client\'s work. Matches staff.js loadWork(\'review\')\'s own pre-existing comment about the intended model.',
+    });
+  });
+
   await asRole(IDENTITIES.employeeA, async (c) => {
     const r = await tryQuery(c, 'select id from public.work_items where id = $1', [WORK_ITEMS.other.id]);
     record({
       area, action: 'SELECT a colleague\'s item (status=in_progress, not assigned/reviewing)', identity: 'employeeA',
-      allowed: r.rowCount > 0, expectedSecure: 'allow',
-      note: 'confirmed broad: work_items_read allows any active user to see any item whose status is not ready_for_review, regardless of assignment - not scoped to assignee/reviewer/admin the way it might look at a glance',
+      allowed: r.rowCount > 0, expectedSecure: 'deny',
+      note: 'FIXED by Handbook Task 5 (20260817090000_client_work_select_visibility.sql): work_items_read no longer has a blanket "status <> ready_for_review" branch. Previously any active user could see any non-ready-for-review item regardless of assignment; now correctly scoped to assignee/reviewer/admin.',
     });
   });
 
@@ -35,7 +44,7 @@ module.exports = async function workItemsClientMatrix({ asRole, IDENTITIES, ANON
     record({
       area, action: 'UPDATE a colleague\'s item they are not assigned to', identity: 'employeeA',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
-      note: r.error || `${r.rowCount} row(s) - blocked by guard_work_item_update()'s "You can only update work assigned to you", not by RLS (RLS's USING clause matches this row since status<>ready_for_review)`,
+      note: r.error || `${r.rowCount} row(s) - blocked directly by RLS since Handbook Task 5 tightened work_items_update's USING clause to match work_items_read (previously this row was RLS-visible via the removed "status<>ready_for_review" branch and only stopped by guard_work_item_update()'s trigger check; now the row isn't even reachable, so the trigger never gets a chance to run)`,
     });
   });
 

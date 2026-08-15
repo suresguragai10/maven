@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-14T17:10:04.019Z",
-    "migrationCount": 16
+    "generatedAt": "2026-08-15T06:46:25.404Z",
+    "migrationCount": 17
   },
   "results": [
     {
@@ -132,12 +132,21 @@
     },
     {
       "area": "work_items (client scope)",
+      "action": "SELECT an item where they are neither assignee nor the assigned reviewer (reviewer role alone does not grant broad access)",
+      "identity": "reviewerB",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Confirms Handbook Task 5's design decision directly: reviewer scope is reviewer_id=them specifically, not blanket reviewer-role visibility into every client's work. Matches staff.js loadWork('review')'s own pre-existing comment about the intended model."
+    },
+    {
+      "area": "work_items (client scope)",
       "action": "SELECT a colleague's item (status=in_progress, not assigned/reviewing)",
       "identity": "employeeA",
-      "allowed": true,
-      "expectedSecure": "allow",
+      "allowed": false,
+      "expectedSecure": "deny",
       "secure": true,
-      "note": "confirmed broad: work_items_read allows any active user to see any item whose status is not ready_for_review, regardless of assignment - not scoped to assignee/reviewer/admin the way it might look at a glance"
+      "note": "FIXED by Handbook Task 5 (20260817090000_client_work_select_visibility.sql): work_items_read no longer has a blanket \"status <> ready_for_review\" branch. Previously any active user could see any non-ready-for-review item regardless of assignment; now correctly scoped to assignee/reviewer/admin."
     },
     {
       "area": "work_items (client scope)",
@@ -164,7 +173,7 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "You can only update work assigned to you."
+      "note": "0 row(s) - blocked directly by RLS since Handbook Task 5 tightened work_items_update's USING clause to match work_items_read (previously this row was RLS-visible via the removed \"status<>ready_for_review\" branch and only stopped by guard_work_item_update()'s trigger check; now the row isn't even reachable, so the trigger never gets a chance to run)"
     },
     {
       "area": "work_items (client scope)",
@@ -269,10 +278,10 @@
       "area": "work_checklist_items",
       "action": "SELECT checklist for a colleague's (in_progress) item",
       "identity": "employeeB",
-      "allowed": true,
-      "expectedSecure": "allow",
+      "allowed": false,
+      "expectedSecure": "deny",
       "secure": true,
-      "note": "same broad-read pattern as the parent work_items row"
+      "note": "FIXED by Handbook Task 5: work_checklist_items_read's exists-subquery no longer has the \"status<>ready_for_review\" broad branch, matching the parent work_items_read fix."
     },
     {
       "area": "work_checklist_items",
@@ -299,16 +308,16 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "0 row(s) - unlike SELECT, UPDATE has no \"status<>ready_for_review\" broad branch: only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it)"
+      "note": "0 row(s) - UPDATE never had the broad branch SELECT used to have; only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it). Now consistent with SELECT too, post-Task-5."
     },
     {
       "area": "work_activity",
       "action": "SELECT activity log for a colleague's (in_progress) item",
       "identity": "employeeB",
-      "allowed": true,
-      "expectedSecure": "allow",
+      "allowed": false,
+      "expectedSecure": "deny",
       "secure": true,
-      "note": ""
+      "note": "FIXED by Handbook Task 5, matching the parent work_items_read fix."
     },
     {
       "area": "work_activity",
@@ -332,10 +341,10 @@
       "area": "work_waiting_items",
       "action": "SELECT waiting items for a colleague's (in_progress) item",
       "identity": "employeeB",
-      "allowed": true,
-      "expectedSecure": "allow",
+      "allowed": false,
+      "expectedSecure": "deny",
       "secure": true,
-      "note": ""
+      "note": "FIXED by Handbook Task 5, matching the parent work_items_read fix."
     },
     {
       "area": "work_waiting_items",

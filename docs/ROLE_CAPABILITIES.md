@@ -31,28 +31,42 @@ residual gaps.
 
 | Action | Employee | Reviewer | Admin |
 |---|---|---|---|
-| Read a client-scope work item | Own (assignee/reviewer), or any item not currently `ready_for_review` | Same as employee | Any, always |
-| Read a `ready_for_review` item | Only if assignee or reviewer on it | Only if assignee or reviewer on it | Any |
+| Read a client-scope work item | Only if assignee | Only if the assigned reviewer on it | Any, always |
 | Create a work item | Only assigned to self | Yes, any assignee | Yes, any assignee |
 | Update own assigned item (status, dates, description) | Yes, within allowed status transitions (see WORKFLOW_MODEL.md) | N/A unless also assignee | Yes, any item |
 | Reassign / change reviewer / change client / change service template | **No** | **No** — reviewing is not configuring; see note below | Yes |
 | Set `approved` / `changes_required` / `ready_to_submit` / `completed` | **No** | Yes, on items they review | Yes, any item |
 | Record submission fields (`submission_status`, `submitted_at`, etc.) | Only once the item is already `ready_to_submit`/`completed` | Same rule — see note below | Same rule — see note below |
 | Edit checklist items | Only on own assigned item | Only on items they review | Any |
-| Comment / view activity | Broad read (see above); write requires admin/assignee/reviewer | Same | Any |
+| Comment / view activity | Read/write only on own assigned item | Read/write only on items they review | Any |
 | Toggle waiting-for-client items | Only on own assigned item | Only on items they review | Any |
 | View / manage client credentials | **No** | Yes (deliberate — a reviewer often needs a client's portal login to actually perform a review; confirmed product decision, not an oversight) | Yes |
 
-**Note on reviewer scope, intended vs. current:** the intended rule is
-"Reviewer = review work and record review decisions; Admin = configure
-clients/services/assignment." **Current database enforcement is
-broader than this** — a reviewer can currently rescope, reassign, or
-move a work item to a different client on anything they review, and can
-also record submission fields on an item that was never marked
-`ready_to_submit`. Both are confirmed, tracked gaps (see
+**Read visibility fixed, Handbook Task 5:** the table above now matches
+actual enforcement. Previously, `work_items_read` (and its four child
+tables) carried a blanket "any active user may read any item that
+isn't currently `ready_for_review`" fallback — meaning an unrelated
+employee could read a colleague's confidential client work simply
+because of its status, not because of any real relationship to it. That
+fallback is removed as of
+`supabase/migrations/20260817090000_client_work_select_visibility.sql`;
+read access is now exactly assignee / assigned-reviewer / admin, with
+no status-based exception. Confirmed via the Task 3 harness, see
 [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md), "work_items (client
-scope)" and "submission fields/actions"), not the intended design —
-listed here so this table isn't read as silently endorsing them.
+scope)."
+
+**Note on reviewer scope, intended vs. current — write side only:** the
+intended rule is "Reviewer = review work and record review decisions;
+Admin = configure clients/services/assignment." **Current database
+enforcement of WRITE actions is broader than this** — a reviewer can
+currently rescope, reassign, or move a work item to a different client
+on anything they review, and can also record submission fields on an
+item that was never marked `ready_to_submit`. Both are confirmed,
+tracked gaps (see [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md),
+"work_items (client scope)" and "submission fields/actions"), not the
+intended design, and **out of scope for the Task 5 read-visibility
+fix** — listed here so this table isn't read as silently endorsing
+them.
 
 ## Firm Work capabilities (peer model)
 

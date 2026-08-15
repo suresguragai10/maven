@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-14T17:10:04.019Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T06:46:25.404Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 16 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 17 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-89 checks run across 16 areas. **22 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+90 checks run across 16 areas. **22 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Findings — current behavior does not match the intended model
 
@@ -70,10 +70,11 @@ Generated 2026-08-14T17:10:04.019Z by `node tests/db/run.js` -- **every row belo
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
 | SELECT own assigned item | employeeA | ALLOWED | ALLOW | PASS |  |
-| SELECT a colleague's item (status=in_progress, not assigned/reviewing) | employeeA | ALLOWED | ALLOW | PASS | confirmed broad: work_items_read allows any active user to see any item whose status is not ready_for_review, regardless of assignment - not scoped to assignee/reviewer/admin the way it might look at a glance |
+| SELECT an item where they are neither assignee nor the assigned reviewer (reviewer role alone does not grant broad access) | reviewerB | DENIED | DENY | PASS | Confirms Handbook Task 5's design decision directly: reviewer scope is reviewer_id=them specifically, not blanket reviewer-role visibility into every client's work. Matches staff.js loadWork('review')'s own pre-existing comment about the intended model. |
+| SELECT a colleague's item (status=in_progress, not assigned/reviewing) | employeeA | DENIED | DENY | PASS | FIXED by Handbook Task 5 (20260817090000_client_work_select_visibility.sql): work_items_read no longer has a blanket "status <> ready_for_review" branch. Previously any active user could see any non-ready-for-review item regardless of assignment; now correctly scoped to assignee/reviewer/admin. |
 | SELECT a colleague's item that IS ready_for_review | employeeB | DENIED | DENY | PASS | this is the one status where visibility actually narrows to assignee/reviewer/admin |
 | SELECT the item they are reviewer on, while ready_for_review | reviewerA | ALLOWED | ALLOW | PASS |  |
-| UPDATE a colleague's item they are not assigned to | employeeA | DENIED | DENY | PASS | You can only update work assigned to you. |
+| UPDATE a colleague's item they are not assigned to | employeeA | DENIED | DENY | PASS | 0 row(s) - blocked directly by RLS since Handbook Task 5 tightened work_items_update's USING clause to match work_items_read (previously this row was RLS-visible via the removed "status<>ready_for_review" branch and only stopped by guard_work_item_update()'s trigger check; now the row isn't even reachable, so the trigger never gets a chance to run) |
 | UPDATE own item's status (ordinary case) | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | UPDATE own item: reassign to someone else | employeeA | DENIED | DENY | PASS | Only a reviewer or admin can reassign or rescope work. |
 | UPDATE own item: convert Client Work to Firm Work directly | employeeA | DENIED | DENY | PASS | Only a reviewer or admin can reassign or rescope work. |
@@ -95,16 +96,16 @@ Generated 2026-08-14T17:10:04.019Z by `node tests/db/run.js` -- **every row belo
 
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
-| SELECT checklist for a colleague's (in_progress) item | employeeB | ALLOWED | ALLOW | PASS | same broad-read pattern as the parent work_items row |
+| SELECT checklist for a colleague's (in_progress) item | employeeB | DENIED | DENY | PASS | FIXED by Handbook Task 5: work_checklist_items_read's exists-subquery no longer has the "status<>ready_for_review" broad branch, matching the parent work_items_read fix. |
 | INSERT a checklist item on a colleague's work | employeeB | DENIED | DENY | PASS | new row violates row-level security policy for table "work_checklist_items" |
 | UPDATE (toggle) checklist item on own work | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
-| UPDATE (toggle) checklist item on a colleague's work | employeeB | DENIED | DENY | PASS | 0 row(s) - unlike SELECT, UPDATE has no "status<>ready_for_review" broad branch: only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it) |
+| UPDATE (toggle) checklist item on a colleague's work | employeeB | DENIED | DENY | PASS | 0 row(s) - UPDATE never had the broad branch SELECT used to have; only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it). Now consistent with SELECT too, post-Task-5. |
 
 ### work_activity
 
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
-| SELECT activity log for a colleague's (in_progress) item | employeeB | ALLOWED | ALLOW | PASS |  |
+| SELECT activity log for a colleague's (in_progress) item | employeeB | DENIED | DENY | PASS | FIXED by Handbook Task 5, matching the parent work_items_read fix. |
 | INSERT an activity row with actor_id set to someone ELSE (not themselves) | employeeA | ALLOWED | DENY | FAIL | inserted - NEW FINDING: work_activity_insert's WITH CHECK only verifies the caller is admin/assignee/reviewer on the work item, it never checks actor_id = auth.uid(). Any assignee/reviewer/admin can insert a work_activity row attributing an action to a DIFFERENT profile. The "immutable audit trail" (no UPDATE/DELETE policy) is only tamper-proof against edits after the fact, not against a fabricated entry at insert time. |
 | UPDATE an existing activity entry | admin | DENIED | DENY | PASS | 0 row(s) - correctly immutable even for admin, no update policy exists |
 
@@ -112,7 +113,7 @@ Generated 2026-08-14T17:10:04.019Z by `node tests/db/run.js` -- **every row belo
 
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
-| SELECT waiting items for a colleague's (in_progress) item | employeeB | ALLOWED | ALLOW | PASS |  |
+| SELECT waiting items for a colleague's (in_progress) item | employeeB | DENIED | DENY | PASS | FIXED by Handbook Task 5, matching the parent work_items_read fix. |
 | INSERT a waiting item on a colleague's work | employeeB | DENIED | DENY | PASS | new row violates row-level security policy for table "work_waiting_items" |
 | UPDATE (mark received) waiting item on own work | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | SELECT any waiting item | anon | DENIED | DENY | PASS | 0 row(s) |

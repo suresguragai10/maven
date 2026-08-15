@@ -129,7 +129,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260816090000` (last applied)
+## 2. Expected schema, as of migration `20260817090000` (last applied)
 
 ### Tables (16)
 
@@ -157,7 +157,8 @@ files in order, and `verify_live_schema.sql` section 2–4 pulls the live
 equivalent directly from `information_schema`. Restating both by hand
 here would just create a third copy that can drift from either.
 
-### RLS pattern, current state (post `20260815090000` + `20260816090000`)
+### RLS pattern, current state (post `20260815090000`, `20260816090000`,
+and `20260817090000` — Handbook Task 5)
 
 Two `SECURITY DEFINER` functions gate almost everything:
 
@@ -170,19 +171,40 @@ Every admin/reviewer-gated policy checks `current_user_role() = 'admin'`
 (or `in ('admin','reviewer')`). Every "any active team member" read/write
 policy checks `current_user_active()`. `work_items` additionally OR's in
 `work_scope = 'firm'` so Firm Work is visible/writable to any active
-teammate regardless of the client-work-specific
-assignee/reviewer/`ready_for_review` predicate — the four `work_items`
-child tables (`work_checklist_items`, `work_comments`,
-`work_waiting_items`, `work_activity`) were **not** given an equivalent
-explicit `work_scope` branch; Firm Work's use of a distinct `'review'`
-status value (instead of colliding with `'ready_for_review'`) is what
-keeps those child tables' existing `status <> 'ready_for_review'`
-visibility clause correct for Firm Work without changing it. `personal_todos`
-and `notifications` were deliberately left on their original
-ownership-only policies (`auth.uid() = user_id`) — never touched by the
-`is_active` hardening pass, since an already-more-restrictive
-per-row-ownership check makes the `is_active` gap moot for those two
-tables specifically (noted in `20260815090000`'s own scope).
+teammate regardless of the client-work-specific assignee/reviewer
+predicate.
+
+**Updated by Task 5** (`20260817090000_client_work_select_visibility.sql`):
+`work_items_read`/`work_items_update` and all four child tables'
+`*_read` policies (`work_checklist_items`, `work_comments`,
+`work_waiting_items`, `work_activity`) no longer have a
+`status <> 'ready_for_review'` broad-fallback branch — that clause was
+the actual mechanism letting any active employee read any client-scope
+work item (and its checklist/comments/activity/waiting rows) regardless
+of assignment, as long as it wasn't currently `ready_for_review`; see
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) for the confirmed
+before/after evidence. The four child tables' `work_scope = 'firm'`
+compatibility is now handled by an explicit branch inside each one's
+`exists (select 1 from work_items w where ... and (w.work_scope='firm'
+or ...))` subquery, mirroring `work_items_read` directly, rather than
+depending on Firm Work's distinct `'review'` status value to
+incidentally satisfy the old broad clause (which is now gone). Current
+client-scope read rule, uniformly across every status including
+`ready_for_review`: `admin`, OR `assignee_id = auth.uid()`, OR
+`reviewer_id = auth.uid()`. `TO authenticated` was also added explicitly
+to all five policies (a `NULL`/anon caller is now excluded by role match
+before the `USING` clause is even evaluated, not just by it evaluating
+false) and a `work_items_reviewer_id_idx` index was added to match the
+long-standing `work_items_assignee_id_idx`, since both columns are now
+used identically in these policies.
+
+`personal_todos` and `notifications` were deliberately left on their
+original ownership-only policies (`auth.uid() = user_id`) — never
+touched by the `is_active` hardening pass, since an already-more-
+restrictive per-row-ownership check makes the `is_active` gap moot for
+those two tables specifically (noted in `20260815090000`'s own scope;
+still a confirmed low-severity gap, see
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md)).
 
 ### Functions (all `public` schema unless noted)
 

@@ -17,7 +17,7 @@ Eight values, roughly linear with two review-cycle branches:
 | `to_do` | Created, not yet started. The only status a new item can be created with. |
 | `in_progress` | Actively being worked by the assignee. |
 | `waiting_for_client` | Blocked on the client providing something (documents, confirmation). See "Waiting-for-client sub-workflow" below — this status and the `work_waiting_items` checklist work together. |
-| `ready_for_review` | Assignee has finished their part and handed it to the reviewer. **This is the one status where read visibility narrows** — see [SECURITY_MODEL.md](SECURITY_MODEL.md) — only the assignee, the reviewer, and admin can see it while it's in this state. Requires a `reviewer_id` to be set; the database rejects the transition otherwise. |
+| `ready_for_review` | Assignee has finished their part and handed it to the reviewer. Requires a `reviewer_id` to be set; the database rejects the transition otherwise. Read visibility here is the same as every other status as of Handbook Task 5 — assignee, assigned reviewer, and admin only; see [SECURITY_MODEL.md](SECURITY_MODEL.md) and [ROLE_CAPABILITIES.md](ROLE_CAPABILITIES.md). |
 | `changes_required` | Reviewer sent it back. Returns to the assignee, who is expected to move it back through `in_progress` → `ready_for_review` again. |
 | `approved` | Reviewer signed off on the work itself. Does not yet mean it's been filed/submitted anywhere — see submission sub-workflow below. |
 | `ready_to_submit` | Approved and ready for the actual filing/submission step. This is the status that unlocks recording submission fields (see below). |

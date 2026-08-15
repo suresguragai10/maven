@@ -8,7 +8,7 @@ module.exports = async function checklistActivityWaitingMatrix({ asRole, IDENTIT
 
     await asRole(IDENTITIES.employeeB, async (c) => {
       const r = await tryQuery(c, 'select id from public.work_checklist_items where work_item_id = $1', [WORK_ITEMS.normal.id]);
-      record({ area, action: 'SELECT checklist for a colleague\'s (in_progress) item', identity: 'employeeB', allowed: r.rowCount > 0, expectedSecure: 'allow', note: 'same broad-read pattern as the parent work_items row' });
+      record({ area, action: 'SELECT checklist for a colleague\'s (in_progress) item', identity: 'employeeB', allowed: r.rowCount > 0, expectedSecure: 'deny', note: 'FIXED by Handbook Task 5: work_checklist_items_read\'s exists-subquery no longer has the "status<>ready_for_review" broad branch, matching the parent work_items_read fix.' });
     });
 
     await asRole(IDENTITIES.employeeB, async (c) => {
@@ -26,7 +26,7 @@ module.exports = async function checklistActivityWaitingMatrix({ asRole, IDENTIT
       record({
         area, action: 'UPDATE (toggle) checklist item on a colleague\'s work', identity: 'employeeB',
         allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
-        note: r.error || `${r.rowCount} row(s) - unlike SELECT, UPDATE has no "status<>ready_for_review" broad branch: only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it)`,
+        note: r.error || `${r.rowCount} row(s) - UPDATE never had the broad branch SELECT used to have; only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it). Now consistent with SELECT too, post-Task-5.`,
       });
     });
   }
@@ -37,7 +37,7 @@ module.exports = async function checklistActivityWaitingMatrix({ asRole, IDENTIT
 
     await asRole(IDENTITIES.employeeB, async (c) => {
       const r = await tryQuery(c, 'select id from public.work_activity where work_item_id = $1', [WORK_ITEMS.normal.id]);
-      record({ area, action: 'SELECT activity log for a colleague\'s (in_progress) item', identity: 'employeeB', allowed: r.rowCount > 0, expectedSecure: 'allow' });
+      record({ area, action: 'SELECT activity log for a colleague\'s (in_progress) item', identity: 'employeeB', allowed: r.rowCount > 0, expectedSecure: 'deny', note: 'FIXED by Handbook Task 5, matching the parent work_items_read fix.' });
     });
 
     await asRole(IDENTITIES.employeeA, async (c) => {
@@ -65,7 +65,7 @@ module.exports = async function checklistActivityWaitingMatrix({ asRole, IDENTIT
 
     await asRole(IDENTITIES.employeeB, async (c) => {
       const r = await tryQuery(c, 'select id from public.work_waiting_items where work_item_id = $1', [WORK_ITEMS.normal.id]);
-      record({ area, action: 'SELECT waiting items for a colleague\'s (in_progress) item', identity: 'employeeB', allowed: r.rowCount > 0, expectedSecure: 'allow' });
+      record({ area, action: 'SELECT waiting items for a colleague\'s (in_progress) item', identity: 'employeeB', allowed: r.rowCount > 0, expectedSecure: 'deny', note: 'FIXED by Handbook Task 5, matching the parent work_items_read fix.' });
     });
 
     await asRole(IDENTITIES.employeeB, async (c) => {
