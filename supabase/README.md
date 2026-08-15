@@ -53,10 +53,16 @@ numbered so that's also correct) — every statement is written to be
 safe to re-run (`create table if not exists`, `create or replace
 function`, `create policy` guarded implicitly by running once).
 
-**Before running `20260811090700_client_credentials.sql`**: replace
-every `REPLACE_WITH_SECRET_PASSPHRASE` placeholder with the project's
-real pgcrypto passphrase. Do not commit the real value back into this
-file — see the security note at the top of that migration.
+**After running `20260822090000_credential_vault_hardening.sql`** (which
+supersedes the placeholder passphrase originally in
+`20260811090700_client_credentials.sql`): an admin must run a one-time
+`select vault.create_secret(...)` command directly in the Supabase SQL
+editor to configure the `client_credentials` encryption passphrase in
+Supabase Vault. Until that's done, storing or revealing a client
+credential fails closed with a clear error — this is intentional, not a
+bug. Never commit the real passphrase value anywhere. See
+[docs/SECURITY_MODEL.md](../docs/SECURITY_MODEL.md) "Secret setup,
+rotation, and recovery" for the exact command and full procedure.
 
 ## What's intentionally not here
 
@@ -84,3 +90,5 @@ file — see the security note at the top of that migration.
 | `20260811090800_personal_todos.sql` | Private per-user scratchpad |
 | `20260811090900_app_settings.sql` | Key/value settings (currently just the auto-generate period) |
 | `20260811091000_recurring_work_generation.sql` | Manual + scheduled (`pg_cron`) recurring work generation |
+| … | (later Handbook Task migrations — see `docs/DATABASE_SOURCE_OF_TRUTH.md` §2 for the full, current list) |
+| `20260822090000_credential_vault_hardening.sql` | Handbook Task 10 — `client_credentials` passphrase moved to Supabase Vault, fail-closed when unconfigured |

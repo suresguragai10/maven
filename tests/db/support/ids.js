@@ -41,4 +41,12 @@ const WORK_ITEMS = {
   firm: { id: 'dddddddd-0000-0000-0000-000000000004', title: 'Renew office internet contract' },
 };
 
-module.exports = { IDENTITIES, ANON, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS };
+// Local-harness-only stand-in for the real Vault-stored passphrase
+// (Handbook Task 10). Never used anywhere near production -- the real
+// secret is generated and stored by an admin directly in Supabase Vault,
+// never in a file. This constant only exists so seed.js and the test
+// matrices agree on one value for the throwaway, always-destroyed local
+// database's own vault-stub secret.
+const TEST_VAULT_PASSPHRASE = 'local-test-harness-passphrase-never-used-in-production';
+
+module.exports = { IDENTITIES, ANON, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE };

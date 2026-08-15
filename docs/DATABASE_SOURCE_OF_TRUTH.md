@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260821090000` (last applied)
+## 2. Expected schema, as of migration `20260822090000` (last applied)
 
 ### Tables (16)
 
@@ -257,6 +257,13 @@ findings as of Task 9.
   every function calling `pgp_sym_encrypt`/`pgp_sym_decrypt` must include
   `extensions` in its own `search_path` or the call fails. Confirmed this
   was hit once historically per the extension migration's own comment.
+- `supabase_vault` — confirmed already installed on this project (seen in
+  the live extension list captured during Task 3's harness runs), not
+  added by any migration in this repo. Backs `vault.secrets` /
+  `vault.decrypted_secrets`, used as of Task 10 to store the
+  `client_credentials` encryption passphrase outside Git and outside the
+  browser — see "`client_credentials` secret handling" above and
+  [SECURITY_MODEL.md](SECURITY_MODEL.md).
 - `pg_cron` — installed, but its originally-described daily
   "generate work for the current period" job was later unscheduled
   (`perform cron.unschedule('generate-period-work-daily')` in
@@ -270,20 +277,25 @@ findings as of Task 9.
   `ON CONFLICT DO NOTHING`, not because a stray schedule would be
   harmless in general. `verify_live_schema.sql` section 10 checks this.
 
-### `client_credentials` secret handling
+### `client_credentials` secret handling (Handbook Task 10)
 
-The two functions that touch plaintext (`add_client_credential`,
-`reveal_client_credential`) call `pgp_sym_encrypt`/`pgp_sym_decrypt` with
-a literal placeholder string, `'REPLACE_WITH_SECRET_PASSPHRASE'`, still
-present in the migration file as committed. The file's own header
-warns this must be replaced with a real passphrase before running, and
-the real value must never be committed. This document does not attempt
-to verify what passphrase is actually live (that would require reading
-`pg_proc` source with a service role, and even then the value itself
-must never be pasted anywhere) — flagged here only so it is not lost:
-Task 10 needs to confirm a real (non-placeholder, non-committed)
-passphrase is what's actually live, ideally sourced from Supabase
-Vault/project secrets rather than inline in function source at all.
+As of `20260822090000_credential_vault_hardening.sql`, the two functions
+that touch plaintext (`add_client_credential`, `reveal_client_credential`)
+no longer contain any passphrase literal at all. Each looks up
+`decrypted_secret` from `vault.decrypted_secrets` (Supabase Vault, the
+`supabase_vault` extension — confirmed already installed on this project)
+by the fixed name `client_credentials_passphrase`, at call time, and
+`RAISE EXCEPTION`s a specific, clear message if that secret is missing or
+empty — no fallback to a placeholder or default. The previously-committed
+literal, `'REPLACE_WITH_SECRET_PASSPHRASE'`, is gone from both function
+bodies as of this migration; it remains, harmlessly, inside the original
+`20260811090700_client_credentials.sql` migration's history (Postgres
+replays every migration file in order — the `create or replace function`
+in `20260822090000` is simply what's live now). The real secret value
+itself is never committed anywhere in this repository — see
+[SECURITY_MODEL.md](SECURITY_MODEL.md) "Secret setup, rotation, and
+recovery" for the one-time `vault.create_secret(...)` setup step an admin
+must run directly in the Supabase SQL editor.
 
 ## 3. Confirmed live drift (2026-08-14)
 

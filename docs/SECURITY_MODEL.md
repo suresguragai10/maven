@@ -201,6 +201,129 @@ above is especially serious for this table specifically: those four
 functions are its *entire* protection, with nothing else backing them
 up.
 
+The two functions that touch plaintext, `add_client_credential` and
+`reveal_client_credential`, encrypt/decrypt `password_encrypted` with
+`pgp_sym_encrypt`/`pgp_sym_decrypt` using a symmetric passphrase. As of
+Handbook Task 10, that passphrase is never a literal in migration SQL —
+see "Secret setup, rotation, and recovery" below for where it actually
+lives and how it's configured.
+
+## Secret setup, rotation, and recovery (Handbook Task 10)
+
+**What changed, and why.** The original `client_credentials` migration
+encrypted/decrypted with a literal placeholder string,
+`'REPLACE_WITH_SECRET_PASSPHRASE'`, committed directly in Git, with a
+comment instructing whoever ran it to replace that value with a real
+passphrase before use — but the replacement itself, being a real secret,
+could never itself be committed back. Nothing enforced that the
+replacement had actually happened, and every later migration that had
+any other reason to touch these two functions had to reproduce their
+full body, silently re-committing the same placeholder each time. A
+fresh environment built from this repo alone — exactly the scenario this
+task's acceptance criterion is about — would have silently "encrypted"
+every client credential with a string sitting in public Git history.
+
+As of `20260822090000_credential_vault_hardening.sql`,
+`add_client_credential` and `reveal_client_credential` look the
+passphrase up at call time from **Supabase Vault**
+(`vault.decrypted_secrets`, backed by the `supabase_vault` Postgres
+extension — confirmed already installed on this project, not something
+this task adds) under the fixed secret name
+`client_credentials_passphrase`. Both functions now **fail closed**: if
+that secret is missing or empty, they `RAISE EXCEPTION` with a specific
+message identifying exactly what's missing, for every caller including
+admin — nobody can store or reveal a credential until an admin
+completes the one-time setup below. This is Supabase's own supported
+secret-storage mechanism, not a custom scheme, and requires no new paid
+service.
+
+### One-time setup (required before any credential can be stored or revealed)
+
+1. **Generate a strong, random passphrase** — at least 32 characters,
+   from a real password manager's generator or `openssl rand -base64 32`
+   run locally, never typed from memory or reused from anything else.
+   Do not save it into any file in this repository, any chat log, or any
+   ticket/issue tracker.
+2. **Store it in a durable, independent secret manager the firm already
+   trusts** (e.g. the same password manager used for other Maven admin
+   credentials) — this is the *only* durable copy of the raw value
+   outside Vault itself. See "Recovery" below for why this step is not
+   optional.
+3. **Run this once, in the Supabase SQL editor, as an admin/owner of the
+   project** (never commit this command with the real value filled in —
+   paste it directly into the SQL editor and run it there):
+
+   ```sql
+   select vault.create_secret(
+     '<paste the generated passphrase here>',
+     'client_credentials_passphrase',
+     'Symmetric passphrase for encrypting/decrypting client portal credentials (client_credentials.password_encrypted).'
+   );
+   ```
+
+4. Confirm setup worked by having an admin/reviewer store one real
+   credential via the Work Desk UI and reveal it back successfully. If
+   either fails with "Client credential encryption is not configured...",
+   the secret name was not entered exactly as
+   `client_credentials_passphrase`, or step 3 was not actually run
+   against this project.
+
+### Rotation
+
+Rotating means replacing the stored secret's value — there is no
+built-in "re-encrypt everything" step, so rotation has a real
+consequence: **every credential already encrypted under the old
+passphrase becomes permanently undecryptable the moment the secret
+changes.** `reveal_client_credential` will raise `Credential not
+found.`-adjacent decrypt failures for those rows, not a helpful
+migration path — pgcrypto has no way to decrypt with the old value once
+it's gone.
+
+To rotate safely:
+1. Before changing anything, use the existing Work Desk UI to reveal and
+   record (in the same trusted secret manager, not in this repo or in
+   plaintext) every currently-stored client credential's value.
+2. Update the secret in Supabase Vault (`select
+   vault.update_secret(...)` targeting the existing secret's id, or
+   delete and recreate via `vault.create_secret(...)` with a new
+   passphrase — either way, do this directly in the SQL editor, never
+   committed).
+3. Re-enter every credential from step 1 through `add_client_credential`
+   (the Work Desk "Add credential" flow) so it's re-encrypted under the
+   new passphrase.
+4. Only rotate when there's a real reason to (suspected exposure,
+   routine security hygiene on a defined schedule) — rotation is
+   disruptive by design, not a casual maintenance action.
+
+### Recovery
+
+Supabase Vault has no "forgot the passphrase" mechanism — its whole
+purpose is that the raw value isn't recoverable from the database by
+anyone without the encryption key Supabase itself manages, and even
+then, this app never needs to read the passphrase from anywhere except
+`vault.decrypted_secrets` at call time. Two distinct failure modes:
+
+- **The Vault secret itself is intact, but nobody remembers the raw
+  value.** Not a problem in practice — `add_client_credential`/
+  `reveal_client_credential` never need a human to type the passphrase
+  in; they read it from Vault automatically. This only matters if you
+  need to rotate (see above), which is why step 2 of setup — keeping an
+  independent backup in a trusted secret manager — matters: it's the
+  only way to *change* the passphrase deliberately without losing access
+  to already-encrypted rows in the process it requires (re-entering
+  them).
+- **Vault itself is ever wiped or corrupted, and no independent backup of
+  the passphrase exists.** Every already-encrypted `client_credentials`
+  row becomes permanently unreadable — there is no recovery path, by
+  design (this is the same property that makes the encryption
+  meaningful in the first place). This is precisely why step 2 of setup
+  is not optional: the independent backup is the only thing that makes
+  this scenario recoverable at all, by allowing every credential to be
+  manually re-entered.
+
+No real secret value is, or should ever be, written into this file, any
+other file in this repository, or any migration.
+
 ## `work_activity`: trustworthy by construction, not by convention
 
 Every material `work_items` state transition (status change, sent for
@@ -235,9 +358,7 @@ by a new `BEFORE INSERT` trigger, not trusted from client input.
 
 Exhaustive per-table RLS policy text (see
 DATABASE_SOURCE_OF_TRUTH.md §2–3), the full grant inventory for every
-function (see the same doc plus `supabase/verify_live_schema.sql`),
+function (see the same doc plus `supabase/verify_live_schema.sql`), and
 CSP/header-level security (see `dist/_headers`, not yet documented in a
-dedicated file), and secret-handling practices beyond the
-`client_credentials` passphrase note already captured in
-DATABASE_SOURCE_OF_TRUTH.md. Extend this skeleton as those areas get
-their own dedicated task rather than letting it go stale by omission.
+dedicated file). Extend this skeleton as those areas get their own
+dedicated task rather than letting it go stale by omission.

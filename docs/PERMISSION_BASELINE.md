@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T07:51:29.478Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T08:13:55.684Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 21 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 22 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-128 checks run across 18 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+131 checks run across 18 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -195,13 +195,16 @@ Generated 2026-08-15T07:51:29.478Z by `node tests/db/run.js` -- **every row belo
 | SELECT the table directly (even as admin) | admin | DENIED | DENY | PASS | 0 row(s) - correctly blocked, zero RLS policies means direct table access is denied for everyone, by design |
 | CALL list_client_credentials as reviewer | reviewerA | ALLOWED | ALLOW | PASS |  |
 | CALL list_client_credentials as a plain employee | employeeA | DENIED | DENY | PASS | Not authorized. |
-| CALL list_client_credentials as anonymous (no committed grant restriction) | anon | DENIED | DENY | PASS | permission denied for function list_client_credentials |
-| CALL reveal_client_credential as anonymous (no committed grant restriction) | anon | DENIED | DENY | PASS | permission denied for function reveal_client_credential |
+| CALL list_client_credentials as anonymous | anon | DENIED | DENY | PASS | permission denied for function list_client_credentials |
+| CALL reveal_client_credential as anonymous | anon | DENIED | DENY | PASS | permission denied for function reveal_client_credential |
 | Full anonymous chain: list then reveal a real password | anon | DENIED | DENY | PASS | permission denied for function list_client_credentials |
 | CALL list_client_credentials as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | Not authorized. |
 | CALL add_client_credential as anonymous | anon | DENIED | DENY | PASS | permission denied for function add_client_credential |
 | CALL delete_client_credential as anonymous (nonexistent id, function-reachability check only) | anon | DENIED | DENY | PASS | permission denied for function delete_client_credential |
-| has_function_privilege(anon, reveal_client_credential, EXECUTE) - direct grant inspection | n/a (catalog check) | DENIED | DENY | PASS | anon_can_execute = false - confirms the missing-grant-restriction finding independent of actually calling the function |
+| has_function_privilege(anon, reveal_client_credential, EXECUTE) - direct grant inspection | n/a (catalog check) | DENIED | DENY | PASS | anon_can_execute = false - confirms the anon EXECUTE grant is closed (Handbook Task 9), independent of actually calling the function |
+| Authorized reveal decrypts to the correct value | reviewerA | ALLOWED | ALLOW | PASS | decrypted value matched the known seed password (value not printed, per Task 10) |
+| CALL add_client_credential with no Vault secret configured (fail-closed check) | admin | DENIED | DENY | PASS | Client credential encryption is not configured. An admin must set up the client_credentials_passphrase secret in Supabase Vault before credentials can be stored — see docs/SECURITY_MODEL.md. |
+| CALL reveal_client_credential with no Vault secret configured (fail-closed check) | admin | DENIED | DENY | PASS | Client credential encryption is not configured. An admin must set up the client_credentials_passphrase secret in Supabase Vault before credentials can be revealed — see docs/SECURITY_MODEL.md. |
 
 ### recurring generation functions
 

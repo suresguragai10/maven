@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T07:51:29.478Z",
-    "migrationCount": 21
+    "generatedAt": "2026-08-15T08:13:55.684Z",
+    "migrationCount": 22
   },
   "results": [
     {
@@ -915,7 +915,7 @@
     },
     {
       "area": "client_credentials",
-      "action": "CALL list_client_credentials as anonymous (no committed grant restriction)",
+      "action": "CALL list_client_credentials as anonymous",
       "identity": "anon",
       "allowed": false,
       "expectedSecure": "deny",
@@ -924,7 +924,7 @@
     },
     {
       "area": "client_credentials",
-      "action": "CALL reveal_client_credential as anonymous (no committed grant restriction)",
+      "action": "CALL reveal_client_credential as anonymous",
       "identity": "anon",
       "allowed": false,
       "expectedSecure": "deny",
@@ -974,7 +974,34 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "anon_can_execute = false - confirms the missing-grant-restriction finding independent of actually calling the function"
+      "note": "anon_can_execute = false - confirms the anon EXECUTE grant is closed (Handbook Task 9), independent of actually calling the function"
+    },
+    {
+      "area": "client_credentials",
+      "action": "Authorized reveal decrypts to the correct value",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "decrypted value matched the known seed password (value not printed, per Task 10)"
+    },
+    {
+      "area": "client_credentials",
+      "action": "CALL add_client_credential with no Vault secret configured (fail-closed check)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Client credential encryption is not configured. An admin must set up the client_credentials_passphrase secret in Supabase Vault before credentials can be stored — see docs/SECURITY_MODEL.md."
+    },
+    {
+      "area": "client_credentials",
+      "action": "CALL reveal_client_credential with no Vault secret configured (fail-closed check)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Client credential encryption is not configured. An admin must set up the client_credentials_passphrase secret in Supabase Vault before credentials can be revealed — see docs/SECURITY_MODEL.md."
     },
     {
       "area": "recurring generation functions",

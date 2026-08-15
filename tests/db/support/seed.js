@@ -6,7 +6,7 @@
 // seeded identities via harness.asRole() to see what RLS/grants actually
 // allow.
 
-const { IDENTITIES, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS } = require('./ids');
+const { IDENTITIES, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE } = require('./ids');
 
 async function seed(client) {
   // ---- profiles (via auth.users -> handle_new_user() trigger) ----
@@ -81,11 +81,19 @@ async function seed(client) {
     [WORK_ITEMS.normal.id, IDENTITIES.employeeA.id]
   );
 
+  // ---- Vault secret (Handbook Task 10) — the local stub's stand-in for
+  // the real, admin-configured, never-committed Supabase Vault secret.
+  // Seeded here so the "secret IS configured" test scenarios have a
+  // realistic starting point; a dedicated matrix test separately proves
+  // the fail-closed behavior when this row doesn't exist (see
+  // client_credentials.matrix.js).
+  await client.query(`select vault.create_secret($1, 'client_credentials_passphrase', 'Local test harness only.')`, [TEST_VAULT_PASSPHRASE]);
+
   // ---- client_credentials (created_by admin) ----
   await client.query(
     `insert into public.client_credentials (client_id, label, username, password_encrypted, created_by)
-     values ($1, 'IRD portal', 'alpha_trading', extensions.pgp_sym_encrypt('S3edPassword!', 'REPLACE_WITH_SECRET_PASSPHRASE'), $2)`,
-    [CLIENTS.alpha.id, IDENTITIES.admin.id]
+     values ($1, 'IRD portal', 'alpha_trading', extensions.pgp_sym_encrypt('S3edPassword!', $2), $3)`,
+    [CLIENTS.alpha.id, TEST_VAULT_PASSPHRASE, IDENTITIES.admin.id]
   );
 
   // ---- notifications (employeeA's own) ----

@@ -18,11 +18,14 @@ const path = require('path');
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', '..', '..', 'supabase', 'migrations');
 const AUTH_STUB = path.join(__dirname, 'auth-stub.sql');
+const VAULT_STUB = path.join(__dirname, 'vault-stub.sql');
 const PG_CRON_LINE = 'create extension if not exists pg_cron;';
 
 async function applySchema(client) {
   const authStubSql = fs.readFileSync(AUTH_STUB, 'utf8');
   await client.query(authStubSql);
+  const vaultStubSql = fs.readFileSync(VAULT_STUB, 'utf8');
+  await client.query(vaultStubSql);
 
   const files = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort();
   const applied = [];
