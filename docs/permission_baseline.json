@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T16:58:00.364Z",
-    "migrationCount": 31
+    "generatedAt": "2026-08-15T17:24:54.227Z",
+    "migrationCount": 32
   },
   "results": [
     {
@@ -1983,6 +1983,33 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "Your account is inactive."
+    },
+    {
+      "area": "Firm Work search + recurring-generation isolation (Handbook Task 23)",
+      "action": "Every row recurring generation creates has work_scope='client', with a decoy Firm Work item present",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 row(s), all work_scope='client'"
+    },
+    {
+      "area": "Firm Work search + recurring-generation isolation (Handbook Task 23)",
+      "action": "Global Search's Firm Work query shape finds the Firm item and never returns a same-titled Client Work row",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s), correctly firm-only"
+    },
+    {
+      "area": "Firm Work search + recurring-generation isolation (Handbook Task 23)",
+      "action": "A completed Firm Work item remains fully queryable by title months later, status intact",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "found, status=completed, fully searchable"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

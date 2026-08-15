@@ -2548,7 +2548,7 @@
 
     var card = el('div', 'card');
     var qInput = el('input'); qInput.type = 'text';
-    qInput.placeholder = 'Search client, service, period, staff, status, or reference number…';
+    qInput.placeholder = 'Search client, service, period, staff, status, reference number, or Firm Work…';
     qInput.value = filters.q;
     card.appendChild(field('Search', qInput));
 
@@ -2652,11 +2652,14 @@
       }
       var loading = el('div', 'empty-note'); loading.textContent = 'Searching…'; resultsWrap.appendChild(loading);
 
-      // Search is a Client Work tool (its own filter set is client/
-      // service/period/staff/status/submission reference — nothing
-      // Firm-Work-shaped like firm_category) — excluded here for the
-      // same "must not contaminate client compliance reporting" reason
-      // as loadWork() and Reports.
+      // The filter row (client/service/period/staff/status/submission
+      // reference) is a Client Work vocabulary — none of it maps onto
+      // Firm Work, so it only ever narrows this query. Firm Work
+      // participates in the free-text query below instead (Handbook
+      // Task 23) — this does NOT contaminate client compliance
+      // reporting: Today/Deadlines/Manager Dashboard/Period Summary/
+      // Reports all route through loadWork() or their own explicit
+      // work_scope='client' filter, none of which this page touches.
       var query = sb.from('work_items').select('*').eq('work_scope', 'client').order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.client) query = query.eq('client_id', filters.client);
@@ -2695,7 +2698,33 @@
         query = query.or(orParts.join(','));
       }
 
-      var res = await query;
+      // Handbook Task 23: Firm Work joins global Search too, but only
+      // when there's an actual free-text term — the rest of this page's
+      // filter row has no Firm Work equivalent, so a pure-filter search
+      // (no text) stays exactly the Client-only search it always was.
+      // Search fields mirror the Firm Work list's own (title/description/
+      // next_action/project name — Handbook Task 17/19); owner and due-
+      // date-range are shared, meaningful concepts so those two filters
+      // apply here too. Client/service/period/reviewer/submission/
+      // waiting have no Firm Work meaning and are correctly never applied.
+      var firmQueryPromise = Promise.resolve({ data: [] });
+      if (term) {
+        var firmLowerTerm = term.toLowerCase();
+        var matchingProjectIds = state.projects.filter(function (p) { return p.name.toLowerCase().indexOf(firmLowerTerm) !== -1; }).map(function (p) { return p.id; });
+        var firmOrParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%'];
+        if (matchingProjectIds.length) firmOrParts.push('project_id.in.(' + matchingProjectIds.join(',') + ')');
+        var firmQuery = sb.from('work_items').select('*').eq('work_scope', 'firm')
+          .order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP)
+          .or(firmOrParts.join(','));
+        if (filters.assignee) firmQuery = firmQuery.eq('assignee_id', filters.assignee);
+        if (filters.dueFrom) firmQuery = firmQuery.gte('internal_due_date', filters.dueFrom);
+        if (filters.dueTo) firmQuery = firmQuery.lte('internal_due_date', filters.dueTo);
+        firmQueryPromise = firmQuery;
+      }
+
+      var results = await Promise.all([query, firmQueryPromise]);
+      var res = results[0];
+      var firmRes = results[1];
       if (seq !== requestSeq) return; // superseded by a newer search
       clear(resultsWrap);
       if (res.error) {
@@ -2705,16 +2734,29 @@
         return;
       }
       var items = (res.data || []).slice().sort(compareByDue);
-      statusText.textContent = items.length >= RESULT_CAP
-        ? 'Showing the first ' + RESULT_CAP + ' matches — narrow your search to see more precisely.'
-        : items.length + ' match' + (items.length === 1 ? '' : 'es') + '.';
-      if (!items.length) {
+      var firmItems = (firmRes && firmRes.data ? firmRes.data : []).slice().sort(compareByDue);
+      var totalCount = items.length + firmItems.length;
+      var cappedNote = (items.length >= RESULT_CAP || firmItems.length >= RESULT_CAP)
+        ? 'Showing the first matches — narrow your search to see more precisely.'
+        : totalCount + ' match' + (totalCount === 1 ? '' : 'es') + (firmItems.length ? ' (' + items.length + ' Client, ' + firmItems.length + ' Firm)' : '') + '.';
+      statusText.textContent = cappedNote;
+      if (!totalCount) {
         var empty = el('div', 'empty-note'); empty.appendChild(icon('folder'));
         empty.appendChild(document.createTextNode('No work items match your search.'));
         resultsWrap.appendChild(empty);
         return;
       }
-      items.forEach(function (w) { resultsWrap.appendChild(workRow(w)); });
+      // Client results first, unmistakably labeled CLIENT — Firm Work
+      // in its own labeled section below, never interleaved into the
+      // same list (Handbook Task 23's "clear FIRM label" requirement).
+      items.forEach(function (w) { resultsWrap.appendChild(workRow(w, true)); });
+      if (firmItems.length) {
+        var firmHead = el('h2'); firmHead.style.cssText = 'font-size:1rem;margin:' + (items.length ? '18px' : '0') + ' 0 8px;';
+        firmHead.appendChild(icon('briefcase'));
+        firmHead.appendChild(document.createTextNode('Firm Work'));
+        resultsWrap.appendChild(firmHead);
+        firmItems.forEach(function (w) { resultsWrap.appendChild(firmWorkRow(w)); });
+      }
     }
 
     var debounceTimer = null;
@@ -5332,7 +5374,7 @@
     var filterCard = el('div', 'card');
     var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
 
-    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title, description, or next action…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
+    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title, description, category, project, owner, or next action…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
     var ownerSel = el('select'); ownerSel.style.width = 'auto';
     ownerSel.appendChild(new Option('All Owners', ''));
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
@@ -5419,7 +5461,13 @@
       // still one server-side query, never a client-side download-then-
       // filter of the full table.
       if (term) {
-        var orParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%'];
+        // Handbook Task 23: "title; description; category; project;
+        // owner; next action" is this task's own field list for Firm
+        // Work search -- category (a fixed enum, still plain text so an
+        // ilike works directly) and owner (matched by name the same way
+        // project/client/staff names already are elsewhere in this app)
+        // were the two not yet covered.
+        var orParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%', 'firm_category.ilike.%' + term + '%'];
         // Handbook Task 19: "Project name should participate in Firm
         // Work search where practical." project_id is a foreign key, not
         // text, so it can't join into an ilike directly -- matched the
@@ -5431,6 +5479,8 @@
         var lowerTerm = term.toLowerCase();
         var matchingProjectIds = state.projects.filter(function (p) { return p.name.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (p) { return p.id; });
         if (matchingProjectIds.length) orParts.push('project_id.in.(' + matchingProjectIds.join(',') + ')');
+        var matchingOwnerIds = state.profiles.filter(function (p) { return (p.full_name || '').toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (p) { return p.id; });
+        if (matchingOwnerIds.length) orParts.push('assignee_id.in.(' + matchingOwnerIds.join(',') + ')');
         query = query.or(orParts.join(','));
       }
 

@@ -39,6 +39,7 @@ const MATRIX_FILES = [
   'my_work_combined',
   'team_view',
   'since_last_seen',
+  'firm_work_search_isolation',
   'security_definer_grants',
 ];
 

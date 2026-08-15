@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260831090000` (last applied)
+## 2. Expected schema, as of migration `20260901090000` (last applied)
 
 ### Tables (18)
 
@@ -741,6 +741,86 @@ own specified scenario — user B and C make several changes to Firm
 items while user A is away, user A returns and sees all of it, newest
 first, exactly once — plus empty state, Client Work exclusion, the
 exclude-caller's-own-actor request shape, and Mark Reviewed).
+
+### Firm Work search, permanent history, and compliance isolation (Handbook Task 23)
+
+Verified first, by reading every page/function that could plausibly touch
+Client Work compliance metrics (not assumed): Today, Deadlines, Manager
+Dashboard, Period Summary, and Reports all route through `loadWork()` or
+their own explicit `.eq('work_scope','client')` filter. Client Detail's
+work list filters by `client_id`, which `work_items_scope_fields_check`
+structurally guarantees is `NULL` on every Firm Work row — a Firm item
+can never match a real client's id, so that isolation is enforced by the
+CHECK constraint itself, not by a query author remembering a filter.
+Firm Work's own search/filters (title/description/next_action/project,
+status including Completed, owner/category/project/date-range) already
+existed as of Task 17/19/20. Completed Firm Work staying searchable,
+activity/updates staying available, and archiving a project not erasing
+history were all already true and already covered by Task 17/18/19's
+own tests. Task 14's `firm_work_isolation.matrix.js` already proved most
+of the isolation claims empirically against real seed data, not just by
+code reading.
+
+Two real gaps closed, both narrow:
+
+1. **Global Search previously excluded Firm Work entirely.** This task
+   explicitly asks for the opposite: "If a global Work Desk search
+   exists, include Firm Work with a clear FIRM label." Added in
+   `staff.js` only — the free-text query now also runs a
+   `work_scope='firm'` query in parallel (title/description/next_action/
+   project name, mirroring the Firm Work list's own fields; owner and
+   due-date-range apply too, since those are shared concepts), rendered
+   in its own labeled "Firm Work" section below Client results (which
+   now carry an explicit CLIENT tag too, via the same `.badge-scope-*`
+   convention from Task 20/21). Deliberately scoped to ONLY fire when
+   there's actual free-text — the rest of the filter row (client/
+   service/period/reviewer/submission/waiting) has no Firm Work
+   equivalent, so a pure-filter search stays exactly Client-only, as it
+   always was. No schema change needed — `work_items_read` RLS already
+   scopes what a Firm Work query can return correctly for any caller.
+   Firm Work's own list search was also extended to match this task's
+   full field list (`title; description; category; project; owner; next
+   action`) — category (ilike) and owner (matched by name, same
+   client-side-id-lookup pattern used everywhere else in this app) were
+   the two not yet covered.
+
+2. **`_generate_period_work_core`'s INSERT never listed `work_scope`** —
+   it relied on the table's `default 'client'`. That default has always
+   produced the right result (this task's own isolation test confirms
+   it, even with a deliberately similar-titled Firm Work decoy present),
+   but "prove it cannot pollute Client Work reporting" is a stronger
+   claim than "an implicit default has never been wrong yet." Made
+   explicit in `20260901090000_firm_work_search_isolation.sql` — every
+   other line reproduced byte-for-byte from Task 13's version, a clarity
+   change, not a behavior change.
+
+**Performance: no new indexes added.** `work_items` already has indexes
+on `assignee_id`/`client_id`/`status`/`internal_due_date`/`reviewer_id`
+— exactly what every real filter (owner, status, due date) uses.
+`work_scope` itself has only two values; a plain index on it would have
+poor selectivity, and at this deployment's data volume (a handful of
+staff — see Task 21's own "5-6 people, capable of more" scale) a
+sequential scan is likely cheaper than an index scan regardless. Free-
+text `ilike '%term%'` search can't use a plain btree index either way; a
+trigram (`pg_trgm`/GIN) index would only help at a much larger data
+volume than this org has or is likely to reach soon. Not added
+speculatively — the right trigger is a real `EXPLAIN ANALYZE` on live
+data showing it's actually needed, not guessed in advance.
+
+`tests/db/matrices/firm_work_search_isolation.matrix.js` (3 checks,
+extending — not duplicating — Task 14's `firm_work_isolation.matrix.js`):
+recurring generation produces only `work_scope='client'` rows even with
+a deliberately compliance-titled Firm Work decoy present, the new
+global-Search Firm query shape finds the Firm item and never returns a
+same-titled Client Work row (proven by actually renaming a real seeded
+Client Work row to share the search term, not just by absence of an
+accidental collision), and a completed Firm Work item stays fully
+queryable by title with its status intact. Baseline: **241 DB checks, 0
+findings** (up from 238). `tests/ui/app/firm-work-search-isolation.spec.js`
+(3 tests: global Search finds an old completed Firm item labeled FIRM
+alongside a CLIENT-labeled result, a pure-filter search shows no Firm
+Work section at all, and the Firm Work list's own search reaches an old
+completed item via All Statuses with category now also matching).
 
 ## 3. Confirmed live drift (2026-08-14)
 
