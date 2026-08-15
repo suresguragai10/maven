@@ -5,9 +5,10 @@ const { WORK_ITEMS } = require('../support/ids');
 // active teammates are PEERS - may create, edit, reassign, change
 // status/target date... This explicitly INCLUDES reassignment by any
 // teammate, not just admin." Firm Work Task 2 shipped admin-only
-// reassignment in the UI, already flagged as a known conflict awaiting
-// Handbook Task 16. This matrix confirms, at the database level, exactly
-// how far that conflict actually goes.
+// reassignment in the UI; Handbook Task 6 fixed the database layer to
+// match (20260818090000_work_item_update_authorization.sql) by
+// branching on work_scope before any Client-Work-specific ownership
+// check. This matrix confirms the peer model actually holds now.
 module.exports = async function workItemsFirmMatrix({ asRole, IDENTITIES, ANON, record }) {
   const area = 'work_items (firm scope)';
 
@@ -30,7 +31,7 @@ module.exports = async function workItemsFirmMatrix({ asRole, IDENTITIES, ANON, 
     record({
       area, action: 'UPDATE (reassign to self) Firm Work not currently assigned to them', identity: 'employeeB',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'allow',
-      note: r.error || `${r.rowCount} row(s) - THE KNOWN CONFLICT, confirmed at the DB level: guard_work_item_update()'s else-branch "You can only update work assigned to you" applies to Firm Work identically to Client Work; there is no peer-reassignment carve-out. This is the exact gap Handbook Task 16 is scoped to fix.`,
+      note: r.error || `${r.rowCount} row(s) - FIXED by Handbook Task 6: guard_work_item_update() now branches on work_scope='firm' before any Client-Work ownership check, so a non-assignee peer can reassign Firm Work freely, matching the approved peer model.`,
     });
   });
 
@@ -39,7 +40,7 @@ module.exports = async function workItemsFirmMatrix({ asRole, IDENTITIES, ANON, 
     record({
       area, action: 'UPDATE (status only, not reassigning) Firm Work not assigned to them', identity: 'employeeB',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'allow',
-      note: r.error || `${r.rowCount} row(s) - broader than "reassignment" alone: a non-assignee peer currently cannot touch ANY field on someone else's Firm Work, not just the assignee field. Worth Task 16 knowing the fix needs to cover the whole else-branch for work_scope='firm', not just the reassignment check specifically.`,
+      note: r.error || `${r.rowCount} row(s) - FIXED by Handbook Task 6, same fix as reassignment above: a non-assignee peer can now touch any field on Firm Work, not just via a reassignment-shaped update.`,
     });
   });
 
@@ -51,5 +52,14 @@ module.exports = async function workItemsFirmMatrix({ asRole, IDENTITIES, ANON, 
   await asRole(ANON, async (c) => {
     const r = await tryQuery(c, 'select id from public.work_items where work_scope = $1', ['firm']);
     record({ area, action: 'SELECT any Firm Work', identity: 'anon', allowed: r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
+  });
+
+  await asRole(IDENTITIES.inactive, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set status = 'blocked' where id = $1`, [WORK_ITEMS.firm.id]);
+    record({
+      area, action: 'UPDATE Firm Work as a deactivated profile with a still-valid session', identity: 'inactive',
+      allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
+      note: r.error || `${r.rowCount} row(s) - blocked twice over: work_items_update's RLS USING clause requires current_user_active() before the row is even targetable, and guard_work_item_update()'s Firm Work branch re-checks it explicitly as defense in depth`,
+    });
   });
 };

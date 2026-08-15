@@ -34,9 +34,10 @@ residual gaps.
 | Read a client-scope work item | Only if assignee | Only if the assigned reviewer on it | Any, always |
 | Create a work item | Only assigned to self | Yes, any assignee | Yes, any assignee |
 | Update own assigned item (status, dates, description) | Yes, within allowed status transitions (see WORKFLOW_MODEL.md) | N/A unless also assignee | Yes, any item |
-| Reassign / change reviewer / change client / change service template | **No** | **No** — reviewing is not configuring; see note below | Yes |
+| Reassign / change reviewer / change client / change service template | **No** | **No** — reviewing is not configuring | Yes |
+| Change `work_scope` on an existing item | **No, nobody can** — immutable after creation, admin included | **No, nobody can** | **No, nobody can** |
 | Set `approved` / `changes_required` / `ready_to_submit` / `completed` | **No** | Yes, on items they review | Yes, any item |
-| Record submission fields (`submission_status`, `submitted_at`, etc.) | Only once the item is already `ready_to_submit`/`completed` | Same rule — see note below | Same rule — see note below |
+| Record submission fields (`submission_status`, `submitted_at`, etc.) | Only once the item is already `ready_to_submit`/`completed` | Same rule, no exception | Same rule, no exception |
 | Edit checklist items | Only on own assigned item | Only on items they review | Any |
 | Comment / view activity | Read/write only on own assigned item | Read/write only on items they review | Any |
 | Toggle waiting-for-client items | Only on own assigned item | Only on items they review | Any |
@@ -55,18 +56,21 @@ no status-based exception. Confirmed via the Task 3 harness, see
 [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md), "work_items (client
 scope)."
 
-**Note on reviewer scope, intended vs. current — write side only:** the
-intended rule is "Reviewer = review work and record review decisions;
-Admin = configure clients/services/assignment." **Current database
-enforcement of WRITE actions is broader than this** — a reviewer can
-currently rescope, reassign, or move a work item to a different client
-on anything they review, and can also record submission fields on an
-item that was never marked `ready_to_submit`. Both are confirmed,
-tracked gaps (see [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md),
-"work_items (client scope)" and "submission fields/actions"), not the
-intended design, and **out of scope for the Task 5 read-visibility
-fix** — listed here so this table isn't read as silently endorsing
-them.
+**Write authorization fixed, Handbook Task 6:** the table above now
+matches actual enforcement. Previously `guard_work_item_update()`'s
+reviewer branch was a blanket skip (identical in shape to admin's) once
+a caller was the assigned reviewer — a reviewer could rescope, reassign,
+change the client, or record submission fields on an item that was
+never marked `ready_to_submit`. As of
+`supabase/migrations/20260818090000_work_item_update_authorization.sql`,
+the reviewer branch only permits what "review work and record review
+decisions" actually means; reassignment/rescoping is admin-only, and the
+submission-timing rule is now a universal check applying to every role,
+admin included (a workflow-integrity rule, not a permission one — see
+[SECURITY_MODEL.md](SECURITY_MODEL.md)). `work_scope` and
+`id`/`created_at`/`created_by` are now immutable after creation for
+every role too. Confirmed via the Task 3 harness, see
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md).
 
 ## Firm Work capabilities (peer model)
 
@@ -81,14 +85,23 @@ or admin — has the same Firm Work powers:
 | Reassign / change status / change target date / edit checklist / post updates, on ANY Firm Work item (not just their own) | Yes — this is the intended rule |
 | Delete a Firm Work item | Admin only (no product decision yet to open this to peers; matches Client Work's existing delete-is-admin-only convention) |
 
-**Current enforcement gap:** the database currently restricts write
-access on someone else's Firm Work item to admin (or the current
-assignee) — a non-assignee peer cannot yet touch any field on it, not
-just reassignment. Confirmed in
+**Enforcement gap closed, Handbook Task 6:** the database previously
+restricted write access on someone else's Firm Work item to admin (or
+the current assignee) — the known conflict between Firm Work Task 2's
+shipped UI (admin-only reassignment) and this document's stated peer
+rule. Fixed in the same migration as the Client Work reviewer fix above
+(`20260818090000_work_item_update_authorization.sql`):
+`guard_work_item_update()` now branches on `work_scope = 'firm'` before
+any Client-Work-specific ownership check, so any active teammate — any
+role — has full edit/reassign power on any Firm Work item, exactly as
+this table states. An inactive profile is still blocked, both by RLS
+and by an explicit check in the trigger itself. Confirmed in
 [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("work_items (firm
-scope)"). This is the known conflict between Firm Work Task 2's shipped
-UI (admin-only reassignment) and this document's stated peer rule —
-scoped to a dedicated fix task in the implementation sequence.
+scope)"). The Firm Work UI itself (Firm Work Task 2's admin-only
+reassignment control) may still need a follow-up to actually expose
+this to non-admin users — this fix is the database layer only; check
+`staff/staff.js`'s Firm Work modal before assuming the UI already
+reflects it.
 
 ## Configuration / admin-only capabilities
 

@@ -58,13 +58,14 @@ Firm Work lifecycle. This is a deliberate departure from Client Work's
 review-gated model — Firm Work is internal, low-stakes-per-item, and
 async coordination, not compliance delivery.
 
-**Current enforcement gap, tracked, not yet fixed:** the database
-currently does *not* yet allow a non-assignee peer to edit someone
-else's Firm Work — see [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md)
-("work_items (firm scope)") for the exact confirmed behavior, and the
-implementation sequence for the task scoped to close it. Until that
-ships, this document still states the *intended* rule above — treat the
-gap as a bug to fix, not as a reason to redefine the rule downward.
+**Database enforcement fixed, Handbook Task 6:** any active teammate
+now has full edit/reassign power on any Firm Work item at the database
+layer — see [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("work_items
+(firm scope)") for confirmed evidence. **The Staff app UI has not been
+updated to match** — `openFirmWorkModal()` in `staff/staff.js` still
+disables every field unless the caller is admin or the current
+assignee, so a peer still can't actually use this via the app yet, only
+via direct API. Updating the UI is a separate, still-open task.
 
 ## Business Development
 

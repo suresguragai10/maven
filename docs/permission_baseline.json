@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T06:46:25.404Z",
-    "migrationCount": 17
+    "generatedAt": "2026-08-15T06:57:30.520Z",
+    "migrationCount": 18
   },
   "results": [
     {
@@ -191,7 +191,7 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "Only a reviewer or admin can reassign or rescope work."
+      "note": "Only an admin can reassign or rescope work."
     },
     {
       "area": "work_items (client scope)",
@@ -200,16 +200,61 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "Only a reviewer or admin can reassign or rescope work."
+      "note": "work_scope cannot be changed after creation."
+    },
+    {
+      "area": "work_items (client scope)",
+      "action": "UPDATE own item: convert Client Work to Firm Work directly, as admin",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "work_scope cannot be changed after creation."
     },
     {
       "area": "work_items (client scope)",
       "action": "UPDATE (as the item's reviewer): move it to a different client entirely",
       "identity": "reviewerA",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "1 row(s) - guard_work_item_update()'s reviewer branch skips ALL else-branch checks once role='reviewer' and they match old/new.reviewer_id, so a reviewer can rescope/reassign/change-client on anything they review, not just record review decisions. The V2 Permission Audit's own stated role matrix says \"Reviewer = review work / record review activity; Admin/Manager = configure clients\" - this contradicts that. New finding, not previously flagged."
+      "secure": true,
+      "note": "Only an admin can reassign or rescope work."
+    },
+    {
+      "area": "work_items (client scope)",
+      "action": "UPDATE (as the item's reviewer): reassign it to someone else",
+      "identity": "reviewerA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Only an admin can reassign or rescope work."
+    },
+    {
+      "area": "work_items (client scope)",
+      "action": "UPDATE (as the item's reviewer): change work_scope directly",
+      "identity": "reviewerA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "work_scope cannot be changed after creation."
+    },
+    {
+      "area": "work_items (client scope)",
+      "action": "UPDATE (as the item's reviewer): record a legitimate review decision (approve)",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - confirms the fix is scoped correctly: blocking reassignment/rescope does not block reviewers from doing their actual job"
+    },
+    {
+      "area": "work_items (client scope)",
+      "action": "UPDATE created_at/created_by directly, even as admin",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "id/created_at/created_by cannot be changed."
     },
     {
       "area": "work_items (client scope)",
@@ -242,19 +287,19 @@
       "area": "work_items (firm scope)",
       "action": "UPDATE (reassign to self) Firm Work not currently assigned to them",
       "identity": "employeeB",
-      "allowed": false,
+      "allowed": true,
       "expectedSecure": "allow",
-      "secure": false,
-      "note": "You can only update work assigned to you."
+      "secure": true,
+      "note": "1 row(s) - FIXED by Handbook Task 6: guard_work_item_update() now branches on work_scope='firm' before any Client-Work ownership check, so a non-assignee peer can reassign Firm Work freely, matching the approved peer model."
     },
     {
       "area": "work_items (firm scope)",
       "action": "UPDATE (status only, not reassigning) Firm Work not assigned to them",
       "identity": "employeeB",
-      "allowed": false,
+      "allowed": true,
       "expectedSecure": "allow",
-      "secure": false,
-      "note": "You can only update work assigned to you."
+      "secure": true,
+      "note": "1 row(s) - FIXED by Handbook Task 6, same fix as reassignment above: a non-assignee peer can now touch any field on Firm Work, not just via a reassignment-shaped update."
     },
     {
       "area": "work_items (firm scope)",
@@ -273,6 +318,15 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "0 row(s)"
+    },
+    {
+      "area": "work_items (firm scope)",
+      "action": "UPDATE Firm Work as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - blocked twice over: work_items_update's RLS USING clause requires current_user_active() before the row is even targetable, and guard_work_item_update()'s Firm Work branch re-checks it explicitly as defense in depth"
     },
     {
       "area": "work_checklist_items",
@@ -386,19 +440,19 @@
       "area": "submission fields/actions",
       "action": "UPDATE submission fields (as the item's reviewer) while status=in_progress",
       "identity": "reviewerA",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "1 row(s) - NEW FINDING: the submission-timing check lives INSIDE guard_work_item_update()'s else-branch, which role='reviewer' (matching old/new.reviewer_id) skips entirely along with every other else-branch rule. A reviewer can backfill submission fields on an item that was never actually marked ready_to_submit. This is a workflow-integrity gap, not just a permission one: the rule reads as a compliance-state guard, but it's only enforced against plain employees."
+      "secure": true,
+      "note": "Submission can only be recorded once the work is ready to submit."
     },
     {
       "area": "submission fields/actions",
       "action": "UPDATE submission fields (as admin) while status=in_progress",
       "identity": "admin",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "1 row(s) - same root cause as the reviewer case above: admin's branch is also \"null\" (skips the else-branch entirely), so this is not a separate bug, it's the same one, doubly confirmed."
+      "secure": true,
+      "note": "Submission can only be recorded once the work is ready to submit."
     },
     {
       "area": "service_templates / service_template_items",

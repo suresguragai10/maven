@@ -129,7 +129,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260817090000` (last applied)
+## 2. Expected schema, as of migration `20260818090000` (last applied)
 
 ### Tables (16)
 
@@ -214,7 +214,7 @@ still a confirmed low-severity gap, see
 | `current_user_active()` | DEFINER, `sql`, stable | `public` | is_active, coalesced false |
 | `handle_new_user()` | DEFINER, trigger | `public` | creates a profile row on `auth.users` insert |
 | `guard_profile_update()` | DEFINER, trigger | `public` | blocks non-admins changing `role`/`is_active` (NULL-safe: positive-list pattern, but see §0 residual note — RLS is the real gate here anyway) |
-| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern) |
+| `guard_work_item_update()` | DEFINER, trigger | `public` | core business-rule enforcement on status/field transitions; NULL-safe (positive-list pattern). Rewritten by Handbook Task 6 (`20260818090000_work_item_update_authorization.sql`) — now branches on `work_scope` before any Client-Work role logic (Firm Work = full peer power for any active user), reviewer's branch no longer skips the reassign/rescope/submission-timing checks the way admin's does, and `work_scope`/`id`/`created_at`/`created_by` are universally immutable after creation. |
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
 | `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | see §0 — NOT NULL-safe, no explicit grant restriction |
 | `_generate_period_work_core(period, period_type)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated |

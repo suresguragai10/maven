@@ -1,28 +1,23 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T06:46:25.404Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T06:57:30.520Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 17 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 18 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-90 checks run across 16 areas. **22 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+96 checks run across 16 areas. **17 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Findings — current behavior does not match the intended model
 
 | Area | Action | Identity | Observed | Note |
 |---|---|---|---|---|
-| work_items (client scope) | UPDATE (as the item's reviewer): move it to a different client entirely | reviewerA | **ALLOWED** (expected DENY) | 1 row(s) - guard_work_item_update()'s reviewer branch skips ALL else-branch checks once role='reviewer' and they match old/new.reviewer_id, so a reviewer can rescope/reassign/change-client on anything they review, not just record review decisions. The V2 Permission Audit's own stated role matrix says "Reviewer = review work / record review activity; Admin/Manager = configure clients" - this contradicts that. New finding, not previously flagged. |
-| work_items (firm scope) | UPDATE (reassign to self) Firm Work not currently assigned to them | employeeB | **DENIED** (expected ALLOW) | You can only update work assigned to you. |
-| work_items (firm scope) | UPDATE (status only, not reassigning) Firm Work not assigned to them | employeeB | **DENIED** (expected ALLOW) | You can only update work assigned to you. |
 | work_activity | INSERT an activity row with actor_id set to someone ELSE (not themselves) | employeeA | **ALLOWED** (expected DENY) | inserted - NEW FINDING: work_activity_insert's WITH CHECK only verifies the caller is admin/assignee/reviewer on the work item, it never checks actor_id = auth.uid(). Any assignee/reviewer/admin can insert a work_activity row attributing an action to a DIFFERENT profile. The "immutable audit trail" (no UPDATE/DELETE policy) is only tamper-proof against edits after the fact, not against a fabricated entry at insert time. |
-| submission fields/actions | UPDATE submission fields (as the item's reviewer) while status=in_progress | reviewerA | **ALLOWED** (expected DENY) | 1 row(s) - NEW FINDING: the submission-timing check lives INSIDE guard_work_item_update()'s else-branch, which role='reviewer' (matching old/new.reviewer_id) skips entirely along with every other else-branch rule. A reviewer can backfill submission fields on an item that was never actually marked ready_to_submit. This is a workflow-integrity gap, not just a permission one: the rule reads as a compliance-state guard, but it's only enforced against plain employees. |
-| submission fields/actions | UPDATE submission fields (as admin) while status=in_progress | admin | **ALLOWED** (expected DENY) | 1 row(s) - same root cause as the reviewer case above: admin's branch is also "null" (skips the else-branch entirely), so this is not a separate bug, it's the same one, doubly confirmed. |
 | notifications | SELECT own notifications (as a deactivated profile with a still-valid session) | inactive | **ALLOWED** (expected DENY) | 1 row(s) - notifications_read is pure auth.uid()=user_id ownership, never touched by the is_active hardening pass (20260815090000's own stated scope excludes it as "moot"). A still-valid deactivated session keeps reading its own old notifications. |
 | personal_todos | SELECT own to-dos (as a deactivated profile with a still-valid session) | inactive | **ALLOWED** (expected DENY) | 1 row(s) - same gap as notifications: pure ownership check, never gated on is_active. |
 | client_attention (set_client_attention RPC) | CALL as a deactivated profile with a still-valid authenticated session | inactive | **ALLOWED** (expected DENY) | succeeded - EMPIRICALLY REPRODUCES the Task 1 NULL-bypass finding: current_user_role() returns NULL for this identity, "NULL not in ('admin','reviewer')" evaluates to NULL, PL/pgSQL treats a NULL IF-condition as false, the RAISE never fires. This is the exact residual risk documented in maven_critical_finding_anon_execute_bypass.md, now proven against a real query instead of reasoned about. |
@@ -76,9 +71,14 @@ Generated 2026-08-15T06:46:25.404Z by `node tests/db/run.js` -- **every row belo
 | SELECT the item they are reviewer on, while ready_for_review | reviewerA | ALLOWED | ALLOW | PASS |  |
 | UPDATE a colleague's item they are not assigned to | employeeA | DENIED | DENY | PASS | 0 row(s) - blocked directly by RLS since Handbook Task 5 tightened work_items_update's USING clause to match work_items_read (previously this row was RLS-visible via the removed "status<>ready_for_review" branch and only stopped by guard_work_item_update()'s trigger check; now the row isn't even reachable, so the trigger never gets a chance to run) |
 | UPDATE own item's status (ordinary case) | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
-| UPDATE own item: reassign to someone else | employeeA | DENIED | DENY | PASS | Only a reviewer or admin can reassign or rescope work. |
-| UPDATE own item: convert Client Work to Firm Work directly | employeeA | DENIED | DENY | PASS | Only a reviewer or admin can reassign or rescope work. |
-| UPDATE (as the item's reviewer): move it to a different client entirely | reviewerA | ALLOWED | DENY | FAIL | 1 row(s) - guard_work_item_update()'s reviewer branch skips ALL else-branch checks once role='reviewer' and they match old/new.reviewer_id, so a reviewer can rescope/reassign/change-client on anything they review, not just record review decisions. The V2 Permission Audit's own stated role matrix says "Reviewer = review work / record review activity; Admin/Manager = configure clients" - this contradicts that. New finding, not previously flagged. |
+| UPDATE own item: reassign to someone else | employeeA | DENIED | DENY | PASS | Only an admin can reassign or rescope work. |
+| UPDATE own item: convert Client Work to Firm Work directly | employeeA | DENIED | DENY | PASS | work_scope cannot be changed after creation. |
+| UPDATE own item: convert Client Work to Firm Work directly, as admin | admin | DENIED | DENY | PASS | work_scope cannot be changed after creation. |
+| UPDATE (as the item's reviewer): move it to a different client entirely | reviewerA | DENIED | DENY | PASS | Only an admin can reassign or rescope work. |
+| UPDATE (as the item's reviewer): reassign it to someone else | reviewerA | DENIED | DENY | PASS | Only an admin can reassign or rescope work. |
+| UPDATE (as the item's reviewer): change work_scope directly | reviewerA | DENIED | DENY | PASS | work_scope cannot be changed after creation. |
+| UPDATE (as the item's reviewer): record a legitimate review decision (approve) | reviewerA | ALLOWED | ALLOW | PASS | 1 row(s) - confirms the fix is scoped correctly: blocking reassignment/rescope does not block reviewers from doing their actual job |
+| UPDATE created_at/created_by directly, even as admin | admin | DENIED | DENY | PASS | id/created_at/created_by cannot be changed. |
 | SELECT any work item | anon | DENIED | DENY | PASS | 0 row(s) |
 
 ### work_items (firm scope)
@@ -87,10 +87,11 @@ Generated 2026-08-15T06:46:25.404Z by `node tests/db/run.js` -- **every row belo
 |---|---|---|---|---|---|
 | SELECT Firm Work item not assigned to them | employeeB | ALLOWED | ALLOW | PASS | work_scope=firm branch: visible to any active user regardless of assignment |
 | INSERT new Firm Work, assigned to someone else | employeeB | ALLOWED | ALLOW | PASS | inserted - confirms any active teammate can create+assign Firm Work at the DB level |
-| UPDATE (reassign to self) Firm Work not currently assigned to them | employeeB | DENIED | ALLOW | FAIL | You can only update work assigned to you. |
-| UPDATE (status only, not reassigning) Firm Work not assigned to them | employeeB | DENIED | ALLOW | FAIL | You can only update work assigned to you. |
+| UPDATE (reassign to self) Firm Work not currently assigned to them | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) - FIXED by Handbook Task 6: guard_work_item_update() now branches on work_scope='firm' before any Client-Work ownership check, so a non-assignee peer can reassign Firm Work freely, matching the approved peer model. |
+| UPDATE (status only, not reassigning) Firm Work not assigned to them | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) - FIXED by Handbook Task 6, same fix as reassignment above: a non-assignee peer can now touch any field on Firm Work, not just via a reassignment-shaped update. |
 | UPDATE own assigned Firm Work | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | SELECT any Firm Work | anon | DENIED | DENY | PASS | 0 row(s) |
+| UPDATE Firm Work as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) - blocked twice over: work_items_update's RLS USING clause requires current_user_active() before the row is even targetable, and guard_work_item_update()'s Firm Work branch re-checks it explicitly as defense in depth |
 
 ### work_checklist_items
 
@@ -123,8 +124,8 @@ Generated 2026-08-15T06:46:25.404Z by `node tests/db/run.js` -- **every row belo
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
 | UPDATE submission fields while status=in_progress (not ready_to_submit) | employeeA | DENIED | DENY | PASS | Submission can only be recorded once the work is ready to submit. |
-| UPDATE submission fields (as the item's reviewer) while status=in_progress | reviewerA | ALLOWED | DENY | FAIL | 1 row(s) - NEW FINDING: the submission-timing check lives INSIDE guard_work_item_update()'s else-branch, which role='reviewer' (matching old/new.reviewer_id) skips entirely along with every other else-branch rule. A reviewer can backfill submission fields on an item that was never actually marked ready_to_submit. This is a workflow-integrity gap, not just a permission one: the rule reads as a compliance-state guard, but it's only enforced against plain employees. |
-| UPDATE submission fields (as admin) while status=in_progress | admin | ALLOWED | DENY | FAIL | 1 row(s) - same root cause as the reviewer case above: admin's branch is also "null" (skips the else-branch entirely), so this is not a separate bug, it's the same one, doubly confirmed. |
+| UPDATE submission fields (as the item's reviewer) while status=in_progress | reviewerA | DENIED | DENY | PASS | Submission can only be recorded once the work is ready to submit. |
+| UPDATE submission fields (as admin) while status=in_progress | admin | DENIED | DENY | PASS | Submission can only be recorded once the work is ready to submit. |
 
 ### service_templates / service_template_items
 

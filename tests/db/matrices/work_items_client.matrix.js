@@ -64,17 +64,62 @@ module.exports = async function workItemsClientMatrix({ asRole, IDENTITIES, ANON
     record({
       area, action: 'UPDATE own item: convert Client Work to Firm Work directly', identity: 'employeeA',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
-      note: r.error || `${r.rowCount} row(s) - blocked as a side effect of the client_id-change guard, not an explicit work_scope check; flagged in docs as a design note, not a live gap`,
+      note: r.error || `${r.rowCount} row(s) - blocked by an explicit universal work_scope-immutability check as of Handbook Task 6 (previously only an incidental side effect of the client_id-change guard)`,
     });
   });
 
-  // ---- Genuinely new finding: reviewer's rescope power is NOT limited to review actions ----
+  await asRole(IDENTITIES.admin, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set work_scope = 'firm', client_id = null, service_template_id = null, reviewer_id = null where id = $1`, [WORK_ITEMS.normal.id]);
+    record({
+      area, action: 'UPDATE own item: convert Client Work to Firm Work directly, as admin', identity: 'admin',
+      allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
+      note: r.error || `${r.rowCount} row(s) - work_scope immutability is a UNIVERSAL rule as of Handbook Task 6, admin included; this was previously reachable by admin (nothing stopped it) since admin's branch skipped every check`,
+    });
+  });
+
+  // ---- Reviewer rescope power: FIXED by Handbook Task 6 (was open since Task 3) ----
   await asRole(IDENTITIES.reviewerA, async (c) => {
     const r = await tryQuery(c, `update public.work_items set client_id = $2 where id = $1`, [WORK_ITEMS.normal.id, CLIENTS.beta.id]);
     record({
       area, action: 'UPDATE (as the item\'s reviewer): move it to a different client entirely', identity: 'reviewerA',
       allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
-      note: r.error || `${r.rowCount} row(s) - guard_work_item_update()'s reviewer branch skips ALL else-branch checks once role='reviewer' and they match old/new.reviewer_id, so a reviewer can rescope/reassign/change-client on anything they review, not just record review decisions. The V2 Permission Audit's own stated role matrix says "Reviewer = review work / record review activity; Admin/Manager = configure clients" - this contradicts that. New finding, not previously flagged.`,
+      note: r.error || `${r.rowCount} row(s) - FIXED by Handbook Task 6: reviewer's own branch now blocks client_id/assignee_id/reviewer_id/service_template_id changes explicitly, matching "Reviewer = review work, not configure clients."`,
+    });
+  });
+
+  await asRole(IDENTITIES.reviewerA, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set assignee_id = $2 where id = $1`, [WORK_ITEMS.normal.id, IDENTITIES.reviewerB.id]);
+    record({
+      area, action: 'UPDATE (as the item\'s reviewer): reassign it to someone else', identity: 'reviewerA',
+      allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
+      note: r.error || `${r.rowCount} row(s) - same fix as above, assignee_id specifically ("Only an admin can reassign or rescope work.")`,
+    });
+  });
+
+  await asRole(IDENTITIES.reviewerA, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set work_scope = 'firm', client_id = null, service_template_id = null, reviewer_id = null where id = $1`, [WORK_ITEMS.normal.id]);
+    record({
+      area, action: 'UPDATE (as the item\'s reviewer): change work_scope directly', identity: 'reviewerA',
+      allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
+      note: r.error || `${r.rowCount} row(s) - blocked by the universal work_scope-immutability check, same as for employee/admin above`,
+    });
+  });
+
+  await asRole(IDENTITIES.reviewerA, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set status = 'approved' where id = $1`, [WORK_ITEMS.readyForReview.id]);
+    record({
+      area, action: 'UPDATE (as the item\'s reviewer): record a legitimate review decision (approve)', identity: 'reviewerA',
+      allowed: r.ok && r.rowCount > 0, expectedSecure: 'allow',
+      note: r.error || `${r.rowCount} row(s) - confirms the fix is scoped correctly: blocking reassignment/rescope does not block reviewers from doing their actual job`,
+    });
+  });
+
+  await asRole(IDENTITIES.admin, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set created_at = now() - interval '30 days', created_by = $2 where id = $1`, [WORK_ITEMS.normal.id, IDENTITIES.reviewerA.id]);
+    record({
+      area, action: 'UPDATE created_at/created_by directly, even as admin', identity: 'admin',
+      allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny',
+      note: r.error || `${r.rowCount} row(s) - NEW universal immutability rule as of Handbook Task 6, matches the "protect immutable system/audit fields" instruction; previously unrestricted for anyone with UPDATE access`,
     });
   });
 
