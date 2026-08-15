@@ -5769,6 +5769,18 @@
     var editBtn = el('button', 'btn btn-outline btn-sm'); editBtn.type = 'button'; editBtn.textContent = 'Edit Basics';
     editBtn.addEventListener('click', function () { openEditFirmWorkModal(work, function () { renderFirmWorkDetail(id); }); });
     headRow2.appendChild(editBtn);
+    // Handbook Task 24: "reusable examples/templates... only if the
+    // current UI already supports templates cleanly" -- rather than a
+    // new Firm Work Templates system, a lightweight Duplicate button
+    // reuses the existing create modal, pre-filled from this item
+    // (category/owner/priority/description/project/checklist), for
+    // genuinely repeatable patterns like a monthly outreach campaign.
+    var duplicateBtn = el('button', 'btn btn-outline btn-sm'); duplicateBtn.type = 'button'; duplicateBtn.textContent = 'Duplicate';
+    duplicateBtn.title = 'Start a new Firm Work item pre-filled from this one — handy for repeatable patterns.';
+    duplicateBtn.addEventListener('click', function () {
+      openFirmWorkModal(function (newId) { if (newId) gotoFirmWork(newId); else render(); }, { duplicateFrom: work, checklistTitles: checklist.map(function (ci) { return ci.title; }) });
+    });
+    headRow2.appendChild(duplicateBtn);
     card.appendChild(headRow2);
 
     var metaGrid = el('div', 'meta-grid');
@@ -6075,16 +6087,28 @@
 
   // New Firm Work — create only. Editing an existing item now happens on
   // its own detail page (renderFirmWorkDetail), not this modal.
-  function openFirmWorkModal(onDone) {
+  // prefill (optional, Handbook Task 24): { duplicateFrom: workItemRow,
+  // checklistTitles: string[] } -- "reusable examples/templates" for
+  // repeatable patterns (e.g. a monthly outreach campaign) without a new
+  // template system: pre-fills this same create form from an existing
+  // Firm Work item's category/owner/priority/description/project, and
+  // (only after a successful save) copies the source item's checklist
+  // titles onto the new item, all unchecked. Status/next_action/target
+  // date/updates/activity are never copied -- those are specific to the
+  // OLD item's own progress, not a template for a new one. See
+  // renderFirmWorkDetail's "Duplicate" button.
+  function openFirmWorkModal(onDone, prefill) {
+    var src = (prefill && prefill.duplicateFrom) || null;
     var wrap = el('div');
     var head = el('div', 'modal-head');
-    var h2 = el('h2'); h2.textContent = 'New Firm Work';
+    var h2 = el('h2'); h2.textContent = src ? 'Duplicate Firm Work' : 'New Firm Work';
     var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
     closeBtn.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(closeBtn);
     wrap.appendChild(head);
 
     var titleInput = el('input'); titleInput.type = 'text';
+    if (src) titleInput.value = src.title;
     wrap.appendChild(field('Title', titleInput));
 
     // Category is required — starts blank so a real choice has to be
@@ -6093,31 +6117,39 @@
     var categorySel = el('select');
     categorySel.appendChild(new Option('— Choose a category —', ''));
     FIRM_CATEGORIES.forEach(function (c) { categorySel.appendChild(new Option(c, c)); });
+    if (src) categorySel.value = src.firm_category || '';
     wrap.appendChild(field('Category', categorySel));
 
     var ownerSel = el('select');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
-    ownerSel.value = state.user.id; // default to self, freely changeable to any active colleague
+    ownerSel.value = src ? src.assignee_id : state.user.id; // default to self (or the duplicated item's owner), freely changeable
     wrap.appendChild(field('Owner', ownerSel));
 
     // (new items always start at To Do — no status field on create, same
-    // convention as Client Work's New Work modal.)
+    // convention as Client Work's New Work modal. This stays true when
+    // duplicating too -- a copy is a fresh item, not a clone of the
+    // source's current progress.)
 
     var prioritySel = el('select');
     [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']].forEach(function (p) { prioritySel.appendChild(new Option(p[1], p[0])); });
-    prioritySel.value = 'normal';
+    prioritySel.value = src ? src.priority : 'normal';
     wrap.appendChild(field('Priority', prioritySel));
 
+    // Due date deliberately NOT copied when duplicating — a repeatable
+    // pattern (e.g. "Restaurant Outreach - September" after "...August")
+    // needs its own fresh target date, not last month's.
     var dueInput = el('input'); dueInput.type = 'date';
     wrap.appendChild(field('Due Date (optional)', dueInput));
 
     var descInput = el('textarea'); descInput.rows = 3;
+    if (src) descInput.value = src.description || '';
     wrap.appendChild(field('Description (optional)', descInput));
 
     var projectSel = el('select');
     projectSel.appendChild(new Option('— No project —', ''));
     state.projects.filter(function (p) { return p.status === 'active'; })
       .forEach(function (p) { projectSel.appendChild(new Option(p.name, p.id)); });
+    if (src && src.project_id && projectById(src.project_id)) projectSel.value = src.project_id;
     var projectField = field('Project / Initiative (optional)', projectSel);
     var newProjectBtn = el('button', 'btn btn-outline btn-sm'); newProjectBtn.type = 'button'; newProjectBtn.textContent = '+ New Project';
     newProjectBtn.style.marginTop = '6px';
@@ -6135,12 +6167,21 @@
     projectField.appendChild(newProjectBtn);
     wrap.appendChild(projectField);
 
+    // Next Action deliberately NOT copied — the source item's next step
+    // is specific to its own progress, not a sensible starting point for
+    // a brand-new item.
     var nextActionInput = el('input'); nextActionInput.type = 'text';
     nextActionInput.placeholder = 'e.g. Send follow-up email to landlord';
     wrap.appendChild(field('Next Action (optional)', nextActionInput));
 
+    if (src && prefill.checklistTitles && prefill.checklistTitles.length) {
+      var checklistNote = el('p', 'desc');
+      checklistNote.textContent = 'Checklist (' + prefill.checklistTitles.length + ' item' + (prefill.checklistTitles.length === 1 ? '' : 's') + ') will be copied, unchecked, once created.';
+      wrap.appendChild(checklistNote);
+    }
+
     var actions = el('div', 'modal-actions');
-    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = 'Create Firm Work';
+    var saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.textContent = src ? 'Create Duplicate' : 'Create Firm Work';
     saveBtn.addEventListener('click', async function () {
       if (!titleInput.value.trim()) { toast('Give it a title.', true); return; }
       if (!categorySel.value) { toast('Choose a category.', true); return; }
@@ -6157,12 +6198,17 @@
         project_id: projectSel.value || null,
         next_action: nextActionInput.value.trim() || null,
         created_by: state.user.id,
-      });
+      }).select('id').single();
+      if (res.error) { saveBtn.disabled = false; toast('Could not save: ' + res.error.message, true); return; }
+      if (src && prefill.checklistTitles && prefill.checklistTitles.length) {
+        var rows = prefill.checklistTitles.map(function (title, i) { return { work_item_id: res.data.id, title: title, sort_order: i }; });
+        var clRes = await sb.from('work_checklist_items').insert(rows);
+        if (clRes.error) toast('Created, but could not copy the checklist: ' + clRes.error.message, true);
+      }
       saveBtn.disabled = false;
-      if (res.error) { toast('Could not save: ' + res.error.message, true); return; }
       closeModal();
-      toast('Firm Work created.');
-      onDone();
+      toast(src ? 'Duplicate created.' : 'Firm Work created.');
+      onDone(res.data.id);
     });
     actions.appendChild(saveBtn);
     wrap.appendChild(actions);

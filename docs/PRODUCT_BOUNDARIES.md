@@ -71,9 +71,22 @@ via direct API. Updating the UI is a separate, still-open task.
 
 Business Development (pipeline, prospects, referral follow-up) is
 **ordinary Firm Work** — a `firm_category`, nothing more. No CRM, no
-prospect/lead entity, no lead scoring, no sales-pipeline automation. If
-a prospect needs tracking, it's a Firm Work item like any other, in the
-"Business Development" category.
+prospect/lead entity, no lead scoring, no sales-pipeline automation,
+no automated outreach/paid messaging integration, no employee
+conversion-rate rankings. If a prospect needs tracking, it's a Firm
+Work item like any other, in the "Business Development" category — a
+company/person name mentioned in a title or description stays plain
+operational text, not a structured field. **Confirmed live (Handbook
+Task 24)**: recommended patterns (a Project per campaign, a handful of
+linked Firm Work items, outcomes recorded via a Result-tagged update or
+the description — never a sales database) are documented in
+[BUSINESS_DEVELOPMENT_PATTERNS.md](BUSINESS_DEVELOPMENT_PATTERNS.md).
+A lightweight "Duplicate" button on the Firm Work Detail page
+(pre-fills category/owner/priority/description/project/checklist from
+an existing item) supports repeatable campaigns without a separate
+templates system. If an outreach converts, the new client is always
+created deliberately in the Clients module — nothing here ever
+auto-converts a Firm Work item into a client.
 
 ## Project / Initiative grouping
 

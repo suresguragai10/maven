@@ -822,6 +822,45 @@ alongside a CLIENT-labeled result, a pure-filter search shows no Firm
 Work section at all, and the Firm Work list's own search reaches an old
 completed item via All Statuses with category now also matching).
 
+### Business Development as ordinary Firm Work (Handbook Task 24)
+
+**No schema change** — the whole point of this task was that Firm
+Work's existing fields (title/project/category/owner/target date/
+priority/description/checklist/next action/updates, including the
+optional Result update type from Task 18) already cover everything the
+task's own field list asks for. Verified with a guardrail grep across
+every migration and `staff.js` for any prospects/leads/pipeline-stage/
+lead-score/conversion-rate table or column — none exist.
+
+One UI addition: a **Duplicate** button on the Firm Work Detail page
+(next to Edit Basics), reusing the existing create modal
+(`openFirmWorkModal`, now accepting an optional `prefill` argument)
+pre-filled from an existing item's category/owner/priority/description/
+project, with its checklist copied (unchecked) once the duplicate is
+created. Deliberately does NOT copy status, due date, next action, or
+update history — a duplicate is a fresh item, not a clone of the
+source's current progress. This is the task's own "reusable examples/
+templates... only if the current UI already supports templates
+cleanly" escape hatch — a new Firm Work Templates table/management
+screen was judged disproportionate to what a lightweight "start from an
+existing item" button already accomplishes.
+
+New doc: [BUSINESS_DEVELOPMENT_PATTERNS.md](BUSINESS_DEVELOPMENT_PATTERNS.md)
+— the recommended Project + Firm Work pattern (using this task's own
+worked example), the outcome-via-Result-update convention, and an
+explicit restatement of what this deliberately does not do (no CRM
+entities, no automated outreach, no conversion-rate leaderboard, no
+auto-creating a client from a Firm Work item). `docs/PRODUCT_BOUNDARIES.md`'s
+existing "Business Development" boundary section updated to point here
+and mark it confirmed-live rather than aspirational.
+
+`tests/ui/app/business-development.spec.js` (2 tests: the full practical
+pattern — Project, Business Development category, checklist, an outcome
+recorded via a Result-tagged update, with explicit confirmation no
+`clients` table write ever happens as a side effect — and Duplicate
+pre-filling a new item plus copying its checklist, due date correctly
+NOT copied).
+
 ## 3. Confirmed live drift (2026-08-14)
 
 The owner ran the consolidated RLS/functions/extensions/cron query
