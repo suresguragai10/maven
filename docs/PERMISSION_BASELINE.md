@@ -1,6 +1,6 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T16:31:09.637Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T16:43:17.541Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
@@ -11,7 +11,7 @@ Generated 2026-08-15T16:31:09.637Z by `node tests/db/run.js` -- **every row belo
 
 ## Summary
 
-227 checks run across 29 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+231 checks run across 30 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -364,6 +364,15 @@ Generated 2026-08-15T16:31:09.637Z by `node tests/db/run.js` -- **every row belo
 | "My Work"'s Firm Work query returns only items assigned to the caller, not a colleague's unassigned-to-them item | employeeA | ALLOWED | ALLOW | PASS | 2 row(s), correctly excludes the colleague's item |
 | My Work's Client Work query never includes a Firm Work item, even one assigned to the same person | employeeA | ALLOWED | ALLOW | PASS | Firm Work correctly excluded from the client-scope query |
 | A personal to-do never appears in a work_items query, regardless of scope | employeeA | ALLOWED | ALLOW | PASS | 0 row(s) found (expected 0 -- personal_todos is a separate table, never joined into work_items) |
+
+### Team screen — RLS-only scoping, not a bypass (Handbook Task 21)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| A plain employee's unfiltered Client Work query never returns a colleague's item they don't own or review | employeeA | ALLOWED | ALLOW | PASS | 2 row(s), all correctly scoped to employeeA's own work |
+| Admin's identical unfiltered query legitimately sees Client Work across multiple assignees (RLS grants this, the query itself is role-agnostic) | admin | ALLOWED | ALLOW | PASS | 2 distinct assignee(s) |
+| A plain employee's unfiltered Firm Work query sees Firm Work across the whole team (all-team visible by design) | employeeA | ALLOWED | ALLOW | PASS | 1 distinct assignee(s) visible |
+| A reviewer's unfiltered query returns only their own assigned work plus work they specifically review -- never a colleague's unrelated item | reviewerA | ALLOWED | ALLOW | PASS | 2 row(s), correctly scoped |
 
 ### SECURITY DEFINER function grants (catalog inspection)
 

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T16:31:09.637Z",
+    "generatedAt": "2026-08-15T16:43:17.541Z",
     "migrationCount": 30
   },
   "results": [
@@ -1893,6 +1893,42 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "0 row(s) found (expected 0 -- personal_todos is a separate table, never joined into work_items)"
+    },
+    {
+      "area": "Team screen — RLS-only scoping, not a bypass (Handbook Task 21)",
+      "action": "A plain employee's unfiltered Client Work query never returns a colleague's item they don't own or review",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 row(s), all correctly scoped to employeeA's own work"
+    },
+    {
+      "area": "Team screen — RLS-only scoping, not a bypass (Handbook Task 21)",
+      "action": "Admin's identical unfiltered query legitimately sees Client Work across multiple assignees (RLS grants this, the query itself is role-agnostic)",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 distinct assignee(s)"
+    },
+    {
+      "area": "Team screen — RLS-only scoping, not a bypass (Handbook Task 21)",
+      "action": "A plain employee's unfiltered Firm Work query sees Firm Work across the whole team (all-team visible by design)",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 distinct assignee(s) visible"
+    },
+    {
+      "area": "Team screen — RLS-only scoping, not a bypass (Handbook Task 21)",
+      "action": "A reviewer's unfiltered query returns only their own assigned work plus work they specifically review -- never a colleague's unrelated item",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "2 row(s), correctly scoped"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

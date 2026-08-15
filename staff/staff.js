@@ -741,6 +741,19 @@
     return res.data || [];
   }
 
+  // Handbook Task 21: the Team page's Firm Work half — no assignee
+  // filter at all, since Firm Work is all-team visible by design
+  // (work_items_read grants unconditional read on work_scope='firm' to
+  // any active teammate). Grouping by person happens client-side after
+  // this one query returns, not via N per-person queries.
+  async function loadAllFirmWork() {
+    var res = await sb.from('work_items').select('*')
+      .eq('work_scope', 'firm')
+      .order('internal_due_date', { ascending: true, nullsFirst: false });
+    if (res.error) { toast('Could not load Firm Work: ' + res.error.message, true); return []; }
+    return res.data || [];
+  }
+
   async function loadWork(mode) {
     // Every caller of loadWork() is a Client Work view (My Work, Review,
     // All Work, Today, Deadlines, Manager Dashboard, Period Summary,
@@ -827,7 +840,7 @@
       render();
       return;
     }
-    var known = ['today', 'my-work', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
+    var known = ['today', 'my-work', 'team', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     render();
   }
@@ -856,6 +869,11 @@
     item('today', 'Today', 'sun');
     item('search', 'Search', 'search');
     item('my-work', 'My Work', 'clipboard');
+    // Handbook Task 21: open to every active teammate, not role-gated —
+    // "who owns what" coordination, not a manager-only view. Deliberately
+    // separate from Manager Dashboard (workload counts/exceptions,
+    // reviewer/admin only) — this shows the actual per-person item lists.
+    item('team', 'Team', 'users');
     if (isReviewerOrAdmin()) {
       item('review', 'Review', 'check');
       item('all-work', 'All Work', 'folder');
@@ -898,6 +916,7 @@
     if (state.view === 'today') return renderTodayPage(main);
     if (state.view === 'search') return renderSearchPage(main, state.searchQuery || '');
     if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
+    if (state.view === 'team') return renderTeamPage(main);
     if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
     if (state.view === 'all-work') return renderWorkListView(main, 'All Work', 'all');
     if (state.view === 'deadlines') return renderDeadlinesPage(main);
@@ -1219,6 +1238,148 @@
     apply();
   }
 
+  // ============================================================
+  // Team — Handbook Task 21: "who currently owns what and what is the
+  // next move?", open to every active teammate (not gated by role, see
+  // the sidebar entry) — deliberately NOT the Manager Dashboard
+  // (reviewer/admin-only workload counts + exceptions, unchanged and
+  // untouched by this task). No productivity score, ranking, hours,
+  // presence/online status, or utilization metric of any kind — every
+  // number here is either a plain item list or absent entirely.
+  //
+  // SECURITY: both queries below are unfiltered by assignee_id (grouping
+  // by person happens client-side after the fact) and rely ENTIRELY on
+  // work_items_read RLS to decide what actually comes back — exactly the
+  // same pattern Manager Dashboard's loadWork('all') already uses for
+  // Client Work. A plain employee's query for work_scope='client' still
+  // only returns rows where they're the assignee or reviewer (RLS), so
+  // teammates' Client Work sections legitimately render empty for them
+  // except any items they specifically review — that's the real
+  // permission boundary working as intended, not a bug to route around.
+  // Firm Work has no such restriction (all-team visible since Task 6/16),
+  // so every teammate's Firm Work section is fully populated for everyone.
+  // ============================================================
+  async function renderTeamPage(main) {
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Team'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = 'What everyone currently owns, across Client and Firm Work — for coordination, not performance tracking.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
+
+    var filterCard = el('div', 'card');
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap;';
+
+    var personSel = el('select'); personSel.style.width = 'auto';
+    personSel.appendChild(new Option('All Team Members', ''));
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { personSel.appendChild(new Option(p.full_name, p.id)); });
+    filterRow.appendChild(personSel);
+
+    var scopeSel = el('select'); scopeSel.style.width = 'auto';
+    scopeSel.appendChild(new Option('All', 'all'));
+    scopeSel.appendChild(new Option('Client', 'client'));
+    scopeSel.appendChild(new Option('Firm', 'firm'));
+    filterRow.appendChild(scopeSel);
+
+    var completedLabel = el('label'); completedLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-soft);cursor:pointer;';
+    var completedCb = el('input'); completedCb.type = 'checkbox'; completedCb.style.width = 'auto';
+    completedLabel.appendChild(completedCb); completedLabel.appendChild(document.createTextNode('Show completed'));
+    filterRow.appendChild(completedLabel);
+
+    filterCard.appendChild(filterRow);
+    main.appendChild(filterCard);
+
+    var resultsWrap = el('div');
+    main.appendChild(resultsWrap);
+
+    var loading = el('div', 'empty-note'); loading.textContent = 'Loading…'; resultsWrap.appendChild(loading);
+
+    // Both queries are a single round trip each (no per-person looping);
+    // work_items_read RLS is what actually scopes the Client Work half —
+    // see this function's own header comment.
+    var results = await Promise.all([loadWork('all'), loadAllFirmWork()]);
+    var clientItems = results[0];
+    var firmItems = results[1];
+
+    // One batched latest-update query for Firm Work items with no
+    // next_action set, same "load once, cheap at this org's size"
+    // pattern renderFirmWorkPage's own list column already uses — never
+    // a per-row query.
+    var needCommentIds = firmItems.filter(function (w) { return !w.next_action; }).map(function (w) { return w.id; });
+    var latestByItem = {};
+    if (needCommentIds.length) {
+      var commentsRes = await sb.from('work_comments').select('*').in('work_item_id', needCommentIds).order('created_at', { ascending: false });
+      (commentsRes.data || []).forEach(function (c) { if (!latestByItem[c.work_item_id]) latestByItem[c.work_item_id] = c; });
+    }
+
+    clear(resultsWrap);
+
+    function apply() {
+      clear(resultsWrap);
+      var scope = scopeSel.value;
+      var people = state.profiles.filter(function (p) { return p.is_active; });
+      if (personSel.value) people = people.filter(function (p) { return p.id === personSel.value; });
+
+      if (!people.length) {
+        var noPeople = el('div', 'empty-note'); noPeople.appendChild(icon('users')); noPeople.appendChild(document.createTextNode('No active team members.'));
+        resultsWrap.appendChild(noPeople);
+        return;
+      }
+
+      people.forEach(function (p) {
+        var card = el('div', 'card'); card.style.marginBottom = '16px';
+        var personHead = el('div'); personHead.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:14px;';
+        personHead.appendChild(avatar(p.full_name));
+        var nameEl = el('div'); nameEl.style.cssText = 'font-weight:700;font-size:1.02rem;color:var(--navy-950);'; nameEl.textContent = p.full_name;
+        personHead.appendChild(nameEl);
+        card.appendChild(personHead);
+
+        if (scope !== 'firm') {
+          var pClient = clientItems.filter(function (w) {
+            return w.assignee_id === p.id && (completedCb.checked || w.status !== 'completed');
+          }).slice().sort(compareByDue);
+          var clientSection = el('div'); clientSection.style.marginBottom = scope === 'all' ? '14px' : '0';
+          var clientHead = el('h3'); clientHead.style.cssText = 'font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;';
+          clientHead.textContent = 'Client Work' + (pClient.length ? ' (' + pClient.length + ')' : '');
+          clientSection.appendChild(clientHead);
+          if (pClient.length) {
+            pClient.forEach(function (w) { clientSection.appendChild(workRow(w, true)); });
+          } else {
+            var noClient = el('p', 'desc'); noClient.style.margin = '0 0 4px'; noClient.textContent = 'No open Client Work.';
+            clientSection.appendChild(noClient);
+          }
+          card.appendChild(clientSection);
+        }
+
+        if (scope !== 'client') {
+          var pFirm = firmItems.filter(function (w) {
+            return w.assignee_id === p.id && (completedCb.checked || w.status !== 'completed');
+          }).slice().sort(compareByDue);
+          var firmSection = el('div');
+          var firmHead = el('h3'); firmHead.style.cssText = 'font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;';
+          firmHead.textContent = 'Firm Work' + (pFirm.length ? ' (' + pFirm.length + ')' : '');
+          firmSection.appendChild(firmHead);
+          if (pFirm.length) {
+            pFirm.forEach(function (w) { firmSection.appendChild(firmWorkRow(w, latestByItem[w.id] ? latestByItem[w.id].body : null)); });
+          } else {
+            var noFirm = el('p', 'desc'); noFirm.style.margin = '0'; noFirm.textContent = 'No open Firm Work.';
+            firmSection.appendChild(noFirm);
+          }
+          card.appendChild(firmSection);
+        }
+
+        resultsWrap.appendChild(card);
+      });
+    }
+    personSel.addEventListener('change', apply);
+    scopeSel.addEventListener('change', apply);
+    completedCb.addEventListener('change', apply);
+    apply();
+  }
+
   // "Who has open work right now" — the one thing a flat list can't
   // answer at a glance. Counts open (non-completed) work per assignee,
   // with overdue count called out separately since that's the number
@@ -1417,7 +1578,12 @@
   // and this task explicitly requires that a missed Firm target must
   // NOT be styled like a missed statutory filing (contrast: workRow's
   // `due.overdue` class, which this function never applies).
-  function firmWorkRow(w) {
+  // latestUpdateText (Handbook Task 21, optional): a fallback "what's the
+  // next move" line when the item has no next_action set — the same
+  // next_action-else-latest-update convention renderFirmWorkPage's own
+  // list column already uses. My Work (Handbook Task 20) calls this with
+  // one argument, so it only ever shows next_action there (unaffected).
+  function firmWorkRow(w, latestUpdateText) {
     var row = el('div', 'task-row');
     row.addEventListener('click', function () { gotoFirmWork(w.id); });
     row.appendChild(avatar(profileName(w.assignee_id)));
@@ -1427,10 +1593,17 @@
     var title = el('div', 'title');
     var project = w.project_id ? projectById(w.project_id) : null;
     var strong = el('strong'); strong.textContent = w.title;
-    var span = el('span');
-    span.appendChild(icon('folder'));
-    span.appendChild(document.createTextNode((w.firm_category || 'Uncategorized') + (project ? ' · ' + project.name : '')));
-    title.appendChild(strong); title.appendChild(span);
+    var catSpan = el('span');
+    catSpan.appendChild(icon('folder'));
+    catSpan.appendChild(document.createTextNode((w.firm_category || 'Uncategorized') + (project ? ' · ' + project.name : '')));
+    title.appendChild(strong); title.appendChild(catSpan);
+    var nextText = w.next_action || latestUpdateText;
+    if (nextText) {
+      var naSpan = el('span');
+      naSpan.appendChild(icon('flag'));
+      naSpan.appendChild(document.createTextNode(truncateOneLine(nextText, 70)));
+      title.appendChild(naSpan);
+    }
     row.appendChild(title);
     // Target date, plain -- never `.overdue`/red, per this task's own
     // "do not style a missed Firm target as if it were a statutory

@@ -639,6 +639,56 @@ plus the underlying request's own `assignee_id=eq.<caller>` filter,
 overdue styling preserved for Client but never applied to Firm, Client
 groups rendering before the Firm section, Personal To-Do isolation).
 
+### Team screen (Handbook Task 21)
+
+No schema/RLS change — the whole point of this task's security
+requirement ("must not become a bypass that leaks Client Work data
+beyond RLS") is that it doesn't need one. `renderTeamPage` runs two
+UNFILTERED (by assignee) queries — `loadWork('all')` for Client Work
+(the exact function/query Manager Dashboard already uses) and a new
+`loadAllFirmWork()` for Firm Work — and groups the results by person
+client-side. `work_items_read` RLS is what actually decides what each
+row set contains: a plain employee's Client Work query returns only
+their own assigned/reviewed rows (so teammates' Client Work sections
+render correctly empty for them, except any item they specifically
+review), while Firm Work is all-team visible to everyone regardless of
+role, matching its peer model since Task 6/16. The page itself is open
+to every active teammate (not gated to reviewer/admin like Manager
+Dashboard, which is untouched and still serves its own workload-count
+purpose). No productivity score, ranking, hours-worked, or presence
+content of any kind — every number is a plain item count or absent.
+
+Two small, additive extensions to already-shared components: `firmWorkRow`
+(built in Task 20) now optionally shows `next_action` (or, when unset, a
+batched-lookup latest comment) per this task's own "next action and
+latest short update" field list — harmless for My Work too, which never
+asked for it but isn't hurt by it. `workRow`/`firmWorkRow` compose
+directly for the per-person sections; "clicking a work item opens its
+details" falls out for free since both already navigate on click.
+
+Building `team.spec.js`'s mobile-overflow test surfaced a real,
+previously-latent bug in the shared `.task-row` component: with no
+`flex-wrap`, a long Client Work title plus its due date plus status
+badge plus the Task-20-added CLIENT/FIRM scope tag could together exceed
+a 375px viewport (no single-person list page had ever combined that much
+content in one row before). Fixed with `flex-wrap:wrap` on `.task-row`
+and a `flex:1 1 200px;min-width:200px` on `.title` (was `flex:1;
+min-width:0`) so the title wraps onto its own line instead of every
+sibling cramming onto one — a real, previously-undiscovered mobile bug,
+not something specific to the Team page's own markup.
+
+`tests/db/matrices/team_view.matrix.js` (4 checks: a plain employee's
+unfiltered Client Work query never leaks a colleague's unrelated item,
+admin's identical query legitimately sees everyone, Firm Work is visible
+to a plain employee across the whole team, a reviewer's query includes
+only their own work plus work they specifically review). Baseline:
+**231 DB checks, 0 findings** (up from 227). `tests/ui/app/team.spec.js`
+(7 tests: multi-user Client+Firm sections with click-through, empty
+sections render an explicit message rather than disappearing, 20 items
+render without error, completed-work filtering, person/scope filters,
+mobile/tablet overflow, and a full-page-text scan confirming no
+productivity/ranking/hours/presence/timezone language appears anywhere).
+
 ## 3. Confirmed live drift (2026-08-14)
 
 The owner ran the consolidated RLS/functions/extensions/cron query

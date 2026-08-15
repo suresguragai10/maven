@@ -102,13 +102,20 @@
   .task-group{margin-bottom:24px;}
   .task-group h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
   .task-group h3 .count{background:var(--mist-dark);color:var(--navy-800);border-radius:999px;padding:1px 9px;font-size:.75rem;}
-  .task-row{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,transform .12s ease;}
+  .task-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,transform .12s ease;}
   .task-row:hover{border-color:var(--gold-500);box-shadow:0 4px 14px -6px rgba(16,42,76,.18);transform:translateY(-1px);}
   .task-row .priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
   .priority-dot-low{background:var(--border);}
   .priority-dot-normal{background:#1D4ED8;}
   .priority-dot-high{background:var(--red);}
-  .task-row .title{flex:1;min-width:0;}
+  /* Handbook Task 21: min-width (not 0) so a long title/due/badge
+     combination wraps the title onto its own line on a narrow viewport
+     instead of every sibling cramming onto one line and forcing the
+     whole row wider than the page -- found via a real overflow
+     measurement on the new Team screen (a long Client title + due date
+     + status badge + CLIENT/FIRM tag all in one row is more content
+     than any single-person task list page happened to combine before). */
+  .task-row .title{flex:1 1 200px;min-width:200px;}
   .task-row .title strong{display:block;font-size:.95rem;color:var(--navy-950);}
   .task-row .title span{font-size:.82rem;color:var(--ink-soft);display:flex;align-items:center;gap:5px;margin-top:2px;}
   .task-row .title span .ic{width:13px;height:13px;}
