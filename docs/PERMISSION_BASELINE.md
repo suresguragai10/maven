@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T07:14:27.701Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 19 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 20 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-108 checks run across 17 areas. **16 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+118 checks run across 18 areas. **16 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Findings — current behavior does not match the intended model
 
@@ -132,6 +132,21 @@ Generated 2026-08-15T07:14:27.701Z by `node tests/db/run.js` -- **every row belo
 | UPDATE an existing activity entry, even as admin | admin | DENIED | DENY | PASS | 0 row(s) - still no UPDATE policy |
 | SELECT the original "created" activity entry, seeded before this migration existed | employeeA | ALLOWED | ALLOW | PASS | 2 row(s) - pre-existing history survives the migration and stays readable |
 | INSERT a new work item with created_by spoofed to someone else | employeeB | DENIED | DENY | PASS | created_by ended up as 33333333-3333-3333-3333-333333333333 (requested spoof: 66666666-6666-6666-6666-666666666666, real caller: 33333333-3333-3333-3333-333333333333) — should always equal the real caller, forced by the new BEFORE INSERT trigger |
+
+### Client Work transitions + checklist gates
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| UPDATE status directly from to_do to completed (skips in_progress/review/submission entirely) | employeeA | DENIED | DENY | PASS | Only a reviewer or admin can set that status. |
+| UPDATE in_progress -> ready_for_review with an unchecked REQUIRED preparation item | employeeA | DENIED | DENY | PASS | Complete all required preparation checklist items before sending for review. |
+| UPDATE in_progress -> ready_for_review after checking the required preparation item | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
+| UPDATE ready_for_review -> approved with an unchecked REQUIRED review item | reviewerA | DENIED | DENY | PASS | Complete all required review checklist items before approving. |
+| UPDATE ready_for_review -> approved after the required review item is already checked | reviewerA | ALLOWED | ALLOW | PASS | 1 row(s) |
+| UPDATE ready_to_submit -> completed without recording the submission (submission_required=true) | admin | DENIED | DENY | PASS | Record the submission and complete all required submission checklist items before marking completed. |
+| UPDATE ready_to_submit -> completed after recording the submission | admin | ALLOWED | ALLOW | PASS | 1 row(s) |
+| UPDATE (as admin, NO override reason) skip straight to completed from in_progress | admin | DENIED | DENY | PASS | Invalid status change: In Progress → Completed is not a normal transition. |
+| UPDATE (as admin, WITH a real override reason) skip straight to completed from in_progress | admin | ALLOWED | ALLOW | PASS | update ok; status_override logged=true; reason column cleared after use=true (detail: "Invalid status change: In Progress → Completed is not a normal transition. OVERRIDDEN (In Progress → Completed). Reason: Client closed the business; filing period must be force-closed per accountant instruction.") |
+| UPDATE Firm Work directly from to_do to completed (no transition map applies to work_scope=firm) | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) - Firm Work keeps its lighter model, untouched by this task |
 
 ### submission fields/actions
 

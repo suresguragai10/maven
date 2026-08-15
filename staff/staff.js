@@ -35,6 +35,35 @@
   // "Ready for Review" requires a reviewer/admin, enforced both here (UI)
   // and in the guard_work_item_update() trigger (DB).
   var EMPLOYEE_STATUSES = ['to_do', 'in_progress', 'waiting_for_client', 'ready_for_review'];
+  // Handbook Task 8: mirrors guard_work_item_update()'s transition map
+  // (structural pairs only, not the checklist/submission gates, which
+  // need a DB round trip to check reliably) so the status <select> only
+  // ever offers a next status that's actually reachable — a reviewer
+  // looking at a brand-new 'to_do' item no longer sees 'Completed' as an
+  // option that would just error out. Reopening a completed item has no
+  // normal path here at all (admin-override-only, see openOverrideStatusModal).
+  function validClientNextStatuses(work) {
+    var reviewRequired = work.review_required !== false; // column default true
+    var submissionRequired = work.submission_required === true;
+    switch (work.status) {
+      case 'to_do': return ['to_do', 'in_progress', 'waiting_for_client'];
+      case 'in_progress':
+        var opts = ['in_progress', 'waiting_for_client', 'ready_for_review'];
+        if (!reviewRequired && submissionRequired) opts.push('ready_to_submit');
+        if (!reviewRequired && !submissionRequired) opts.push('completed');
+        return opts;
+      case 'waiting_for_client': return ['waiting_for_client', 'in_progress'];
+      case 'ready_for_review': return ['ready_for_review', 'changes_required', 'approved', 'waiting_for_client'];
+      case 'changes_required': return ['changes_required', 'in_progress', 'waiting_for_client'];
+      case 'approved':
+        var opts2 = ['approved', 'waiting_for_client'];
+        opts2.push(submissionRequired ? 'ready_to_submit' : 'completed');
+        return opts2;
+      case 'ready_to_submit': return ['ready_to_submit', 'completed', 'waiting_for_client'];
+      case 'completed': return ['completed'];
+      default: return [work.status];
+    }
+  }
   var STAGE_LABELS = { preparation: 'Preparation', review: 'Review', submission: 'Submission' };
   var STAGES = ['preparation', 'review', 'submission'];
   var TEMPLATE_CATEGORIES = ['Bookkeeping', 'Tax', 'Payroll', 'Reporting', 'Registration', 'Advisory', 'NFRS/IFRS'];
@@ -2302,6 +2331,7 @@
         // starts false and can still be flipped on later via Edit Work
         // if a specific engagement turns out to need filing after all.
         submission_required: chosenTmpl ? chosenTmpl.requires_submission : false,
+        review_required: chosenTmpl ? chosenTmpl.requires_review !== false : true,
         created_by: state.user.id,
       }).select().single();
       if (res.error) { createBtn.disabled = false; toast('Could not create work: ' + res.error.message, true); return; }
@@ -2425,18 +2455,30 @@
     overviewPane.appendChild(metaGrid);
 
     // Status control — employees on their own work get a restricted set of
-    // options (can't self-approve); reviewers/admins get the full,
-    // template-aware set. Setting status to "Waiting for Client" prompts
-    // for the structured waiting details before committing; the reverse
-    // is a one-click "Mark Documents Received."
+    // options (can't self-approve); a matching reviewer and admin get the
+    // full set. As of Handbook Task 8, the offered options are also
+    // filtered to whatever guard_work_item_update()'s transition map
+    // actually allows from the item's CURRENT status — no more dead-end
+    // choices that always error. Admin additionally sees every status
+    // regardless of the map (an "Override" control appears if their pick
+    // isn't a normal transition — see below), since only admin can supply
+    // the override reason the DB requires for an exceptional change.
     if (isMine || canEditFull) {
       var statusWrap = el('div', 'f');
       var statusLabel = el('label'); statusLabel.textContent = 'Status'; statusWrap.appendChild(statusLabel);
       var statusSel = el('select');
-      var full = ['to_do', 'in_progress', 'waiting_for_client', 'ready_for_review', 'changes_required', 'approved'];
-      if (!template || template.requires_submission) full.push('ready_to_submit');
-      full.push('completed');
-      var allowed = canEditFull ? full : EMPLOYEE_STATUSES.slice();
+      var normalNext = validClientNextStatuses(work);
+      var allowed;
+      if (isAdmin()) {
+        var full = ['to_do', 'in_progress', 'waiting_for_client', 'ready_for_review', 'changes_required', 'approved'];
+        if (!template || template.requires_submission) full.push('ready_to_submit');
+        full.push('completed');
+        allowed = full;
+      } else if (canEditFull) {
+        allowed = normalNext;
+      } else {
+        allowed = normalNext.filter(function (s) { return EMPLOYEE_STATUSES.indexOf(s) !== -1; });
+      }
       if (allowed.indexOf(work.status) === -1) allowed = [work.status].concat(allowed);
       allowed.forEach(function (s) { statusSel.appendChild(new Option(STATUS_LABELS[s], s)); });
       statusSel.value = work.status;
@@ -2461,6 +2503,9 @@
           }, function () { statusSel.value = prevStatus; });
           return;
         }
+        applyStatusChange(newStatus, buildStatusPatch(newStatus));
+      });
+      function buildStatusPatch(newStatus, overrideReason) {
         var patch = { status: newStatus };
         if (newStatus !== 'waiting_for_client') { patch.waiting_reason = null; patch.waiting_since = null; patch.follow_up_date = null; patch.waiting_requested_by = null; }
         // Tracks how long something has actually sat in the review queue —
@@ -2474,11 +2519,29 @@
         // correction moves an item back out of Completed.
         if (newStatus === 'completed') patch.completed_at = new Date().toISOString();
         else if (prevStatus === 'completed') patch.completed_at = null;
-        applyStatusChange(newStatus, patch);
-      });
+        if (overrideReason) patch.status_override_reason = overrideReason;
+        return patch;
+      }
       async function applyStatusChange(newStatus, patch, newWaitingItemTitles) {
         var res = await sb.from('work_items').update(patch).eq('id', work.id);
-        if (res.error) { toast('Could not update status: ' + res.error.message, true); statusSel.value = prevStatus; return; }
+        if (res.error) {
+          // Handbook Task 8: guard_work_item_update() rejects a normal-
+          // looking but not-actually-allowed transition (wrong stage,
+          // required checklist items unchecked, etc.) with a specific
+          // message. Only admin can supply a reason and retry as an
+          // explicit, audited override — anyone else just sees why it
+          // was blocked and has to fix the underlying thing instead.
+          if (isAdmin() && !patch.status_override_reason) {
+            statusSel.value = prevStatus;
+            openOverrideStatusModal(res.error.message, function (reason) {
+              applyStatusChange(newStatus, buildStatusPatch(newStatus, reason), newWaitingItemTitles);
+            });
+            return;
+          }
+          toast('Could not update status: ' + res.error.message, true);
+          statusSel.value = prevStatus;
+          return;
+        }
         if (newWaitingItemTitles && newWaitingItemTitles.length) {
           var rows = newWaitingItemTitles.map(function (title, i) {
             return {
@@ -2501,7 +2564,7 @@
           await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
         }
         // Logged automatically by guard_work_item_update() (Handbook Task 7) — no client-side call needed or permitted.
-        toast('Status updated.');
+        toast(patch.status_override_reason ? 'Status overridden.' : 'Status updated.');
         renderWorkDetail(id);
       }
       statusWrap.appendChild(statusSel);
@@ -3025,6 +3088,43 @@
       }
     });
     actions.appendChild(copyBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
+  // Handbook Task 8: admin-only override when guard_work_item_update()
+  // rejects a status change (skips a required stage, leaves required
+  // checklist items unchecked, etc.). Deliberately requires a real,
+  // non-empty reason — the DB itself refuses to apply the override
+  // without one — and every use is permanently recorded to work_activity
+  // as a distinct 'status_override' entry (see the migration), never
+  // silently applied. This is an escape hatch for genuine exceptions,
+  // not a way around fixing the workflow — it should be rare.
+  function openOverrideStatusModal(blockedReason, onConfirm) {
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Override Required';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var explain = el('p', 'desc');
+    explain.textContent = blockedReason + ' As an admin, you may override this — provide a reason. The override is permanently recorded in this item\'s Activity history.';
+    wrap.appendChild(explain);
+
+    var reasonInput = el('textarea'); reasonInput.rows = 3; reasonInput.placeholder = 'Why is this exception necessary?';
+    wrap.appendChild(field('Override Reason (required)', reasonInput));
+
+    var actions = el('div', 'modal-actions');
+    var confirmBtn = el('button', 'btn btn-danger'); confirmBtn.type = 'button'; confirmBtn.textContent = 'Override and Apply';
+    confirmBtn.addEventListener('click', function () {
+      var reason = reasonInput.value.trim();
+      if (!reason) { toast('A reason is required to override.', true); return; }
+      closeModal();
+      onConfirm(reason);
+    });
+    actions.appendChild(confirmBtn);
     wrap.appendChild(actions);
     openModal(wrap);
   }
@@ -4061,6 +4161,19 @@
     submissionWrap.appendChild(submissionLabel);
     wrap.appendChild(submissionWrap);
 
+    // Handbook Task 8: gates whether work created from this template must
+    // pass through Ready for Review/Approved at all before Completed (or
+    // Ready to Submit) — enforced by guard_work_item_update()'s transition
+    // map, not just this checkbox. Defaults on, matching every template
+    // that existed before this flag did.
+    var reviewWrap = el('div', 'f');
+    var reviewLabel = el('label');
+    var reviewCb = el('input'); reviewCb.type = 'checkbox'; reviewCb.checked = true; reviewCb.style.width = 'auto'; reviewCb.style.marginRight = '8px';
+    reviewLabel.appendChild(reviewCb);
+    reviewLabel.appendChild(document.createTextNode('Requires review (adds "Ready for Review" / "Approved" before Completed)'));
+    reviewWrap.appendChild(reviewLabel);
+    wrap.appendChild(reviewWrap);
+
     var defaultAssigneeSel = el('select');
     defaultAssigneeSel.appendChild(new Option('— No default —', ''));
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { defaultAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
@@ -4099,6 +4212,7 @@
         description: descInput.value.trim() || null,
         recurrence: recurSel.value,
         requires_submission: submissionCb.checked,
+        requires_review: reviewCb.checked,
         default_assignee_id: defaultAssigneeSel.value || null,
         default_reviewer_id: defaultReviewerSel.value || null,
         filing_deadline_day: filingDayInput.value.trim() ? parseInt(filingDayInput.value, 10) : null,
@@ -4174,6 +4288,14 @@
     submissionWrap.appendChild(submissionLabel);
     wrap.appendChild(submissionWrap);
 
+    var reviewWrap = el('div', 'f');
+    var reviewLabel = el('label');
+    var reviewCb = el('input'); reviewCb.type = 'checkbox'; reviewCb.checked = t.requires_review !== false; reviewCb.style.width = 'auto'; reviewCb.style.marginRight = '8px';
+    reviewLabel.appendChild(reviewCb);
+    reviewLabel.appendChild(document.createTextNode('Requires review (adds "Ready for Review" / "Approved" before Completed)'));
+    reviewWrap.appendChild(reviewLabel);
+    wrap.appendChild(reviewWrap);
+
     var defaultAssigneeSel = el('select');
     defaultAssigneeSel.appendChild(new Option('— No default —', ''));
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { defaultAssigneeSel.appendChild(new Option(p.full_name, p.id)); });
@@ -4208,6 +4330,7 @@
         recurrence: recurSel.value,
         is_active: activeCb.checked,
         requires_submission: submissionCb.checked,
+        requires_review: reviewCb.checked,
         default_assignee_id: defaultAssigneeSel.value || null,
         default_reviewer_id: defaultReviewerSel.value || null,
         filing_deadline_day: filingDayInput.value.trim() ? parseInt(filingDayInput.value, 10) : null,

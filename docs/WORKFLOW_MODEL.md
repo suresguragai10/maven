@@ -28,6 +28,74 @@ Setting `approved` / `changes_required` / `ready_to_submit` /
 assignee) cannot self-approve their own work. This is enforced by
 `guard_work_item_update()`, independently of RLS.
 
+### Valid transitions (Handbook Task 8)
+
+Before Task 8, no valid-transition model existed at all — any role
+permitted to set a given status could set it from *any* current status,
+including obvious skips like `to_do` straight to `completed`. As of
+`supabase/migrations/20260820090000_client_work_transitions_and_gates.sql`,
+`guard_work_item_update()` enforces this map (in addition to the
+role checks above — a transition still has to be both permitted for the
+caller's role AND valid for the item's current status):
+
+| From | Normally allowed to |
+|---|---|
+| `to_do` | `in_progress`, `waiting_for_client` |
+| `in_progress` | `waiting_for_client`, `ready_for_review`; `ready_to_submit` or `completed` directly, only if the template has `requires_review = false` (see below) |
+| `waiting_for_client` | `in_progress` |
+| `ready_for_review` | `changes_required`, `approved`, `waiting_for_client` |
+| `changes_required` | `in_progress`, `waiting_for_client` |
+| `approved` | `ready_to_submit` (if `submission_required`) or `completed` (if not), `waiting_for_client` |
+| `ready_to_submit` | `completed`, `waiting_for_client` |
+| `completed` | *(nothing — reopening is admin-override only, see below)* |
+
+Anything not listed above is rejected outright, unless an admin supplies
+an explicit override reason (see "Admin override" below).
+
+### Required-checklist gates (Handbook Task 8)
+
+`work_checklist_items.is_required` was, before this task, purely a
+display label ("(Optional)" vs. not) — it never blocked anything. It is
+now a real operational control, checked at the moment of the relevant
+transition:
+
+- **`→ ready_for_review`**: every `is_required = true` item with
+  `stage = 'preparation'` must have `is_done = true`.
+- **`→ approved`**: every `is_required = true` item with `stage =
+  'review'` must have `is_done = true`.
+- **`→ completed`, when `submission_required`**: `submission_status`
+  must already be `submitted` or `acknowledged`, AND every
+  `is_required = true` item with `stage = 'submission'` must have
+  `is_done = true`.
+
+A service that doesn't need a given stage simply has no `is_required`
+items in it — the gate is then vacuously satisfied, never a false
+blocker. `service_templates.requires_review` (new, mirrors the existing
+`requires_submission`, defaults `true`) and the matching
+`work_items.review_required` (copied from the template at creation,
+including by the recurring-generation function) control whether the
+review stage applies to a given service at all — a template with
+`requires_review = false` allows `in_progress` to skip straight to
+`ready_to_submit`/`completed`, per the transition table above.
+
+### Admin override (Handbook Task 8)
+
+An admin who genuinely needs an exception (an out-of-band correction, a
+client relationship ending mid-period, etc.) can supply
+`status_override_reason` in the SAME update as the status change. If
+non-empty, it bypasses both the transition map and the checklist gates
+for that one change — but the reason is mandatory (empty/missing is
+rejected the same as anyone else's invalid transition) and every use is
+permanently recorded as a `status_override` entry in `work_activity`,
+including the reason text and what was overridden. The column itself
+never persists a value — `guard_work_item_update()` always resets it to
+`NULL` after reading it, whether or not it was used. This is deliberately
+not a blanket admin bypass: admin is bound by the same transition map
+and checklist gates as everyone else by default, and only escapes them
+by leaving an accountable, permanent record of why. See
+`staff/staff.js`'s `openOverrideStatusModal()` for the UI (admin-only;
+appears automatically when a normal status change is rejected).
+
 ### Submission sub-workflow
 
 Separate from `status`: `submission_required` (boolean, set per
@@ -39,14 +107,12 @@ submission fields can only be recorded once the work item's own
 submission on anything earlier would mean claiming something was filed
 before it was actually approved.
 
-**Current enforcement gap:** this rule is only enforced against a plain
-employee. Admin and a matching reviewer can currently record submission
-fields on an item at any status, bypassing the "only once ready"
-guard entirely — same root cause as the reviewer-rescope gap in
-ROLE_CAPABILITIES.md (both live inside the same
-`guard_work_item_update()` branch that admin/reviewer skip). Confirmed
-in [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("submission
-fields/actions").
+**Fixed, Handbook Task 6:** this rule is now a universal check (outside
+the role dispatch entirely), so it applies to every role including
+admin and a matching reviewer, not just a plain employee. As of
+Handbook Task 8, completion additionally requires the relevant
+`stage = 'submission'` required checklist items to be checked too — see
+"Required-checklist gates" below.
 
 ### Waiting-for-client sub-workflow
 
@@ -87,8 +153,8 @@ database enforces all of this directly
 `work_items.work_scope` (`'client'` | `'firm'`) — set once at creation,
 matching the boundary in PRODUCT_BOUNDARIES.md. There is no supported
 path for converting an existing item from one scope to the other through
-the app; a direct database attempt to do so is blocked as a side effect
-of the "only reviewer/admin can rescope" guard (changing `client_id` is
-itself a guarded change) — see
+the app; as of Handbook Task 6, a direct database attempt to do so is
+rejected by an explicit, universal immutability check (`work_scope
+cannot be changed after creation`), for every role including admin — see
 [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("work_items (client
 scope)", "convert Client Work to Firm Work directly").

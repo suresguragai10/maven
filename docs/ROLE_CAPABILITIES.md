@@ -36,8 +36,9 @@ residual gaps.
 | Update own assigned item (status, dates, description) | Yes, within allowed status transitions (see WORKFLOW_MODEL.md) | N/A unless also assignee | Yes, any item |
 | Reassign / change reviewer / change client / change service template | **No** | **No** — reviewing is not configuring | Yes |
 | Change `work_scope` on an existing item | **No, nobody can** — immutable after creation, admin included | **No, nobody can** | **No, nobody can** |
-| Set `approved` / `changes_required` / `ready_to_submit` / `completed` | **No** | Yes, on items they review | Yes, any item |
+| Set `approved` / `changes_required` / `ready_to_submit` / `completed` | **No** | Yes, on items they review, and only via a valid transition (see WORKFLOW_MODEL.md) | Yes, any item, and also only via a valid transition by default |
 | Record submission fields (`submission_status`, `submitted_at`, etc.) | Only once the item is already `ready_to_submit`/`completed` | Same rule, no exception | Same rule, no exception |
+| Override an invalid transition or an unmet required-checklist gate | **No** | **No** | **Yes, only** — requires a non-empty `status_override_reason` in the same update; permanently logged to `work_activity` as `status_override`. Not a silent bypass (see WORKFLOW_MODEL.md, "Admin override") |
 | Edit checklist items | Only on own assigned item | Only on items they review | Any |
 | Comment / view activity | Read/write only on own assigned item | Read/write only on items they review | Any |
 | Toggle waiting-for-client items | Only on own assigned item | Only on items they review | Any |
@@ -71,6 +72,15 @@ admin included (a workflow-integrity rule, not a permission one — see
 `id`/`created_at`/`created_by` are now immutable after creation for
 every role too. Confirmed via the Task 3 harness, see
 [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md).
+
+**Valid-transition + checklist-gate enforcement added, Handbook Task 8:**
+admin's status-setting power is no longer unconditional either — by
+default, admin is bound by the same transition map and required-
+checklist gates as everyone else (see WORKFLOW_MODEL.md). Admin's actual
+extra power is narrower and more specific than before: the ability to
+supply an explicit, mandatory, permanently-logged override reason to
+bypass those gates for one specific exceptional change, not a blanket
+ability to set any status at any time.
 
 ## Firm Work capabilities (peer model)
 

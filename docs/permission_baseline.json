@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T07:14:27.701Z",
-    "migrationCount": 19
+    "generatedAt": "2026-08-15T07:32:49.038Z",
+    "migrationCount": 20
   },
   "results": [
     {
@@ -516,6 +516,96 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "created_by ended up as 33333333-3333-3333-3333-333333333333 (requested spoof: 66666666-6666-6666-6666-666666666666, real caller: 33333333-3333-3333-3333-333333333333) — should always equal the real caller, forced by the new BEFORE INSERT trigger"
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE status directly from to_do to completed (skips in_progress/review/submission entirely)",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Only a reviewer or admin can set that status."
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE in_progress -> ready_for_review with an unchecked REQUIRED preparation item",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Complete all required preparation checklist items before sending for review."
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE in_progress -> ready_for_review after checking the required preparation item",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE ready_for_review -> approved with an unchecked REQUIRED review item",
+      "identity": "reviewerA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Complete all required review checklist items before approving."
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE ready_for_review -> approved after the required review item is already checked",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE ready_to_submit -> completed without recording the submission (submission_required=true)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Record the submission and complete all required submission checklist items before marking completed."
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE ready_to_submit -> completed after recording the submission",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE (as admin, NO override reason) skip straight to completed from in_progress",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Invalid status change: In Progress → Completed is not a normal transition."
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE (as admin, WITH a real override reason) skip straight to completed from in_progress",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "update ok; status_override logged=true; reason column cleared after use=true (detail: \"Invalid status change: In Progress → Completed is not a normal transition. OVERRIDDEN (In Progress → Completed). Reason: Client closed the business; filing period must be force-closed per accountant instruction.\")"
+    },
+    {
+      "area": "Client Work transitions + checklist gates",
+      "action": "UPDATE Firm Work directly from to_do to completed (no transition map applies to work_scope=firm)",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) - Firm Work keeps its lighter model, untouched by this task"
     },
     {
       "area": "submission fields/actions",

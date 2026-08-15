@@ -19,6 +19,7 @@ const MATRIX_FILES = [
   'work_items_firm',
   'checklist_activity_waiting',
   'activity_audit_trail',
+  'client_work_transitions',
   'submission',
   'templates_and_settings',
   'notifications_and_todos',
