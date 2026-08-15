@@ -1,13 +1,14 @@
 const { tryQuery } = require('../support/probe');
 const { CLIENTS } = require('../support/ids');
 
-// set_client_attention() is one of the six functions flagged in Handbook
-// Task 1 for the `current_user_role() not in (...)` / NULL bypass. Unlike
-// the other five, its migration (20260814090000_client_attention.sql)
-// DOES explicitly revoke EXECUTE from public/anon and grant only to
-// authenticated -- so anon should be blocked at the grant layer here, and
-// the only way to reproduce the actual bug is the `inactive` identity
-// (authenticated role, but current_user_role() returns NULL).
+// set_client_attention() was one of the six functions flagged in Handbook
+// Task 1 for the `current_user_role() not in (...)` / NULL bypass, fixed
+// at the root by Handbook Task 9's coalesce() rewrite
+// (20260821090000_offboarding_revokes_business_access.sql). Its
+// migration already explicitly revoked EXECUTE from public/anon (so anon
+// was always blocked at the grant layer here); the `inactive` identity
+// (authenticated role, current_user_role() returns NULL) is what used to
+// reproduce the actual logic bug, now fixed.
 module.exports = async function clientAttentionMatrix({ asRole, IDENTITIES, ANON, record }) {
   const area = 'client_attention (set_client_attention RPC)';
 
@@ -31,7 +32,7 @@ module.exports = async function clientAttentionMatrix({ asRole, IDENTITIES, ANON
     record({
       area, action: 'CALL as a deactivated profile with a still-valid authenticated session', identity: 'inactive',
       allowed: r.ok, expectedSecure: 'deny',
-      note: r.error || 'succeeded - EMPIRICALLY REPRODUCES the Task 1 NULL-bypass finding: current_user_role() returns NULL for this identity, "NULL not in (\'admin\',\'reviewer\')" evaluates to NULL, PL/pgSQL treats a NULL IF-condition as false, the RAISE never fires. This is the exact residual risk documented in maven_critical_finding_anon_execute_bypass.md, now proven against a real query instead of reasoned about.',
+      note: r.error || 'succeeded - the NULL-bypass finding this test was written to catch; FIXED by Handbook Task 9\'s coalesce(current_user_role(), \'\') rewrite.',
     });
   });
 };

@@ -1,38 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T07:51:29.478Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 20 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 21 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-118 checks run across 18 areas. **16 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
-
-## Findings — current behavior does not match the intended model
-
-| Area | Action | Identity | Observed | Note |
-|---|---|---|---|---|
-| notifications | SELECT own notifications (as a deactivated profile with a still-valid session) | inactive | **ALLOWED** (expected DENY) | 1 row(s) - notifications_read is pure auth.uid()=user_id ownership, never touched by the is_active hardening pass (20260815090000's own stated scope excludes it as "moot"). A still-valid deactivated session keeps reading its own old notifications. |
-| personal_todos | SELECT own to-dos (as a deactivated profile with a still-valid session) | inactive | **ALLOWED** (expected DENY) | 1 row(s) - same gap as notifications: pure ownership check, never gated on is_active. |
-| client_attention (set_client_attention RPC) | CALL as a deactivated profile with a still-valid authenticated session | inactive | **ALLOWED** (expected DENY) | succeeded - EMPIRICALLY REPRODUCES the Task 1 NULL-bypass finding: current_user_role() returns NULL for this identity, "NULL not in ('admin','reviewer')" evaluates to NULL, PL/pgSQL treats a NULL IF-condition as false, the RAISE never fires. This is the exact residual risk documented in maven_critical_finding_anon_execute_bypass.md, now proven against a real query instead of reasoned about. |
-| client_credentials | CALL list_client_credentials as anonymous (no committed grant restriction) | anon | **ALLOWED** (expected DENY) | CRITICAL: no error at all - the call reached the function body. Confirms this repository's migrations, replayed fresh with no manual live patching, leave this function callable by anon. (This is separate from whether it returned useful data - see the credential-id-specific reveal test below for the full chain.) |
-| client_credentials | Full anonymous chain: list then reveal a real password | anon | **ALLOWED** (expected DENY) | CRITICAL: decrypted password returned to an anonymous caller: "S3edPassword!". This is the complete, working exploit chain for the Task 1 finding, reproduced end-to-end against the committed migrations. |
-| client_credentials | CALL list_client_credentials as a deactivated profile with a still-valid session | inactive | **ALLOWED** (expected DENY) | succeeded - same NULL-bypass root cause as client_attention.matrix.js, reproduced here too |
-| client_credentials | CALL add_client_credential as anonymous | anon | **ALLOWED** (expected DENY) | succeeded - an anonymous caller can plant a fake credential row |
-| client_credentials | CALL delete_client_credential as anonymous (nonexistent id, function-reachability check only) | anon | **ALLOWED** (expected DENY) | no error raised - the function ran to completion (a no-op delete for this id), confirming the call was reachable, not blocked at the grant layer |
-| client_credentials | has_function_privilege(anon, reveal_client_credential, EXECUTE) - direct grant inspection | n/a (catalog check) | **ALLOWED** (expected DENY) | anon_can_execute = true - confirms the missing-grant-restriction finding independent of actually calling the function |
-| recurring generation functions | CALL generate_period_work_for_period as anonymous | anon | **ALLOWED** (expected DENY) | CRITICAL: succeeded - no committed grant restriction on this function either, same class of finding as client_credentials. An anonymous caller can trigger bulk work-item generation for any client/period. |
-| recurring generation functions | CALL generate_period_work_for_period as a deactivated profile | inactive | **ALLOWED** (expected DENY) | succeeded - same NULL-bypass root cause |
-| SECURITY DEFINER function grants (catalog inspection) | EXECUTE grant to 'anon' on add_client_credential(p_client_id uuid, p_label text, p_username text, p_password text, p_notes text) | n/a (catalog check) | **ALLOWED** (expected DENY) | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
-| SECURITY DEFINER function grants (catalog inspection) | EXECUTE grant to 'anon' on delete_client_credential(p_id uuid) | n/a (catalog check) | **ALLOWED** (expected DENY) | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
-| SECURITY DEFINER function grants (catalog inspection) | EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text) | n/a (catalog check) | **ALLOWED** (expected DENY) | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
-| SECURITY DEFINER function grants (catalog inspection) | EXECUTE grant to 'anon' on list_client_credentials(p_client_id uuid) | n/a (catalog check) | **ALLOWED** (expected DENY) | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
-| SECURITY DEFINER function grants (catalog inspection) | EXECUTE grant to 'anon' on reveal_client_credential(p_id uuid) | n/a (catalog check) | **ALLOWED** (expected DENY) | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+128 checks run across 18 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -58,6 +37,8 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | UPDATE a client's details | reviewerA | DENIED | DENY | PASS | 0 row(s) affected - clients_update_admin is admin-only, reviewer is not exempted |
 | SELECT client_services | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | INSERT a client_services subscription | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "client_services" |
+| SELECT clients list, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
+| SELECT client_services, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 
 ### work_items (client scope)
 
@@ -79,6 +60,8 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | UPDATE (as the item's reviewer): record a legitimate review decision (approve) | reviewerA | ALLOWED | ALLOW | PASS | 1 row(s) - confirms the fix is scoped correctly: blocking reassignment/rescope does not block reviewers from doing their actual job |
 | UPDATE created_at/created_by directly, even as admin | admin | DENIED | DENY | PASS | id/created_at/created_by cannot be changed. |
 | SELECT any work item | anon | DENIED | DENY | PASS | 0 row(s) |
+| SELECT any Client Work item, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
+| UPDATE a Client Work item, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 
 ### work_items (firm scope)
 
@@ -100,6 +83,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | INSERT a checklist item on a colleague's work | employeeB | DENIED | DENY | PASS | new row violates row-level security policy for table "work_checklist_items" |
 | UPDATE (toggle) checklist item on own work | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | UPDATE (toggle) checklist item on a colleague's work | employeeB | DENIED | DENY | PASS | 0 row(s) - UPDATE never had the broad branch SELECT used to have; only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it). Now consistent with SELECT too, post-Task-5. |
+| SELECT checklist, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 
 ### work_activity
 
@@ -108,6 +92,8 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | SELECT activity log for a colleague's (in_progress) item | employeeB | DENIED | DENY | PASS | FIXED by Handbook Task 5, matching the parent work_items_read fix. |
 | INSERT an activity row with actor_id set to someone ELSE (not themselves) | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "work_activity" |
 | UPDATE an existing activity entry | admin | DENIED | DENY | PASS | 0 row(s) - correctly immutable even for admin, no update policy exists |
+| SELECT activity log, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
+| SELECT (as an active teammate) historical activity authored by the now-deactivated profile, including resolving their name | employeeA | ALLOWED | ALLOW | PASS | found: "Historical entry from before deactivation" by Inactive Former Staff - deactivation never deletes/hides historical actor references |
 
 ### work_waiting_items
 
@@ -117,6 +103,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | INSERT a waiting item on a colleague's work | employeeB | DENIED | DENY | PASS | new row violates row-level security policy for table "work_waiting_items" |
 | UPDATE (mark received) waiting item on own work | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
 | SELECT any waiting item | anon | DENIED | DENY | PASS | 0 row(s) |
+| SELECT waiting items, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 
 ### work_activity (trustworthy audit trail)
 
@@ -164,6 +151,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | INSERT a new template | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "service_templates" |
 | INSERT a new template | admin | ALLOWED | ALLOW | PASS | inserted |
 | DELETE template checklist items | reviewerA | DENIED | DENY | PASS | 0 row(s) - admin-only |
+| SELECT templates list, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 
 ### app_settings
 
@@ -172,6 +160,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | SELECT workflow settings | employeeA | ALLOWED | ALLOW | PASS | 8 row(s) - readable, values aren't sensitive |
 | UPSERT a workflow setting | reviewerA | DENIED | DENY | PASS | new row violates row-level security policy for table "app_settings" |
 | SELECT workflow settings | anon | DENIED | DENY | PASS | 0 row(s) |
+| SELECT workflow settings, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 
 ### notifications
 
@@ -179,7 +168,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 |---|---|---|---|---|---|
 | SELECT own notifications | employeeA | ALLOWED | ALLOW | PASS |  |
 | SELECT a colleague's notifications | employeeB | DENIED | DENY | PASS | 0 row(s) - strict ownership |
-| SELECT own notifications (as a deactivated profile with a still-valid session) | inactive | ALLOWED | DENY | FAIL | 1 row(s) - notifications_read is pure auth.uid()=user_id ownership, never touched by the is_active hardening pass (20260815090000's own stated scope excludes it as "moot"). A still-valid deactivated session keeps reading its own old notifications. |
+| SELECT own notifications (as a deactivated profile with a still-valid session) | inactive | DENIED | DENY | PASS | 0 row(s) - FIXED by Handbook Task 9: notifications_read now requires current_user_active() in addition to ownership (20260821090000_offboarding_revokes_business_access.sql). |
 | SELECT any notification | anon | DENIED | DENY | PASS | 0 row(s) |
 
 ### personal_todos
@@ -188,7 +177,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 |---|---|---|---|---|---|
 | SELECT own to-dos | employeeA | ALLOWED | ALLOW | PASS |  |
 | SELECT a colleague's to-dos | employeeB | DENIED | DENY | PASS | 0 row(s) |
-| SELECT own to-dos (as a deactivated profile with a still-valid session) | inactive | ALLOWED | DENY | FAIL | 1 row(s) - same gap as notifications: pure ownership check, never gated on is_active. |
+| SELECT own to-dos (as a deactivated profile with a still-valid session) | inactive | DENIED | DENY | PASS | 0 row(s) - FIXED by Handbook Task 9, same fix as notifications. |
 
 ### client_attention (set_client_attention RPC)
 
@@ -197,7 +186,7 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | CALL as reviewer | reviewerA | ALLOWED | ALLOW | PASS | succeeded - reviewers are deliberately included per the V2 audit's stated decision |
 | CALL as a plain employee (real, non-NULL role) | employeeA | DENIED | DENY | PASS | Not authorized. |
 | CALL as anonymous | anon | DENIED | DENY | PASS | permission denied for function set_client_attention |
-| CALL as a deactivated profile with a still-valid authenticated session | inactive | ALLOWED | DENY | FAIL | succeeded - EMPIRICALLY REPRODUCES the Task 1 NULL-bypass finding: current_user_role() returns NULL for this identity, "NULL not in ('admin','reviewer')" evaluates to NULL, PL/pgSQL treats a NULL IF-condition as false, the RAISE never fires. This is the exact residual risk documented in maven_critical_finding_anon_execute_bypass.md, now proven against a real query instead of reasoned about. |
+| CALL as a deactivated profile with a still-valid authenticated session | inactive | DENIED | DENY | PASS | Not authorized. |
 
 ### client_credentials
 
@@ -206,13 +195,13 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | SELECT the table directly (even as admin) | admin | DENIED | DENY | PASS | 0 row(s) - correctly blocked, zero RLS policies means direct table access is denied for everyone, by design |
 | CALL list_client_credentials as reviewer | reviewerA | ALLOWED | ALLOW | PASS |  |
 | CALL list_client_credentials as a plain employee | employeeA | DENIED | DENY | PASS | Not authorized. |
-| CALL list_client_credentials as anonymous (no committed grant restriction) | anon | ALLOWED | DENY | FAIL | CRITICAL: no error at all - the call reached the function body. Confirms this repository's migrations, replayed fresh with no manual live patching, leave this function callable by anon. (This is separate from whether it returned useful data - see the credential-id-specific reveal test below for the full chain.) |
-| CALL reveal_client_credential as anonymous (no committed grant restriction) | anon | DENIED | DENY | PASS | Credential not found. |
-| Full anonymous chain: list then reveal a real password | anon | ALLOWED | DENY | FAIL | CRITICAL: decrypted password returned to an anonymous caller: "S3edPassword!". This is the complete, working exploit chain for the Task 1 finding, reproduced end-to-end against the committed migrations. |
-| CALL list_client_credentials as a deactivated profile with a still-valid session | inactive | ALLOWED | DENY | FAIL | succeeded - same NULL-bypass root cause as client_attention.matrix.js, reproduced here too |
-| CALL add_client_credential as anonymous | anon | ALLOWED | DENY | FAIL | succeeded - an anonymous caller can plant a fake credential row |
-| CALL delete_client_credential as anonymous (nonexistent id, function-reachability check only) | anon | ALLOWED | DENY | FAIL | no error raised - the function ran to completion (a no-op delete for this id), confirming the call was reachable, not blocked at the grant layer |
-| has_function_privilege(anon, reveal_client_credential, EXECUTE) - direct grant inspection | n/a (catalog check) | ALLOWED | DENY | FAIL | anon_can_execute = true - confirms the missing-grant-restriction finding independent of actually calling the function |
+| CALL list_client_credentials as anonymous (no committed grant restriction) | anon | DENIED | DENY | PASS | permission denied for function list_client_credentials |
+| CALL reveal_client_credential as anonymous (no committed grant restriction) | anon | DENIED | DENY | PASS | permission denied for function reveal_client_credential |
+| Full anonymous chain: list then reveal a real password | anon | DENIED | DENY | PASS | permission denied for function list_client_credentials |
+| CALL list_client_credentials as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | Not authorized. |
+| CALL add_client_credential as anonymous | anon | DENIED | DENY | PASS | permission denied for function add_client_credential |
+| CALL delete_client_credential as anonymous (nonexistent id, function-reachability check only) | anon | DENIED | DENY | PASS | permission denied for function delete_client_credential |
+| has_function_privilege(anon, reveal_client_credential, EXECUTE) - direct grant inspection | n/a (catalog check) | DENIED | DENY | PASS | anon_can_execute = false - confirms the missing-grant-restriction finding independent of actually calling the function |
 
 ### recurring generation functions
 
@@ -220,8 +209,8 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 |---|---|---|---|---|---|
 | CALL generate_period_work_for_period as admin | admin | ALLOWED | ALLOW | PASS | succeeded, count=1 |
 | CALL generate_period_work_for_period as a plain employee | employeeA | DENIED | DENY | PASS | Not authorized. |
-| CALL generate_period_work_for_period as anonymous | anon | ALLOWED | DENY | FAIL | CRITICAL: succeeded - no committed grant restriction on this function either, same class of finding as client_credentials. An anonymous caller can trigger bulk work-item generation for any client/period. |
-| CALL generate_period_work_for_period as a deactivated profile | inactive | ALLOWED | DENY | FAIL | succeeded - same NULL-bypass root cause |
+| CALL generate_period_work_for_period as anonymous | anon | DENIED | DENY | PASS | permission denied for function generate_period_work_for_period |
+| CALL generate_period_work_for_period as a deactivated profile | inactive | DENIED | DENY | PASS | Not authorized. |
 | CALL _generate_period_work_core directly (bypassing the wrapper), even as admin | admin | DENIED | DENY | PASS | permission denied for function _generate_period_work_core |
 
 ### SECURITY DEFINER function grants (catalog inspection)
@@ -229,17 +218,17 @@ Generated 2026-08-15T07:32:49.038Z by `node tests/db/run.js` -- **every row belo
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
 | EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=false (cross-reference the matching matrix file for what actually happens when called) |
-| EXECUTE grant to 'anon' on add_client_credential(p_client_id uuid, p_label text, p_username text, p_password text, p_notes text) | n/a (catalog check) | ALLOWED | DENY | FAIL | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on add_client_credential(p_client_id uuid, p_label text, p_username text, p_password text, p_notes text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on current_user_active() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on current_user_role() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
-| EXECUTE grant to 'anon' on delete_client_credential(p_id uuid) | n/a (catalog check) | ALLOWED | DENY | FAIL | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
-| EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text) | n/a (catalog check) | ALLOWED | DENY | FAIL | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on delete_client_credential(p_id uuid) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on guard_profile_update() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on guard_work_item_update() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on handle_new_user() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
-| EXECUTE grant to 'anon' on list_client_credentials(p_client_id uuid) | n/a (catalog check) | ALLOWED | DENY | FAIL | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on list_client_credentials(p_client_id uuid) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on log_work_item_created() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
-| EXECUTE grant to 'anon' on reveal_client_credential(p_id uuid) | n/a (catalog check) | ALLOWED | DENY | FAIL | privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on reveal_client_credential(p_id uuid) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on set_client_attention(p_client_id uuid, p_level text, p_reason text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on set_work_item_created_by() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on work_item_status_label(p_status text) | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=true |

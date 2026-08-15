@@ -127,4 +127,15 @@ module.exports = async function workItemsClientMatrix({ asRole, IDENTITIES, ANON
     const r = await tryQuery(c, 'select id from public.work_items limit 1', []);
     record({ area, action: 'SELECT any work item', identity: 'anon', allowed: r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
   });
+
+  // ---- Handbook Task 9: deactivated profile, still-valid session ----
+  await asRole(IDENTITIES.inactive, async (c) => {
+    const r = await tryQuery(c, 'select id from public.work_items limit 1', []);
+    record({ area, action: 'SELECT any Client Work item, as a deactivated profile with a still-valid session', identity: 'inactive', allowed: r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
+  });
+
+  await asRole(IDENTITIES.inactive, async (c) => {
+    const r = await tryQuery(c, `update public.work_items set priority = 'high' where id = $1`, [WORK_ITEMS.normal.id]);
+    record({ area, action: 'UPDATE a Client Work item, as a deactivated profile with a still-valid session', identity: 'inactive', allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
+  });
 };

@@ -24,6 +24,11 @@ module.exports = async function templatesAndSettingsMatrix({ asRole, IDENTITIES,
       const r = await tryQuery(c, `delete from public.service_template_items where template_id = $1`, [SERVICE_TEMPLATE.id]);
       record({ area, action: 'DELETE template checklist items', identity: 'reviewerA', allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s) - admin-only` });
     });
+
+    await asRole(IDENTITIES.inactive, async (c) => {
+      const r = await tryQuery(c, 'select id from public.service_templates', []);
+      record({ area, action: 'SELECT templates list, as a deactivated profile with a still-valid session', identity: 'inactive', allowed: r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
+    });
   }
 
   {
@@ -42,6 +47,11 @@ module.exports = async function templatesAndSettingsMatrix({ asRole, IDENTITIES,
     await asRole(ANON, async (c) => {
       const r = await tryQuery(c, 'select key from public.app_settings limit 1', []);
       record({ area, action: 'SELECT workflow settings', identity: 'anon', allowed: r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
+    });
+
+    await asRole(IDENTITIES.inactive, async (c) => {
+      const r = await tryQuery(c, 'select key from public.app_settings', []);
+      record({ area, action: 'SELECT workflow settings, as a deactivated profile with a still-valid session', identity: 'inactive', allowed: r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s)` });
     });
   }
 };

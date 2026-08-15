@@ -152,14 +152,14 @@ ever apply to Client Work.
 No capability, by design, on either Client or Firm Work — every table
 either has no read/write policy for an unauthenticated caller, or (for
 `client_credentials`) has no RLS policy allowing direct table access at
-all. **Known, tracked exception:** several `SECURITY DEFINER` RPC
-functions (`add_client_credential`, `list_client_credentials`,
+all. **Fixed, Handbook Task 9:** six `SECURITY DEFINER` RPC functions
+(`add_client_credential`, `list_client_credentials`,
 `reveal_client_credential`, `delete_client_credential`,
-`generate_period_work_for_period`) currently have no committed grant
-restriction and are reachable by an anonymous caller due to a NULL-role
-authorization bug — this is a live, serious finding, not an intended
-capability. See
-[maven_critical_finding_anon_execute_bypass] cross-referenced in
-[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("client_credentials",
-"recurring generation functions") for the full detail and current
-mitigation status.
+`generate_period_work_for_period`, `set_client_attention`) previously
+had no committed grant restriction and were reachable by an anonymous
+caller (and independently, by a deactivated profile's still-valid
+session) due to a NULL-role authorization bug. Both the grant and the
+underlying logic bug are now fixed as committed migrations — see
+[SECURITY_MODEL.md](SECURITY_MODEL.md) ("Fixed bug class") and
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md), which shows zero
+outstanding findings as of Task 9.

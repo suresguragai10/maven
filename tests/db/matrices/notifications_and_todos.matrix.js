@@ -19,7 +19,7 @@ module.exports = async function notificationsAndTodosMatrix({ asRole, IDENTITIES
       record({
         area, action: 'SELECT own notifications (as a deactivated profile with a still-valid session)', identity: 'inactive',
         allowed: r.rowCount > 0, expectedSecure: 'deny',
-        note: r.error || `${r.rowCount} row(s) - notifications_read is pure auth.uid()=user_id ownership, never touched by the is_active hardening pass (20260815090000's own stated scope excludes it as "moot"). A still-valid deactivated session keeps reading its own old notifications.`,
+        note: r.error || `${r.rowCount} row(s) - FIXED by Handbook Task 9: notifications_read now requires current_user_active() in addition to ownership (20260821090000_offboarding_revokes_business_access.sql).`,
       });
     });
 
@@ -47,7 +47,7 @@ module.exports = async function notificationsAndTodosMatrix({ asRole, IDENTITIES
       record({
         area, action: 'SELECT own to-dos (as a deactivated profile with a still-valid session)', identity: 'inactive',
         allowed: r.rowCount > 0, expectedSecure: 'deny',
-        note: r.error || `${r.rowCount} row(s) - same gap as notifications: pure ownership check, never gated on is_active.`,
+        note: r.error || `${r.rowCount} row(s) - FIXED by Handbook Task 9, same fix as notifications.`,
       });
     });
   }

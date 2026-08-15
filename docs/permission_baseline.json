@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T07:32:49.038Z",
-    "migrationCount": 20
+    "generatedAt": "2026-08-15T07:51:29.478Z",
+    "migrationCount": 21
   },
   "results": [
     {
@@ -120,6 +120,24 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "new row violates row-level security policy for table \"client_services\""
+    },
+    {
+      "area": "clients/client_services",
+      "action": "SELECT clients list, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "clients/client_services",
+      "action": "SELECT client_services, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
     },
     {
       "area": "work_items (client scope)",
@@ -266,6 +284,24 @@
       "note": "0 row(s)"
     },
     {
+      "area": "work_items (client scope)",
+      "action": "SELECT any Client Work item, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "work_items (client scope)",
+      "action": "UPDATE a Client Work item, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
       "area": "work_items (firm scope)",
       "action": "SELECT Firm Work item not assigned to them",
       "identity": "employeeB",
@@ -365,6 +401,15 @@
       "note": "0 row(s) - UPDATE never had the broad branch SELECT used to have; only admin/assignee/reviewer can edit, matches sensible design (anyone can watch progress, only the responsible people can change it). Now consistent with SELECT too, post-Task-5."
     },
     {
+      "area": "work_checklist_items",
+      "action": "SELECT checklist, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
       "area": "work_activity",
       "action": "SELECT activity log for a colleague's (in_progress) item",
       "identity": "employeeB",
@@ -390,6 +435,24 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "0 row(s) - correctly immutable even for admin, no update policy exists"
+    },
+    {
+      "area": "work_activity",
+      "action": "SELECT activity log, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "work_activity",
+      "action": "SELECT (as an active teammate) historical activity authored by the now-deactivated profile, including resolving their name",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "found: \"Historical entry from before deactivation\" by Inactive Former Staff - deactivation never deletes/hides historical actor references"
     },
     {
       "area": "work_waiting_items",
@@ -422,6 +485,15 @@
       "area": "work_waiting_items",
       "action": "SELECT any waiting item",
       "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "work_waiting_items",
+      "action": "SELECT waiting items, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
@@ -671,6 +743,15 @@
       "note": "0 row(s) - admin-only"
     },
     {
+      "area": "service_templates / service_template_items",
+      "action": "SELECT templates list, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
       "area": "app_settings",
       "action": "SELECT workflow settings",
       "identity": "employeeA",
@@ -698,6 +779,15 @@
       "note": "0 row(s)"
     },
     {
+      "area": "app_settings",
+      "action": "SELECT workflow settings, as a deactivated profile with a still-valid session",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
       "area": "notifications",
       "action": "SELECT own notifications",
       "identity": "employeeA",
@@ -719,10 +809,10 @@
       "area": "notifications",
       "action": "SELECT own notifications (as a deactivated profile with a still-valid session)",
       "identity": "inactive",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "1 row(s) - notifications_read is pure auth.uid()=user_id ownership, never touched by the is_active hardening pass (20260815090000's own stated scope excludes it as \"moot\"). A still-valid deactivated session keeps reading its own old notifications."
+      "secure": true,
+      "note": "0 row(s) - FIXED by Handbook Task 9: notifications_read now requires current_user_active() in addition to ownership (20260821090000_offboarding_revokes_business_access.sql)."
     },
     {
       "area": "notifications",
@@ -755,10 +845,10 @@
       "area": "personal_todos",
       "action": "SELECT own to-dos (as a deactivated profile with a still-valid session)",
       "identity": "inactive",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "1 row(s) - same gap as notifications: pure ownership check, never gated on is_active."
+      "secure": true,
+      "note": "0 row(s) - FIXED by Handbook Task 9, same fix as notifications."
     },
     {
       "area": "client_attention (set_client_attention RPC)",
@@ -791,10 +881,10 @@
       "area": "client_attention (set_client_attention RPC)",
       "action": "CALL as a deactivated profile with a still-valid authenticated session",
       "identity": "inactive",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "succeeded - EMPIRICALLY REPRODUCES the Task 1 NULL-bypass finding: current_user_role() returns NULL for this identity, \"NULL not in ('admin','reviewer')\" evaluates to NULL, PL/pgSQL treats a NULL IF-condition as false, the RAISE never fires. This is the exact residual risk documented in maven_critical_finding_anon_execute_bypass.md, now proven against a real query instead of reasoned about."
+      "secure": true,
+      "note": "Not authorized."
     },
     {
       "area": "client_credentials",
@@ -827,10 +917,10 @@
       "area": "client_credentials",
       "action": "CALL list_client_credentials as anonymous (no committed grant restriction)",
       "identity": "anon",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "CRITICAL: no error at all - the call reached the function body. Confirms this repository's migrations, replayed fresh with no manual live patching, leave this function callable by anon. (This is separate from whether it returned useful data - see the credential-id-specific reveal test below for the full chain.)"
+      "secure": true,
+      "note": "permission denied for function list_client_credentials"
     },
     {
       "area": "client_credentials",
@@ -839,52 +929,52 @@
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
-      "note": "Credential not found."
+      "note": "permission denied for function reveal_client_credential"
     },
     {
       "area": "client_credentials",
       "action": "Full anonymous chain: list then reveal a real password",
       "identity": "anon",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "CRITICAL: decrypted password returned to an anonymous caller: \"S3edPassword!\". This is the complete, working exploit chain for the Task 1 finding, reproduced end-to-end against the committed migrations."
+      "secure": true,
+      "note": "permission denied for function list_client_credentials"
     },
     {
       "area": "client_credentials",
       "action": "CALL list_client_credentials as a deactivated profile with a still-valid session",
       "identity": "inactive",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "succeeded - same NULL-bypass root cause as client_attention.matrix.js, reproduced here too"
+      "secure": true,
+      "note": "Not authorized."
     },
     {
       "area": "client_credentials",
       "action": "CALL add_client_credential as anonymous",
       "identity": "anon",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "succeeded - an anonymous caller can plant a fake credential row"
+      "secure": true,
+      "note": "permission denied for function add_client_credential"
     },
     {
       "area": "client_credentials",
       "action": "CALL delete_client_credential as anonymous (nonexistent id, function-reachability check only)",
       "identity": "anon",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "no error raised - the function ran to completion (a no-op delete for this id), confirming the call was reachable, not blocked at the grant layer"
+      "secure": true,
+      "note": "permission denied for function delete_client_credential"
     },
     {
       "area": "client_credentials",
       "action": "has_function_privilege(anon, reveal_client_credential, EXECUTE) - direct grant inspection",
       "identity": "n/a (catalog check)",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "anon_can_execute = true - confirms the missing-grant-restriction finding independent of actually calling the function"
+      "secure": true,
+      "note": "anon_can_execute = false - confirms the missing-grant-restriction finding independent of actually calling the function"
     },
     {
       "area": "recurring generation functions",
@@ -908,19 +998,19 @@
       "area": "recurring generation functions",
       "action": "CALL generate_period_work_for_period as anonymous",
       "identity": "anon",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "CRITICAL: succeeded - no committed grant restriction on this function either, same class of finding as client_credentials. An anonymous caller can trigger bulk work-item generation for any client/period."
+      "secure": true,
+      "note": "permission denied for function generate_period_work_for_period"
     },
     {
       "area": "recurring generation functions",
       "action": "CALL generate_period_work_for_period as a deactivated profile",
       "identity": "inactive",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "succeeded - same NULL-bypass root cause"
+      "secure": true,
+      "note": "Not authorized."
     },
     {
       "area": "recurring generation functions",
@@ -944,10 +1034,10 @@
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on add_client_credential(p_client_id uuid, p_label text, p_username text, p_password text, p_notes text)",
       "identity": "n/a (catalog check)",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+      "secure": true,
+      "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
@@ -971,19 +1061,19 @@
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on delete_client_credential(p_id uuid)",
       "identity": "n/a (catalog check)",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+      "secure": true,
+      "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text)",
       "identity": "n/a (catalog check)",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+      "secure": true,
+      "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
@@ -1016,10 +1106,10 @@
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on list_client_credentials(p_client_id uuid)",
       "identity": "n/a (catalog check)",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+      "secure": true,
+      "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
@@ -1034,10 +1124,10 @@
       "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on reveal_client_credential(p_id uuid)",
       "identity": "n/a (catalog check)",
-      "allowed": true,
+      "allowed": false,
       "expectedSecure": "deny",
-      "secure": false,
-      "note": "privileged-action function; anon_can_execute=true, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
+      "secure": true,
+      "note": "privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called)"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

@@ -40,16 +40,120 @@ these two `SECURITY DEFINER` functions:
 
 Both close off a deactivated account's access **the moment their
 profile is flagged inactive**, at the database layer — independent of
-whether their Supabase Auth session has actually expired yet (it hasn't,
-necessarily; see "known residual gap" below).
+whether their Supabase Auth session has actually expired yet. See
+"Offboarding procedure" below for exactly what that does and doesn't
+mean in practice.
 
-## Known bug class: the NULL-unsafe `NOT IN` check
+## Offboarding procedure (Handbook Task 9)
 
-A recurring, already-identified pattern in this codebase: some
-`SECURITY DEFINER` functions authorize with
+**"Inactive" means no application access, not merely hidden from the
+Staff screen.** As of Task 9, every table and function that touches
+Maven business data checks `current_user_role()`/`current_user_active()`
+— both of which query `profiles.is_active` fresh, on every single
+request. Confirmed by table/function, with live evidence, in
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md):
+
+| Area | Gated by |
+|---|---|
+| Client Work + its checklist/comments/activity/waiting-items | `work_items_read`/`update` + child-table policies (`current_user_active()`) |
+| Firm Work | same policies, plus an explicit re-check inside `guard_work_item_update()`'s Firm Work branch |
+| `clients`, `client_services` | `current_user_active()` (read), `current_user_role() = 'admin'` (write) |
+| `service_templates`, `app_settings` | `current_user_active()` (read) |
+| `notifications`, `personal_todos` | ownership **and** `current_user_active()` (Task 9 — previously ownership only, see below) |
+| `client_attention`, `client_credentials`, recurring generation RPCs | `coalesce(current_user_role(), '') in (...)` (Task 9 root-cause fix, see above) |
+
+### The one precise claim this document will make about tokens
+
+**Deactivating a profile does not revoke, expire, or invalidate their
+existing Supabase Auth JWT.** A browser tab where that person is still
+logged in keeps a technically-valid, correctly-signed access token for
+as long as Supabase would normally honor it (until its natural
+expiry/refresh cycle). What changes is that **every business-data
+request that token is used for is independently re-authorized against
+the live `profiles.is_active` value at the moment of the request** — so
+in practice, the very next Client Work read, Firm Work edit,
+notification fetch, or credential reveal attempt fails, immediately,
+without needing the token itself to stop working. This is proven, not
+assumed: [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md)'s `inactive`
+identity tests simulate exactly this scenario (a real authenticated
+session, `is_active = false`) against every area in the table above,
+and all currently pass.
+
+What this does **not** cover, and where a real gap could still exist if
+this app's architecture changes: anything that doesn't route through
+`current_user_role()`/`current_user_active()` per request — e.g. a
+future feature using Supabase Realtime subscriptions (not used anywhere
+in this app today), or a future Edge Function / service-role integration
+that bypasses RLS entirely. Nothing like that exists today, but the
+guarantee above is specific to "every current request path checks
+`is_active` live," not to "the token itself becomes unusable."
+
+### Recommended operational steps, in order
+
+1. **Deactivate the profile** — Staff page → toggle the person to
+   inactive (`profiles.is_active = false`). This alone is sufficient to
+   block all application business-data access, per the table above, and
+   is the only step that needs to happen inside the Maven app itself.
+2. **Optional, extra hygiene**: in the Supabase Dashboard →
+   Authentication → Users, find the person and revoke/sign out their
+   active sessions (or temporarily ban the account if immediate,
+   full re-authentication-blocking is wanted). This forces a fresh login
+   attempt the next time they try — which will succeed at the Auth
+   layer (their credentials still work) but land them on a
+   deactivated-account experience in the app, same as before. Not
+   required for business-data protection given step 1 alone already
+   provides it, but closes the token down entirely rather than leaving
+   it "authenticated but useless."
+3. **Do not delete the Supabase Auth user** for anyone with any real
+   Maven history. `profiles.id` references `auth.users(id) ON DELETE
+   CASCADE` — deleting the auth user deletes their `profiles` row too.
+   Every table that references `profiles(id)` from actual business data
+   (`work_items.assignee_id`/`reviewer_id`/`created_by`/`submitted_by`,
+   `work_comments.author_id`, `work_activity.actor_id`,
+   `work_waiting_items.requested_by`, `client_services.assignee_id`/
+   `reviewer_id`, `client_credentials.created_by`,
+   `clients.attention_set_by`, `service_templates.default_assignee_id`/
+   `default_reviewer_id`) does **not** have `ON DELETE CASCADE` —
+   verified directly against every migration, not assumed — so Postgres
+   will simply refuse the deletion with a foreign key violation for
+   anyone who has ever been assigned, reviewed, commented, or logged
+   activity on so much as one work item. This is a safe failure mode
+   (it protects historical data by refusing), but don't work around it
+   (e.g. by manually clearing references first) — that would be exactly
+   the historical-data loss this task's "do not accidentally delete
+   historical records" instruction exists to prevent. `personal_todos`
+   and `notifications` **do** cascade-delete on profile deletion —
+   acceptable, since neither has compliance/historical significance.
+4. **Reassignment is a separate, deliberate action, never silent.**
+   Flipping `is_active` by itself never touches
+   `work_items.assignee_id`/`reviewer_id`. `staff.js`'s
+   `confirmDeactivateStaff()` checks for open (non-`completed`) work
+   assigned to the person first: if there is none, it deactivates
+   directly, nothing to reassign. If there IS open work, it requires an
+   explicit "Reassign & Deactivate" action naming a specific new
+   assignee — there is no "skip reassignment" option in that path, by
+   design, since leaving compliance work assigned to someone who can no
+   longer access or act on it would be worse than requiring the choice
+   up front. Either way, reassignment (when it happens) is always a
+   deliberate, visible, human-picked action — never a side effect
+   silently triggered by the deactivation itself.
+
+## Fixed bug class: the NULL-unsafe `NOT IN` check
+
+A pattern that existed across six `SECURITY DEFINER` functions
+(`add_client_credential`, `list_client_credentials`,
+`reveal_client_credential`, `delete_client_credential`,
+`generate_period_work_for_period`, `set_client_attention`), fixed by
+Handbook Task 9:
 
 ```sql
+-- before (vulnerable):
 if public.current_user_role() not in ('admin', 'reviewer') then
+  raise exception 'Not authorized.';
+end if;
+
+-- after (Task 9, 20260821090000_offboarding_revokes_business_access.sql):
+if coalesce(public.current_user_role(), '') not in ('admin', 'reviewer') then
   raise exception 'Not authorized.';
 end if;
 ```
@@ -57,33 +161,29 @@ end if;
 `current_user_role()` returns `NULL` for a caller with no active
 profile (an anonymous caller, or a deactivated one with a still-valid
 session). `NULL NOT IN (...)` evaluates to `NULL`, and PL/pgSQL treats a
-`NULL` `IF` condition as `FALSE` — the exception never fires, and the
-function runs anyway. This is **not** a property of RLS policies
+`NULL` `IF` condition as `FALSE` — the exception never fired, and the
+function ran anyway. This was **not** a property of RLS policies
 generally (a `NULL` `USING`/`WITH CHECK` expression correctly excludes a
-row — RLS is fail-closed on `NULL`); it's specific to this *inverted*
-`IF NOT (...) THEN RAISE` idiom used inside plain functions.
-Trigger functions in this schema (`guard_work_item_update()`,
+row — RLS is fail-closed on `NULL`); it was specific to this *inverted*
+`IF NOT (...) THEN RAISE` idiom used inside plain functions. Trigger
+functions in this schema (`guard_work_item_update()`,
 `guard_profile_update()`) use a *positive*-listing pattern instead
 (`if role = 'admin' then ... elsif role = 'reviewer' and ... then ...
-else <restrictive>`), which is safe under the same NULL case.
+else <restrictive>`), which was always safe under the same `NULL` case
+and needed no change.
 
-Affected functions, current status, and the empirical proof of exactly
-how far each one is currently reachable: see
-[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) ("client_attention",
-"client_credentials", "recurring generation functions",
-"SECURITY DEFINER function grants"). Root-cause fix (a NULL-safe
-rewrite, e.g. `coalesce(current_user_role(), '') not in (...)`) is
-scoped to a dedicated credential/secret-hardening task in the
-implementation sequence — not yet shipped as of this document.
-
-**Known residual gap, independent of the above:** deactivating a
-profile (`is_active = false`) does not itself revoke that person's
-outstanding Supabase Auth session/JWT. Until it separately expires, a
-just-deactivated user's session can still trip the NULL-bypass bug
-above (`current_user_role()` returns `NULL` for them too, same as an
-anonymous caller, once their profile is inactive). This is documented
-where relevant rather than treated as a surprise each time it's
-rediscovered.
+`coalesce(current_user_role(), '')` turns a `NULL` role into the empty
+string before the `NOT IN` check runs — `'' NOT IN ('admin', 'reviewer')`
+is unambiguously `TRUE`, so the exception now fires correctly for both
+an anonymous caller and a deactivated one. Task 9's migration also
+committed the anon-`EXECUTE`-grant revoke for the five functions that
+never had one (only `set_client_attention` already had it, from its own
+original migration) — closing both the grant-level anonymous path and
+the underlying logic bug in the same change. Empirically confirmed via
+the Task 3 harness against a real `is_active = false` identity with a
+simulated still-valid session: see
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) — as of Task 9, zero
+outstanding findings across all 128 checks.
 
 ## `client_credentials`: deny-by-default, not policy-based
 

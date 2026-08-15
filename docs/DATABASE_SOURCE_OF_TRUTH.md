@@ -15,6 +15,16 @@ are folded into §0 and §3 below as confirmed, classified drift. Table
 columns/constraints/indexes/triggers/table-grants (script sections 2–5,
 8, 11) were not yet run live — see §5 for what's left.
 
+**UPDATE, Handbook Task 9 (2026-08-15): the finding in §0 below is now
+FIXED as a committed migration** (`20260821090000_offboarding_revokes_
+business_access.sql`) — both the anon-grant path and the underlying
+NULL-unsafe logic bug, across all six affected functions. §0 is kept
+as-written below as the historical record of the original finding and
+reasoning (per this project's "don't delete historical evidence"
+convention) — see [SECURITY_MODEL.md](SECURITY_MODEL.md) ("Fixed bug
+class") and [PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) (zero
+outstanding findings) for the current, resolved state.
+
 ## 0. Highest-priority finding — check this first
 
 Six `SECURITY DEFINER` functions authorize callers with this pattern:
@@ -129,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260820090000` (last applied)
+## 2. Expected schema, as of migration `20260821090000` (last applied)
 
 ### Tables (16)
 
@@ -209,13 +219,18 @@ due-date — is inserted only by `guard_work_item_update()` itself, which
 bypasses RLS as a table-owner/`SECURITY DEFINER` action). No
 `UPDATE`/`DELETE` policy exists on `work_activity`, unchanged.
 
-`personal_todos` and `notifications` were deliberately left on their
-original ownership-only policies (`auth.uid() = user_id`) — never
-touched by the `is_active` hardening pass, since an already-more-
-restrictive per-row-ownership check makes the `is_active` gap moot for
-those two tables specifically (noted in `20260815090000`'s own scope;
-still a confirmed low-severity gap, see
-[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md)).
+**Updated by Task 9** (`20260821090000_offboarding_revokes_business_
+access.sql`): `personal_todos` and `notifications` were originally left
+on pure ownership-only policies (`auth.uid() = user_id`) by the V2
+Permission Audit (`20260815090000`), on the reasoning that ownership
+already made the `is_active` gap "moot." That reasoning missed that
+ownership and active status are orthogonal — a deactivated user still
+owns their old rows. All seven policies across both tables
+(`notifications_read`/`insert`/`update`,
+`personal_todos_select_own`/`insert_own`/`update_own`/`delete_own`) now
+also require `current_user_active()`, closing the gap for real. See
+[PERMISSION_BASELINE.md](PERMISSION_BASELINE.md) — zero outstanding
+findings as of Task 9.
 
 ### Functions (all `public` schema unless noted)
 

@@ -4,14 +4,14 @@ const { CLIENTS } = require('../support/ids');
 // client_credentials has ZERO RLS policies of its own by design (see the
 // migration's own comment: "even a leaked anon key can't read this table
 // directly, only through a function..."). These four functions are its
-// entire protection. None of the four have an explicit grant restriction
-// IN THE MIGRATION FILE -- the REVOKE that closes the anon path was
-// applied live, by hand, during Handbook Task 1, and was never captured
-// as a committed migration (intentionally deferred to Task 10). This
-// matrix replays ONLY the committed migrations, so it reproduces the
-// ORIGINAL, pre-mitigation state -- proving the vulnerability lives in
-// the repository itself, not just in whatever the live database happened
-// to have before it was fixed by hand.
+// entire protection. The anon EXECUTE grant (originally applied live, by
+// hand, during Handbook Task 1, but never committed as a migration) and
+// the underlying NULL-unsafe NOT IN logic bug (usable by a deactivated
+// profile's still-valid session even with the grant closed) are both now
+// fixed for real, as committed migrations, by Handbook Task 9
+// (20260821090000_offboarding_revokes_business_access.sql). The tests
+// below still exercise the anon/inactive paths directly, as evidence
+// they're actually closed now, not just believed to be.
 module.exports = async function clientCredentialsMatrix({ asRole, asSuperuser, IDENTITIES, ANON, record }) {
   const area = 'client_credentials';
 
