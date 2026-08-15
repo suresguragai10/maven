@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T08:13:55.684Z",
-    "migrationCount": 22
+    "generatedAt": "2026-08-15T08:47:10.891Z",
+    "migrationCount": 23
   },
   "results": [
     {
@@ -110,7 +110,7 @@
       "allowed": true,
       "expectedSecure": "allow",
       "secure": true,
-      "note": "1 row(s)"
+      "note": "3 row(s)"
     },
     {
       "area": "clients/client_services",
@@ -1049,8 +1049,89 @@
       "note": "permission denied for function _generate_period_work_core"
     },
     {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate a historical monthly period (Jan 2025) — due dates land in the requested period, not today",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external=2025-01-25, internal=2025-01-22 — correct"
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate the current monthly period (brackets today) — due dates still derive from the requested range",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external=2026-08-25, internal=2026-08-22 — correct"
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate a future monthly period (Jun 2030) — due dates land in 2030, not today's month",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external=2030-06-25, internal=2030-06-22 — correct"
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate a quarterly period — due dates land in the period's ending month",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external=2026-06-15, internal=2026-06-10 — correct"
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate a yearly period — due dates land in the period's ending month",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "external=2026-07-10, internal=2026-07-03 — correct"
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Call generate_period_work_for_period twice for the identical client+service+period",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "first created 1, second created 0 — idempotent, no duplicate work_items row"
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate with p_period_start = null",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "p_period_start and p_period_end are required: the requested period's Gregorian date range must be provided explicitly, never assumed from today's date."
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate with p_period_end = null",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "p_period_start and p_period_end are required: the requested period's Gregorian date range must be provided explicitly, never assumed from today's date."
+    },
+    {
+      "area": "period normalization (Handbook Task 11)",
+      "action": "Generate with p_period_end before p_period_start",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "p_period_end cannot be before p_period_start."
+    },
+    {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
-      "action": "EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text)",
+      "action": "EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text, p_period_start date, p_period_end date)",
       "identity": "n/a (catalog check)",
       "allowed": false,
       "expectedSecure": "deny",
@@ -1095,7 +1176,7 @@
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
-      "action": "EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text)",
+      "action": "EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text, p_period_start date, p_period_end date)",
       "identity": "n/a (catalog check)",
       "allowed": false,
       "expectedSecure": "deny",

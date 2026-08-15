@@ -27,6 +27,17 @@ const SERVICE_TEMPLATE = { id: 'cccccccc-0000-0000-0000-000000000001', title: 'M
 
 const CLIENT_SERVICE = { id: 'cccccccc-0000-0000-0000-000000000002' };
 
+// Handbook Task 11: a quarterly and a yearly service template + active
+// client_service, alongside the existing monthly SERVICE_TEMPLATE/
+// CLIENT_SERVICE above, so period_normalization.matrix.js can exercise
+// _generate_period_work_core for all three recurrence types against
+// real, deterministic filing_deadline_day/internal_offset_days values,
+// not just the monthly one every other matrix file already relies on.
+const SERVICE_TEMPLATE_QUARTERLY = { id: 'cccccccc-0000-0000-0000-000000000003', title: 'Quarterly TDS Return' };
+const CLIENT_SERVICE_QUARTERLY = { id: 'cccccccc-0000-0000-0000-000000000004' };
+const SERVICE_TEMPLATE_YEARLY = { id: 'cccccccc-0000-0000-0000-000000000005', title: 'Annual Tax Return' };
+const CLIENT_SERVICE_YEARLY = { id: 'cccccccc-0000-0000-0000-000000000006' };
+
 const WORK_ITEMS = {
   // Client scope, employeeA/reviewerA's own item, ordinary in-progress status.
   normal: { id: 'dddddddd-0000-0000-0000-000000000001', clientId: CLIENTS.alpha.id, title: 'Alpha VAT Return - Shrawan' },
@@ -49,4 +60,7 @@ const WORK_ITEMS = {
 // database's own vault-stub secret.
 const TEST_VAULT_PASSPHRASE = 'local-test-harness-passphrase-never-used-in-production';
 
-module.exports = { IDENTITIES, ANON, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE };
+module.exports = {
+  IDENTITIES, ANON, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE,
+  SERVICE_TEMPLATE_QUARTERLY, CLIENT_SERVICE_QUARTERLY, SERVICE_TEMPLATE_YEARLY, CLIENT_SERVICE_YEARLY,
+};

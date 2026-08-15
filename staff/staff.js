@@ -505,9 +505,17 @@
       var totalCreated = 0;
       for (var i = 0; i < AUTO_GENERATE_KEYS.length; i++) {
         var periodType = AUTO_GENERATE_KEYS[i][0].replace('auto_generate_period_', '');
-        var period = settings[AUTO_GENERATE_KEYS[i][0]];
-        if (!period) continue;
-        var genRes = await sb.rpc('generate_period_work_for_period', { p_period: period, p_period_type: periodType });
+        // Handbook Task 11: the DB function now requires an explicit
+        // Gregorian start/end alongside the label — a pre-Task-11 setting
+        // (a bare label string, no dates yet) parses with empty
+        // start/end and is skipped here, same as an unset field, until
+        // an admin fills in the dates on the Templates page.
+        var parsed = parseAutoGenerateValue(settings[AUTO_GENERATE_KEYS[i][0]]);
+        if (!parsed.label || !parsed.start || !parsed.end) continue;
+        var genRes = await sb.rpc('generate_period_work_for_period', {
+          p_period: parsed.label, p_period_type: periodType,
+          p_period_start: parsed.start, p_period_end: parsed.end,
+        });
         if (!genRes.error) totalCreated += genRes.data || 0;
       }
       if (totalCreated > 0) toast(totalCreated + ' work item' + (totalCreated === 1 ? '' : 's') + ' auto-generated for the current period.');
@@ -3954,21 +3962,42 @@
   // in staff.js) generates any missing work for whatever period is set
   // here, per recurrence type — the period name always comes from a
   // person, never computed, since this app has no BS-calendar conversion
-  // table to compute it safely. Update a field whenever the real period
-  // for that cadence rolls over; the next admin login picks it up. Split
-  // into three fields (2026-08-12) since monthly/quarterly/yearly
-  // services advance at different rates and can't share one "current
-  // period" value.
+  // table to compute it safely. Update these fields whenever the real
+  // period for that cadence rolls over; the next admin login picks it up.
+  // Split into three period types (2026-08-12) since monthly/quarterly/
+  // yearly services advance at different rates and can't share one
+  // "current period" value.
+  //
+  // Handbook Task 11: each setting's value is now a small JSON object
+  // ({"label":"...","start":"YYYY-MM-DD","end":"YYYY-MM-DD"}) instead of
+  // a bare label string — app_settings.value stays a plain text column
+  // (no schema change needed), it just now carries the Gregorian date
+  // range alongside the label, since generate_period_work_for_period
+  // requires both explicitly (see 20260823090000_normalize_generation_
+  // periods.sql) and can no longer derive them from today's date.
   var AUTO_GENERATE_KEYS = [
     ['auto_generate_period_monthly', 'Current Monthly Period', 'e.g. Shrawan 2083'],
     ['auto_generate_period_quarterly', 'Current Quarterly Period', 'e.g. Q1 2083/84'],
     ['auto_generate_period_yearly', 'Current Yearly Period', 'e.g. FY 2083/84'],
   ];
+  function parseAutoGenerateValue(raw) {
+    if (!raw) return { label: '', start: '', end: '' };
+    try {
+      var v = JSON.parse(raw);
+      return { label: v.label || '', start: v.start || '', end: v.end || '' };
+    } catch (e) {
+      // Pre-Task-11 value: a bare label string, no date range yet. Kept
+      // visible (not silently dropped) so the admin can see what was
+      // there and fill in the now-required dates rather than losing the
+      // label they'd already set.
+      return { label: raw, start: '', end: '' };
+    }
+  }
   async function renderAutoGenerateCard(main) {
     var card = el('div', 'card');
     var h2 = el('h2'); h2.appendChild(icon('calendar')); h2.appendChild(document.createTextNode('Auto-Generate Periods')); card.appendChild(h2);
     var desc = el('p', 'desc');
-    desc.textContent = 'When an admin opens Work Desk, work gets generated for every active service whose type matches a period set below. Leave a field blank to pause that type.';
+    desc.textContent = 'When an admin opens Work Desk, work gets generated for every active service whose type matches a period set below. A label and both Gregorian dates are required to activate a type; leave all three blank to pause it.';
     card.appendChild(desc);
 
     var res = await sb.from('app_settings').select('*').in('key', AUTO_GENERATE_KEYS.map(function (k) { return k[0]; }));
@@ -3977,20 +4006,37 @@
 
     AUTO_GENERATE_KEYS.forEach(function (k) {
       var key = k[0], label = k[1], placeholder = k[2];
-      var row = el('div'); row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;';
-      var input = el('input'); input.type = 'text'; input.placeholder = placeholder; input.value = settings[key] || '';
-      var inputWrap = el('div'); inputWrap.style.flex = '1';
-      inputWrap.appendChild(field(label, input));
+      var current = parseAutoGenerateValue(settings[key]);
+      var row = el('div'); row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;';
+      var labelInput = el('input'); labelInput.type = 'text'; labelInput.placeholder = placeholder; labelInput.value = current.label;
+      var startInput = el('input'); startInput.type = 'date'; startInput.value = current.start;
+      var endInput = el('input'); endInput.type = 'date'; endInput.value = current.end;
+      row.appendChild(field(label, labelInput));
+      var rangeRow = el('div'); rangeRow.style.cssText = 'display:flex;gap:8px;';
+      var startWrap = el('div'); startWrap.style.flex = '1'; startWrap.appendChild(field('Period Start Date (Gregorian)', startInput));
+      var endWrap = el('div'); endWrap.style.flex = '1'; endWrap.appendChild(field('Period End Date (Gregorian)', endInput));
+      rangeRow.appendChild(startWrap); rangeRow.appendChild(endWrap);
+      row.appendChild(rangeRow);
       var saveBtn = el('button', 'btn btn-outline btn-sm'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
-      saveBtn.style.marginTop = '26px';
       saveBtn.addEventListener('click', async function () {
+        var l = labelInput.value.trim(), s = startInput.value, e = endInput.value;
+        var allBlank = !l && !s && !e;
+        if (!allBlank && (!l || !s || !e)) {
+          toast('Set a label and both dates to activate ' + label + ', or clear all three to pause it.', true);
+          return;
+        }
+        if (!allBlank && e < s) {
+          toast('Period End Date cannot be before Period Start Date.', true);
+          return;
+        }
+        var value = allBlank ? null : JSON.stringify({ label: l, start: s, end: e });
         saveBtn.disabled = true;
-        var updRes = await sb.from('app_settings').update({ value: input.value.trim() || null }).eq('key', key);
+        var updRes = await sb.from('app_settings').update({ value: value }).eq('key', key);
         saveBtn.disabled = false;
         if (updRes.error) { toast('Could not save: ' + updRes.error.message, true); return; }
-        toast(input.value.trim() ? label + ' set to "' + input.value.trim() + '".' : label + ' paused (no period set).');
+        toast(allBlank ? label + ' paused (no period set).' : label + ' set to "' + l + '" (' + s + ' to ' + e + ').');
       });
-      row.appendChild(inputWrap); row.appendChild(saveBtn);
+      row.appendChild(saveBtn);
       card.appendChild(row);
     });
     main.appendChild(card);
@@ -4369,6 +4415,16 @@
   // that cadence — a monthly period entered here can never land on a
   // quarterly or yearly service. Due dates land blank unless a template
   // sets a deadline rule (Templates → New Template).
+  //
+  // Handbook Task 11: Period Start/End (Gregorian) are now required
+  // alongside the period label — the DB function derives filing_
+  // deadline_day/internal_offset_days from Period End's month, never from
+  // today's date, so generating a past or future period no longer
+  // silently computes due dates as if it were generated today. This app
+  // still has no owner-approved Bikram Sambat conversion table, so these
+  // dates are never computed from the label — you're recording the real
+  // Gregorian range the period covers, the same way you already know the
+  // label itself.
   async function openGeneratePeriodModal() {
     var wrap = el('div');
     var head = el('div', 'modal-head');
@@ -4383,6 +4439,10 @@
     wrap.appendChild(field('Period Type', typeSel));
     var periodInput = el('input'); periodInput.type = 'text'; periodInput.placeholder = PERIOD_TYPE_PLACEHOLDERS.monthly;
     wrap.appendChild(field('Period', periodInput));
+    var startInput = el('input'); startInput.type = 'date';
+    wrap.appendChild(field('Period Start Date (Gregorian)', startInput));
+    var endInput = el('input'); endInput.type = 'date';
+    wrap.appendChild(field('Period End Date (Gregorian)', endInput));
     var previewWrap = el('p', 'desc'); previewWrap.textContent = 'Enter a period above to see what would be generated.';
     wrap.appendChild(previewWrap);
 
@@ -4396,8 +4456,14 @@
     async function refreshPreview() {
       var period = periodInput.value.trim();
       var periodType = typeSel.value;
+      var hasRange = startInput.value && endInput.value && endInput.value >= startInput.value;
       if (!period) {
         previewWrap.textContent = 'Enter a period above to see what would be generated.';
+        genBtn.disabled = true;
+        return;
+      }
+      if (!hasRange) {
+        previewWrap.textContent = 'Enter a valid Period Start/End Date (Gregorian) — End must not be before Start.';
         genBtn.disabled = true;
         return;
       }
@@ -4428,12 +4494,17 @@
       refreshPreview();
     });
     periodInput.addEventListener('input', refreshPreview);
+    startInput.addEventListener('input', refreshPreview);
+    endInput.addEventListener('input', refreshPreview);
     await refreshPreview();
 
     genBtn.addEventListener('click', async function () {
       var period = periodInput.value.trim();
       genBtn.disabled = true;
-      var res = await sb.rpc('generate_period_work_for_period', { p_period: period, p_period_type: typeSel.value });
+      var res = await sb.rpc('generate_period_work_for_period', {
+        p_period: period, p_period_type: typeSel.value,
+        p_period_start: startInput.value, p_period_end: endInput.value,
+      });
       genBtn.disabled = false;
       if (res.error) { toast('Could not generate: ' + res.error.message, true); return; }
       var created = res.data || 0;

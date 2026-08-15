@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T08:13:55.684Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-15T08:47:10.891Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 22 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 23 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-131 checks run across 18 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+140 checks run across 19 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -35,7 +35,7 @@ Generated 2026-08-15T08:13:55.684Z by `node tests/db/run.js` -- **every row belo
 | INSERT new client | admin | ALLOWED | ALLOW | PASS | inserted |
 | INSERT new client | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "clients" |
 | UPDATE a client's details | reviewerA | DENIED | DENY | PASS | 0 row(s) affected - clients_update_admin is admin-only, reviewer is not exempted |
-| SELECT client_services | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
+| SELECT client_services | employeeA | ALLOWED | ALLOW | PASS | 3 row(s) |
 | INSERT a client_services subscription | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "client_services" |
 | SELECT clients list, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
 | SELECT client_services, as a deactivated profile with a still-valid session | inactive | DENIED | DENY | PASS | 0 row(s) |
@@ -216,16 +216,30 @@ Generated 2026-08-15T08:13:55.684Z by `node tests/db/run.js` -- **every row belo
 | CALL generate_period_work_for_period as a deactivated profile | inactive | DENIED | DENY | PASS | Not authorized. |
 | CALL _generate_period_work_core directly (bypassing the wrapper), even as admin | admin | DENIED | DENY | PASS | permission denied for function _generate_period_work_core |
 
+### period normalization (Handbook Task 11)
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| Generate a historical monthly period (Jan 2025) — due dates land in the requested period, not today | admin | ALLOWED | ALLOW | PASS | external=2025-01-25, internal=2025-01-22 — correct |
+| Generate the current monthly period (brackets today) — due dates still derive from the requested range | admin | ALLOWED | ALLOW | PASS | external=2026-08-25, internal=2026-08-22 — correct |
+| Generate a future monthly period (Jun 2030) — due dates land in 2030, not today's month | admin | ALLOWED | ALLOW | PASS | external=2030-06-25, internal=2030-06-22 — correct |
+| Generate a quarterly period — due dates land in the period's ending month | admin | ALLOWED | ALLOW | PASS | external=2026-06-15, internal=2026-06-10 — correct |
+| Generate a yearly period — due dates land in the period's ending month | admin | ALLOWED | ALLOW | PASS | external=2026-07-10, internal=2026-07-03 — correct |
+| Call generate_period_work_for_period twice for the identical client+service+period | admin | ALLOWED | ALLOW | PASS | first created 1, second created 0 — idempotent, no duplicate work_items row |
+| Generate with p_period_start = null | admin | DENIED | DENY | PASS | p_period_start and p_period_end are required: the requested period's Gregorian date range must be provided explicitly, never assumed from today's date. |
+| Generate with p_period_end = null | admin | DENIED | DENY | PASS | p_period_start and p_period_end are required: the requested period's Gregorian date range must be provided explicitly, never assumed from today's date. |
+| Generate with p_period_end before p_period_start | admin | DENIED | DENY | PASS | p_period_end cannot be before p_period_start. |
+
 ### SECURITY DEFINER function grants (catalog inspection)
 
 | Action | Identity | Observed | Expected | Result | Note |
 |---|---|---|---|---|---|
-| EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=false (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text, p_period_start date, p_period_end date) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=false (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on add_client_credential(p_client_id uuid, p_label text, p_username text, p_password text, p_notes text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on current_user_active() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on current_user_role() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on delete_client_credential(p_id uuid) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
-| EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
+| EXECUTE grant to 'anon' on generate_period_work_for_period(p_period text, p_period_type text, p_period_start date, p_period_end date) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on guard_profile_update() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on guard_work_item_update() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on handle_new_user() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |

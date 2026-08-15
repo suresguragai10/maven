@@ -26,6 +26,7 @@ const MATRIX_FILES = [
   'client_attention',
   'client_credentials',
   'recurring_generation',
+  'period_normalization',
   'security_definer_grants',
 ];
 

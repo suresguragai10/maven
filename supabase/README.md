@@ -92,3 +92,4 @@ rotation, and recovery" for the exact command and full procedure.
 | `20260811091000_recurring_work_generation.sql` | Manual + scheduled (`pg_cron`) recurring work generation |
 | … | (later Handbook Task migrations — see `docs/DATABASE_SOURCE_OF_TRUTH.md` §2 for the full, current list) |
 | `20260822090000_credential_vault_hardening.sql` | Handbook Task 10 — `client_credentials` passphrase moved to Supabase Vault, fail-closed when unconfigured |
+| `20260823090000_normalize_generation_periods.sql` | Handbook Task 11 — recurring generation now requires an explicit Gregorian period range; due dates derive from the requested period, never `current_date` |

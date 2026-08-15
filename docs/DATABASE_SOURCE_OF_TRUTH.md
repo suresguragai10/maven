@@ -139,7 +139,7 @@ The remaining nine tables (`service_templates`, `service_template_items`,
 migration file tracked in this repo from the start, so their file is the
 original source, not a reconstruction.
 
-## 2. Expected schema, as of migration `20260822090000` (last applied)
+## 2. Expected schema, as of migration `20260823090000` (last applied)
 
 ### Tables (16)
 
@@ -149,7 +149,7 @@ original source, not a reconstruction.
 | `clients` | reconstructed | enabled | `attention_level`, `attention_reason`, `attention_set_by`, `attention_set_at` (20260814090000) |
 | `service_templates` | original (20260811090300) | enabled | `is_active` (20260813100000-era Task 13); `requires_review` boolean default `true` (20260820090000) |
 | `service_template_items` | original | enabled | `is_required` (Task 13) |
-| `work_items` | original (20260811090400) | enabled | `submission_*` fields, `completed_at`, `submitted_at/by`, `created_by` (later Task 13-era additions); `work_scope`, `firm_category` + scope-conditional checks (20260816090000); `client_id` NOT NULL dropped (20260816090000); `review_required` boolean default `true`, `status_override_reason` text (write-only, always reset to `NULL`) (20260820090000) |
+| `work_items` | original (20260811090400) | enabled | `submission_*` fields, `completed_at`, `submitted_at/by`, `created_by` (later Task 13-era additions); `work_scope`, `firm_category` + scope-conditional checks (20260816090000); `client_id` NOT NULL dropped (20260816090000); `review_required` boolean default `true`, `status_override_reason` text (write-only, always reset to `NULL`) (20260820090000); `period_type`, `period_start_date`, `period_end_date` (20260823090000, Task 11) — nullable, additive only; NULL on every row generated before this migration (intentionally not backfilled, see the migration's own header) |
 | `work_checklist_items` | reconstructed (bundled in 20260811090500) | enabled | `is_required` (Task 13) |
 | `work_comments` | reconstructed (bundled in 20260811090500) | enabled | — |
 | `work_waiting_items` | reconstructed (bundled in 20260811090500) | enabled | `requested_by`, `follow_up_date`, `last_followed_up_at`, `follow_up_count`, `note` (added across the Waiting-checklist work, pre-handbook) |
@@ -244,10 +244,9 @@ findings as of Task 9.
 | `log_work_item_created()` | DEFINER, trigger | `public` | writes the initial `work_activity` row |
 | `set_work_item_created_by()` | DEFINER, trigger (`BEFORE INSERT` on `work_items`) | `public` | Task 7 — forces `created_by := auth.uid()`, never trusts client-supplied `created_by` |
 | `work_item_status_label(text)` | invoker, `sql`, immutable | n/a | Task 7 — maps a status enum value to its human label (mirrors `staff.js`'s `STATUS_LABELS`) for readable `work_activity` detail text |
-| `_generate_period_work_core(period, period_type)` | DEFINER, plpgsql | `public` | Task 8 — now also copies `requires_submission`/`requires_review` from the template onto each generated work item's `submission_required`/`review_required` (previously `submission_required` was silently never copied here at all — a pre-existing gap fixed alongside the new column, not a Task 8 finding proper) |
-| `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | see §0 — NOT NULL-safe, no explicit grant restriction |
-| `_generate_period_work_core(period, period_type)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated |
-| `generate_period_work_for_period(period, period_type)` | DEFINER, plpgsql | `public` | public wrapper; see §0 — NOT NULL-safe, no explicit grant restriction |
+| `_generate_period_work_core(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | actual generation logic; explicitly revoked from public/anon/authenticated. Task 8 added `requires_submission`/`requires_review` copy-through from the template. Task 11 (`20260823090000`) added the two new required date params — `month_start`/`month_end` for `filing_deadline_day`/`internal_offset_days` now derive from `period_end`, never from `current_date` (the bug this task existed to fix) — and both are validated non-null with `period_end >= period_start` before anything else runs. |
+| `add_client_credential`, `list_client_credentials`, `reveal_client_credential`, `delete_client_credential` | DEFINER, plpgsql | `public` (+`extensions` for the two that call pgcrypto) | NULL-safe + grant-restricted to `authenticated` as of Task 9 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Fixed bug class"); `add_client_credential`/`reveal_client_credential` additionally Vault-backed as of Task 10 (see [SECURITY_MODEL.md](SECURITY_MODEL.md) "Secret setup, rotation, and recovery") |
+| `generate_period_work_for_period(period, period_type, period_start, period_end)` | DEFINER, plpgsql | `public` | public wrapper; NULL-safe + grant-restricted to `authenticated` as of Task 9; new required date params as of Task 11, see above |
 | `set_client_attention(client_id, level, reason)` | DEFINER, plpgsql | `public` | see §0 — NOT NULL-safe, but grant-restricted to `authenticated` |
 | `pg_temp.drop_policies_for(table, cmd)` | invoker, plpgsql | n/a | migration-time helper only, session-temporary, not part of live schema after the migration finishes |
 
@@ -296,6 +295,32 @@ itself is never committed anywhere in this repository — see
 [SECURITY_MODEL.md](SECURITY_MODEL.md) "Secret setup, rotation, and
 recovery" for the one-time `vault.create_secret(...)` setup step an admin
 must run directly in the Supabase SQL editor.
+
+### Recurring generation: requested period drives due dates (Handbook Task 11)
+
+Before `20260823090000_normalize_generation_periods.sql`,
+`_generate_period_work_core`'s `month_start`/`month_end` (the basis for
+`filing_deadline_day`/`internal_offset_days` calculation) came from
+`date_trunc('month', current_date)` — the day generation happened to run
+on, completely independent of `p_period`, the period label actually
+requested. Generating a backfill for a past period, or a future period
+ahead of schedule, silently computed due dates from today's Gregorian
+month instead of the requested one. As of this migration,
+`_generate_period_work_core`/`generate_period_work_for_period` both
+require two new parameters, `p_period_start`/`p_period_end` (Gregorian
+`date`, non-null, `end >= start`, enforced by `RAISE EXCEPTION` if
+violated) — `month_start`/`month_end` now derive from `p_period_end`.
+This is deliberately NOT a Bikram Sambat→Gregorian conversion formula
+(no owner-approved BS calendar table exists in this project, and
+guessing one for legally significant filing dates is exactly the risk
+this task exists to close) — the Gregorian range is an explicit period
+record a human provides, same as the period label itself always was.
+`work_items.period_type`/`period_start_date`/`period_end_date` (new,
+nullable columns) record that range on each generated row going forward;
+every row generated before this migration keeps `period` (its free-text
+label) as its only period information — NULL on the three new columns is
+intentional, not a gap to backfill (see the migration's own header for
+why a template-recurrence-based backfill was considered and rejected).
 
 ## 3. Confirmed live drift (2026-08-14)
 

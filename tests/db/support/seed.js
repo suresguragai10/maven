@@ -6,7 +6,10 @@
 // seeded identities via harness.asRole() to see what RLS/grants actually
 // allow.
 
-const { IDENTITIES, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE } = require('./ids');
+const {
+  IDENTITIES, CLIENTS, SERVICE_TEMPLATE, CLIENT_SERVICE, WORK_ITEMS, TEST_VAULT_PASSPHRASE,
+  SERVICE_TEMPLATE_QUARTERLY, CLIENT_SERVICE_QUARTERLY, SERVICE_TEMPLATE_YEARLY, CLIENT_SERVICE_YEARLY,
+} = require('./ids');
 
 async function seed(client) {
   // ---- profiles (via auth.users -> handle_new_user() trigger) ----
@@ -39,6 +42,31 @@ async function seed(client) {
     `insert into public.client_services (id, client_id, service_template_id, assignee_id, reviewer_id)
      values ($1, $2, $3, $4, $5)`,
     [CLIENT_SERVICE.id, CLIENTS.alpha.id, SERVICE_TEMPLATE.id, IDENTITIES.employeeA.id, IDENTITIES.reviewerA.id]
+  );
+
+  // ---- Handbook Task 11: quarterly + yearly templates/services, so
+  // period_normalization.matrix.js can exercise _generate_period_work_core
+  // for every recurrence type, each with its own deterministic
+  // filing_deadline_day/internal_offset_days to assert against.
+  await client.query(
+    `insert into public.service_templates (id, title, category, recurrence, filing_deadline_day, internal_offset_days)
+     values ($1, $2, 'Tax & Compliance', 'quarterly', 15, 5)`,
+    [SERVICE_TEMPLATE_QUARTERLY.id, SERVICE_TEMPLATE_QUARTERLY.title]
+  );
+  await client.query(
+    `insert into public.client_services (id, client_id, service_template_id, assignee_id, reviewer_id)
+     values ($1, $2, $3, $4, $5)`,
+    [CLIENT_SERVICE_QUARTERLY.id, CLIENTS.alpha.id, SERVICE_TEMPLATE_QUARTERLY.id, IDENTITIES.employeeA.id, IDENTITIES.reviewerA.id]
+  );
+  await client.query(
+    `insert into public.service_templates (id, title, category, recurrence, filing_deadline_day, internal_offset_days)
+     values ($1, $2, 'Tax & Compliance', 'yearly', 10, 7)`,
+    [SERVICE_TEMPLATE_YEARLY.id, SERVICE_TEMPLATE_YEARLY.title]
+  );
+  await client.query(
+    `insert into public.client_services (id, client_id, service_template_id, assignee_id, reviewer_id)
+     values ($1, $2, $3, $4, $5)`,
+    [CLIENT_SERVICE_YEARLY.id, CLIENTS.alpha.id, SERVICE_TEMPLATE_YEARLY.id, IDENTITIES.employeeA.id, IDENTITIES.reviewerA.id]
   );
 
   // ---- work_items: client scope (normal + ready_for_review), + firm scope ----
