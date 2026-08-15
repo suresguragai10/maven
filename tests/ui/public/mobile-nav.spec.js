@@ -58,4 +58,35 @@ test.describe('Mobile navigation', () => {
 
     await expect(page).toHaveURL(/\/contact$/);
   });
+
+  // Handbook Task 25: a collapsed submenu's links must not be reachable
+  // by Tab — previously they were fully focusable at max-height:0 (only
+  // clipped visually), so a keyboard user tabbing through a closed menu
+  // would stop on invisible links.
+  test('a collapsed submenu is inert, and its links are excluded from the Tab trap', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.nav-toggle').click();
+
+    const sub = page.locator('#mobile-sub-services');
+    await expect(sub).toHaveJSProperty('inert', true);
+
+    const subToggle = page.locator('.mobile-sub-toggle[aria-controls="mobile-sub-services"]');
+    await expect(subToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('opening a submenu removes inert; closing it restores inert', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.nav-toggle').click();
+
+    const sub = page.locator('#mobile-sub-services');
+    const subToggle = page.locator('.mobile-sub-toggle[aria-controls="mobile-sub-services"]');
+
+    await subToggle.click();
+    await expect(subToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(sub).toHaveJSProperty('inert', false);
+
+    await subToggle.click();
+    await expect(subToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(sub).toHaveJSProperty('inert', true);
+  });
 });

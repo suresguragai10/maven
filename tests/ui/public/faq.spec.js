@@ -1,13 +1,18 @@
 const { test, expect } = require('@playwright/test');
 
 // FAQ accordion (client.js "Accordions (FAQ + Documents Needed)" block).
-// pages*.js server-renders the FIRST item pre-expanded (class="is-open",
-// aria-expanded="true", no inline max-height). styles.css's only rule for
-// the panel is ".accordion-panel { max-height: 0; ... }" -- there is no
-// ".is-open .accordion-panel" override, so that first panel has nothing
-// giving it height on load despite declaring itself open. Every OTHER
-// item starts correctly closed with an explicit inline
-// style="max-height:0" that matches its aria-expanded="false".
+// Handbook Task 25 fixed the "server-pre-opened first item is NOT
+// visually open on load" bug documented here previously: pages*.js
+// server-renders the FIRST item pre-expanded (class="is-open",
+// aria-expanded="true"); ui.js's accordionItem() now also sends that
+// panel style="max-height:none" so it's genuinely visible before
+// client.js even runs (previously it sent no inline style at all,
+// leaving the panel at styles.css's max-height:0 default despite
+// declaring itself open). client.js converts max-height:none to a real
+// pixel value on load so the panel can still animate closed on the
+// first click. Every OTHER item starts correctly closed with an
+// explicit inline style="max-height:0" (and `inert`, so its content is
+// out of Tab order while collapsed) matching its aria-expanded="false".
 test.describe('FAQ accordion', () => {
   test('renders at least one question, closed items start collapsed', async ({ page }) => {
     await page.goto('/faq');
@@ -30,12 +35,7 @@ test.describe('FAQ accordion', () => {
     expect(height, 'panel should be visibly open after one click').toBeGreaterThan(0);
   });
 
-  // KNOWN BUG, not fixed by this task (Task 2 = tests only). Repair is a
-  // separate, later task; this stays marked as an expected failure until
-  // then so it can't silently regress further, but also can't be ignored.
-  test('known bug: the server-pre-opened first item is NOT visually open on load', async ({ page }) => {
-    test.fail(true, 'First FAQ item declares aria-expanded="true" on load but styles.css has no .is-open override, so it renders visually collapsed until clicked twice. See docs/UI_TESTING.md "Known/expected failures".');
-
+  test('the server-pre-opened first item is already visually open on load (Handbook Task 25 fix)', async ({ page }) => {
     await page.goto('/faq');
     const firstPanel = page.locator('#panel-faq-0');
     await expect(page.locator('#trigger-faq-0')).toHaveAttribute('aria-expanded', 'true');
@@ -44,20 +44,24 @@ test.describe('FAQ accordion', () => {
     expect(height, 'first item should already be visibly open on page load').toBeGreaterThan(0);
   });
 
-  // KNOWN BUG, same root cause: because the first item's declared state
-  // (open) doesn't match its visual state (collapsed), the FIRST click on
-  // it is interpreted as "close an open item" -- no visible change -- and
-  // a SECOND click is required before it visually opens. This is the
-  // "two-click first-interaction" regression the task description names.
-  test('known bug: the first item needs two clicks to visibly open', async ({ page }) => {
-    test.fail(true, 'First click on the pre-opened item just formally closes it (no visible change, since it was already visually collapsed); a second click is needed to actually open it. See docs/UI_TESTING.md.');
-
+  test('the first item closes fully on a single click (no two-click regression)', async ({ page }) => {
     await page.goto('/faq');
     const trigger = page.locator('#trigger-faq-0');
     const panel = page.locator('#panel-faq-0');
 
-    await trigger.click(); // first interaction
-    const heightAfterOneClick = await panel.evaluate((el) => el.getBoundingClientRect().height);
-    expect(heightAfterOneClick, 'should be visibly open after a single click').toBeGreaterThan(0);
+    await trigger.click(); // first interaction — it starts open, so this should CLOSE it
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toHaveCSS('max-height', '0px');
+
+    await trigger.click(); // second interaction — reopens
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const height = await panel.evaluate((el) => el.getBoundingClientRect().height);
+    expect(height, 'should be visibly open again after a second click').toBeGreaterThan(0);
+  });
+
+  test('collapsed panel content is inert (not keyboard-focusable)', async ({ page }) => {
+    await page.goto('/faq');
+    const secondPanel = page.locator('#panel-faq-1');
+    await expect(secondPanel).toHaveJSProperty('inert', true);
   });
 });

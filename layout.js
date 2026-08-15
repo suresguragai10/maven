@@ -2,13 +2,27 @@ const { icon } = require('./icons');
 const data = require('./data');
 const { esc, safeUrl, internalHref } = require('./escape');
 
+// Handbook Task 25: the chevron used to live INSIDE .nav-link, so the same
+// element both navigated immediately (its href) and was the only visual
+// dropdown affordance — ambiguous on a touch device, where a tap has no way
+// to "just peek" at the submenu before committing to navigation. Split into
+// two elements: .nav-link still navigates straight to the section's own
+// page (its "clear Overview destination" is unchanged), and a dedicated
+// .nav-dropdown-toggle button (real aria-expanded/aria-controls, same
+// pattern the mobile submenu button already used) explicitly opens/closes
+// the dropdown via client.js — with click-outside/Escape handling and one
+// dropdown open at a time. Hover/:focus-within stays as a CSS-only
+// enhancement for fine-pointer devices (see styles.css's `(hover: hover)`
+// guard) — never the only way in.
 function renderDesktopNav(activeKey) {
   const items = data.nav.map((item) => {
     const isActive = item.key === activeKey || (item.children && item.children.some((c) => c.key === activeKey));
     if (item.children) {
+      const dropdownId = `dropdown-${item.key}`;
       return `<li class="nav-item">
-        <a class="nav-link" href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label} ${icon('chevronDown', 'ic-chevron')}</a>
-        <div class="dropdown">
+        <a class="nav-link" href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>
+        <button type="button" class="nav-dropdown-toggle" aria-expanded="false" aria-controls="${dropdownId}" aria-label="Show ${esc(item.label)} menu">${icon('chevronDown', 'ic-chevron')}</button>
+        <div class="dropdown" id="${dropdownId}">
           ${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}
         </div>
       </li>`;
@@ -29,7 +43,12 @@ function renderMobileNav(activeKey) {
     const isActive = item.key === activeKey || (item.children && item.children.some((c) => c.key === activeKey));
     if (item.children) {
       const subId = `mobile-sub-${item.key}`;
-      const sub = `<div class="mobile-sub" id="${subId}" style="max-height:0">${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}</div>`;
+      // Handbook Task 25: submenus always start collapsed, and inert
+      // (removed by client.js on open) keeps their links out of Tab
+      // order while visually hidden — previously they were fully
+      // focusable even at max-height:0, so a keyboard user tabbing
+      // through a closed mobile menu would stop on invisible links.
+      const sub = `<div class="mobile-sub" id="${subId}" style="max-height:0" inert>${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}</div>`;
       return `<li>
         <div class="mobile-nav-row">
           <a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>

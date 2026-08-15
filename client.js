@@ -40,14 +40,24 @@
     // Per-submenu expand/collapse — same aria-expanded/aria-controls +
     // max-height technique as the accordion below, kept collapsed by
     // default so opening the menu doesn't dump every dropdown's children
-    // into one long flat list at once.
+    // into one long flat list at once. Handbook Task 25: also toggles
+    // `inert` — the submenu starts inert (see layout.js) so its links are
+    // out of Tab order while collapsed; removed on open, restored on
+    // close, so the visible/focusable state and the visual state never
+    // disagree.
     mobileNav.querySelectorAll('.mobile-sub-toggle').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var sub = document.getElementById(btn.getAttribute('aria-controls'));
         if (!sub) return;
         var isOpen = btn.getAttribute('aria-expanded') === 'true';
         btn.setAttribute('aria-expanded', String(!isOpen));
-        sub.style.maxHeight = !isOpen ? sub.scrollHeight + 'px' : '0px';
+        if (!isOpen) {
+          sub.removeAttribute('inert');
+          sub.style.maxHeight = sub.scrollHeight + 'px';
+        } else {
+          sub.style.maxHeight = '0px';
+          sub.setAttribute('inert', '');
+        }
       });
     });
   }
@@ -55,10 +65,16 @@
     if (!mobileNav || !mobileNav.classList.contains('is-open')) return;
     if (e.key === 'Escape') { closeMobileNav(); return; }
     // Trap Tab focus inside the open menu — without this, tabbing past the
-    // last link would leave the visible panel and land on inert content
-    // sitting behind the (fixed, full-viewport) overlay.
+    // last link would leave the visible panel and land on content sitting
+    // behind the (fixed, full-viewport) overlay. Handbook Task 25: the
+    // candidate list now excludes anything inert (a collapsed submenu's
+    // links) — those were never really reachable by a real Tab press once
+    // `inert` was added, but calling .focus() on one here would silently
+    // fail and could strand the wrap-around logic, so they're filtered
+    // out up front rather than relied on to just not match.
     if (e.key === 'Tab') {
-      var focusable = Array.prototype.slice.call(mobileNav.querySelectorAll('a[href], button:not([disabled])'));
+      var focusable = Array.prototype.slice.call(mobileNav.querySelectorAll('a[href], button:not([disabled])'))
+        .filter(function (el) { return !el.closest('[inert]'); });
       if (!focusable.length) return;
       var first = focusable[0];
       var last = focusable[focusable.length - 1];
@@ -95,7 +111,27 @@
     onScrollTop();
   }
 
-  // ---- Accordions (FAQ + Documents Needed) ----
+  // ---- Accordions (FAQ + Documents Needed + Support Areas + every other
+  // FAQ-shaped block — all render through ui.js's one accordionItem(), so
+  // one fix here covers every instance) ----
+  // Handbook Task 25: the server already renders a pre-opened item's panel
+  // at its real height (style="max-height:none", see ui.js) so it's
+  // genuinely visible before this script even runs. `none` can't be
+  // CSS-transitioned from, though, so on load it's converted to the
+  // equivalent pixel value here — a no-op visually, but it means the
+  // FIRST click on that item (closing it) actually animates instead of
+  // jumping. This is also where the old "first click looks like nothing
+  // happened" bug lived: previously the server sent NO inline style for
+  // an open panel, leaving it at the CSS default (max-height:0) despite
+  // is-open/aria-expanded="true" already being set — so the first click
+  // read the (wrong) already-open state and "closed" an already-invisible
+  // panel. Kept out of the shared accordionOpenPanels() helper below
+  // (documented there) since this pass only ever runs once, at load.
+  var openAccordionPanelsAtLoad = document.querySelectorAll('.accordion-item.is-open .accordion-panel');
+  openAccordionPanelsAtLoad.forEach(function (panel) {
+    panel.style.maxHeight = panel.scrollHeight + 'px';
+  });
+
   document.querySelectorAll('.accordion-trigger').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var item = btn.closest('.accordion-item');
@@ -104,9 +140,11 @@
       item.classList.toggle('is-open', !isOpen);
       btn.setAttribute('aria-expanded', String(!isOpen));
       if (!isOpen) {
+        panel.removeAttribute('inert');
         panel.style.maxHeight = panel.scrollHeight + 'px';
       } else {
         panel.style.maxHeight = '0px';
+        panel.setAttribute('inert', '');
       }
     });
   });
@@ -122,7 +160,13 @@
     if (!btn || !panel) return;
     card.classList.toggle('is-open', open);
     btn.setAttribute('aria-expanded', String(open));
-    panel.style.maxHeight = open ? panel.scrollHeight + 'px' : '0px';
+    if (open) {
+      panel.removeAttribute('inert');
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+    } else {
+      panel.style.maxHeight = '0px';
+      panel.setAttribute('inert', '');
+    }
   }
   document.querySelectorAll('.industry-card-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -143,6 +187,98 @@
       cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
+
+  // ---- Recalculate open accordion/industry-card panel heights on resize
+  // (Handbook Task 25) ----
+  // An open panel's max-height is a snapshot (panel.scrollHeight) taken at
+  // the moment it was opened. If the viewport is resized or rotated after
+  // that — a phone going portrait->landscape, a window being resized —
+  // the content can reflow to a different height (text rewrapping changes
+  // line count) while the stale inline max-height stays put, clipping
+  // content or leaving dead space. Debounced (resize/orientationchange
+  // both fire in bursts) and only ever touches panels that are actually
+  // open right now — closed panels stay at max-height:0 regardless.
+  var recalcOpenPanelsTimer = null;
+  function recalcOpenPanelsNow() {
+    document.querySelectorAll('.accordion-item.is-open .accordion-panel, .industry-card.is-open .industry-card-panel').forEach(function (panel) {
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+    });
+  }
+  window.addEventListener('resize', function () {
+    if (recalcOpenPanelsTimer) clearTimeout(recalcOpenPanelsTimer);
+    recalcOpenPanelsTimer = setTimeout(recalcOpenPanelsNow, 150);
+  });
+  window.addEventListener('orientationchange', recalcOpenPanelsNow);
+
+  // ---- Desktop nav dropdowns (Handbook Task 25) ----
+  // The dropdown parent link (.nav-link) still navigates straight to its
+  // own href — that "clear Overview destination" is untouched. This adds
+  // an explicit, independent toggle (the .nav-dropdown-toggle button next
+  // to it — see layout.js) so a tap/click/keyboard user gets real
+  // aria-expanded state instead of relying only on :hover/:focus-within
+  // (still present in CSS as a fine-pointer enhancement, guarded by
+  // `(hover: hover)` — see styles.css). Previously the parent link tried
+  // to both navigate AND be the only way to reveal the dropdown, which on
+  // a touch device is ambiguous: a tap just navigates away immediately,
+  // with no way to see the children first.
+  function closeAllNavDropdowns(except) {
+    document.querySelectorAll('.nav-item.is-open').forEach(function (item) {
+      if (item === except) return;
+      item.classList.remove('is-open');
+      var t = item.querySelector('.nav-dropdown-toggle');
+      if (t) t.setAttribute('aria-expanded', 'false');
+    });
+  }
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    var toggle = item.querySelector('.nav-dropdown-toggle');
+    var dropdown = item.querySelector('.dropdown');
+    if (!toggle || !dropdown) return;
+    function setDropdownOpen(open) {
+      item.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = !item.classList.contains('is-open');
+      // Only one dropdown open at a time — a click on a different item's
+      // toggle calls stopPropagation, so the document-level "click
+      // outside" listener below never sees it and would otherwise leave
+      // multiple dropdowns open simultaneously.
+      if (willOpen) closeAllNavDropdowns(item);
+      setDropdownOpen(willOpen);
+    });
+  });
+  // Click outside any open dropdown closes it — without this, a JS-opened
+  // (tapped) dropdown would only ever close via its own toggle button.
+  document.addEventListener('click', function (e) {
+    var openItem = document.querySelector('.nav-item.is-open');
+    if (openItem && !openItem.contains(e.target)) closeAllNavDropdowns(null);
+  });
+  // Escape closes whichever dropdown is open and returns focus to its
+  // toggle — same "don't strand keyboard focus" principle as the mobile
+  // nav's own Escape handling above.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var openItem = document.querySelector('.nav-item.is-open');
+    if (!openItem) return;
+    var toggle = openItem.querySelector('.nav-dropdown-toggle');
+    closeAllNavDropdowns(null);
+    if (toggle) toggle.focus();
+  });
+  // Tabbing out of an open dropdown entirely (not just moving between its
+  // own links) should close it — otherwise it can stay visually open,
+  // detached from focus, after a keyboard user has moved on.
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    item.addEventListener('focusout', function () {
+      window.setTimeout(function () {
+        if (item.classList.contains('is-open') && !item.contains(document.activeElement)) {
+          item.classList.remove('is-open');
+          var toggle = item.querySelector('.nav-dropdown-toggle');
+          if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        }
+      }, 0);
+    });
+  });
 
   // ---- Hero mockup card (Registration/Accounting/Tax/Payroll/Reports) ----
   // Purely decorative: auto-cycles through the tabs, and clicking a tab jumps

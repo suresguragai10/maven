@@ -100,7 +100,7 @@ function industryCard(ind, i) {
       <span>Where this gets complex &amp; how we help</span>
       ${icon('chevronDown', 'ic-chevron')}
     </button>
-    <div class="industry-card-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:0">
+    <div class="industry-card-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:0" inert>
       <div class="industry-card-panel-inner">
         ${ind.needs && ind.needs.length ? `<span class="service-letter">Common needs</span>${bulletList(ind.needs, 'stamp-list stamp-list--pkg')}` : ''}
         ${ind.howWeHelp && ind.howWeHelp.length ? `<span class="service-letter">How Maven helps</span>${bulletList(ind.howWeHelp, 'stamp-list stamp-list--pkg')}` : ''}
@@ -155,12 +155,28 @@ function statRow(stats) {
 function accordionItem({ id, headingHtml, bodyHtml, open = false }) {
   // headingHtml/bodyHtml are assembled by the caller; callers pass already-escaped
   // CMS text (see pages3.js faq) or code-built markup.
+  //
+  // Handbook Task 25: the panel's INITIAL rendered state now always
+  // matches its class/aria-expanded state, server-side, with no
+  // dependency on client.js having run yet. Previously an open panel
+  // got no inline style at all (relying on a CSS override that never
+  // existed), so it rendered visually collapsed despite is-open/aria-
+  // expanded="true" -- the root cause of the "first click closes an
+  // already-invisible panel, second click actually opens it" bug.
+  // max-height:none (not a hardcoded pixel guess) so arbitrarily long
+  // answer text is never clipped. client.js converts this to a real
+  // pixel value on load so later toggles can still animate (a CSS
+  // transition can't interpolate from `none`).
+  //
+  // inert on a closed panel keeps its contents (any links inside an
+  // answer) out of Tab order while visually hidden -- collapsed
+  // descendants must not be keyboard-focusable.
   return `<div class="accordion-item${open ? ' is-open' : ''}">
-    <button class="accordion-trigger" aria-expanded="${open}" aria-controls="panel-${id}" id="trigger-${id}">
+    <button type="button" class="accordion-trigger" aria-expanded="${open}" aria-controls="panel-${id}" id="trigger-${id}">
       <span>${headingHtml}</span>
       ${icon('chevronDown', 'ic-chevron')}
     </button>
-    <div class="accordion-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" ${open ? '' : 'style="max-height:0"'}>
+    <div class="accordion-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:${open ? 'none' : '0'}"${open ? '' : ' inert'}>
       <div class="accordion-panel-inner">${bodyHtml}</div>
     </div>
   </div>`;

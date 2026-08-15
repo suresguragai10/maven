@@ -59,8 +59,9 @@ tests/ui/
     serve-dist.js     — the static file server described above
     mock-supabase.js  — Handbook Task 17: intercepts the real Supabase
                         client's network calls with fixture data, see below
-  public/             — marketing site tests (home, mobile nav, FAQ, documents,
-                         industries, overflow, hidden-links, contact, 404/nav)
+  public/             — marketing site tests (home, mobile nav, desktop nav
+                         dropdowns, FAQ, documents, industries, overflow,
+                         hidden-links, contact, 404/nav)
   app/                — staff.js / admin.js: pre-login shell smoke tests
                         (staff.spec.js, admin.spec.js), plus a genuinely
                         logged-in Firm Work suite (firm-work.spec.js,
@@ -143,93 +144,120 @@ evidence:
   --project=firefox && playwright test --project=webkit`) rather than
   trusting a single flaky combined run.
 
-## Known/expected failures
+## Fixed by Handbook Task 25
 
-Per this task's instruction not to weaken an assertion just to make CI
-green, the following are asserted as the CORRECT (bug-free) behavior and
-marked with Playwright's `test.fail()` so they show as an *expected*
-failure — CI stays informative (a real fix will show up as an
-unexpected pass, which Playwright itself flags) without either hiding
-the bug or making the suite permanently red for something already known.
+Every regression this file originally documented as "known" or "newly
+found but not fixed" (Task 2's own scope was tests only) was root-cause
+fixed by Task 25, using these same tests as the acceptance bar. Nothing
+below is a `test.fail()` anymore — each is now a normal, passing
+regression test, and a future break here fails the suite loudly instead
+of being silently tolerated.
 
-### The accordion "two-click" bug (FAQ + Documents Needed)
+### The accordion "two-click" bug (FAQ + Documents Needed + every
+### FAQ-shaped block on the site)
 
-**Confirmed real**, root-caused via `styles.css` and `client.js`, not
-just suspected. `pages*.js` server-renders each accordion's *first* item
-pre-expanded (`class="accordion-item is-open"`, `aria-expanded="true"`),
-with no inline `style="max-height"` — every other item starts correctly
-collapsed with an explicit `style="max-height:0"` matching its
-`aria-expanded="false"`. `styles.css` has exactly one rule for the panel:
+**Root cause**: `ui.js`'s `accordionItem()` server-rendered a pre-opened
+item's panel with NO inline style at all, leaving it at `styles.css`'s
+`.accordion-panel { max-height: 0; }` default despite declaring
+`is-open`/`aria-expanded="true"` — visually collapsed on load. The first
+click then read the (already-true) `is-open` class and "closed" an
+already-invisible panel; a second click was needed to see it open.
 
-```css
-.accordion-panel { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
-```
+**Fix**: the panel's initial inline style now always matches its class/
+aria state — `style="max-height:none"` when pre-opened (not a hardcoded
+pixel guess, so arbitrarily long answer text is never clipped), matching
+the existing `style="max-height:0"` closed case. `client.js` converts
+`none` to a real pixel value on load (a CSS transition can't animate
+`from: none`) so the first click still animates shut correctly. Since
+FAQ, Documents Needed, and every other FAQ-shaped block (Support Areas,
+NFRS/International/Virtual CFO FAQs) all share this one component, one
+fix covers all of them.
 
-There is no `.accordion-item.is-open .accordion-panel` override. So the
-"pre-opened" first item has nothing giving it height — it renders
-**visually collapsed** despite declaring itself open. Clicking it the
-first time reads `is-open` as true (from the class), so `client.js`'s
-handler treats the click as "close an already-open item" and sets
-`max-height: 0px` — already the case, so nothing visibly changes. A
-**second** click is needed before it visually opens. Every other item
-opens correctly on one click; this is specific to whichever item is
-marked pre-open, on both pages that use this component.
-
-Covered by:
-- `tests/ui/public/faq.spec.js` — 2 tests marked `test.fail()`
-- `tests/ui/public/documents.spec.js` — 1 test marked `test.fail()`
-
-Not fixed here (out of this task's scope) — likely fix is either adding
-the missing `.is-open .accordion-panel { max-height: ... }` CSS rule, or
-rendering the first item's panel with an inline max-height server-side
-like the others, whichever the repair task decides is the more
-maintainable of the two.
+Covered by `tests/ui/public/faq.spec.js` and `documents.spec.js` (the
+previous `test.fail()` cases now assert the item IS visible on load and
+DOES close on the first click).
 
 ### Mobile-nav open/close/focus-return
 
-**Confirmed NOT buggy** — tested and passing normally (not a
-`test.fail()`). `client.js`'s `openMobileNav()`/`closeMobileNav()`
-already move focus correctly (into the panel on open, back to the toggle
-on close, including via Escape). This task's "why" line named this as a
-*known* issue to guard against; testing found it already correct as
-built. Kept as a normal (non-`test.fail()`) test so any future regression
-here fails loudly.
+Unchanged from Task 2 — already correct, still passing normally.
+`client.js`'s `openMobileNav()`/`closeMobileNav()` move focus correctly
+on open/close/Escape. Task 25 added: a collapsed submenu's links are now
+`inert` (removed on open, restored on close) so they're excluded from
+Tab order while visually hidden — previously they were fully focusable
+at `max-height:0`. See `mobile-nav.spec.js`.
 
-## New findings surfaced by this task (not previously known/documented)
+### Desktop nav dropdowns (Handbook Task 25 — not a previously-tracked
+### regression, but explicitly in scope for this task)
 
-These were not named in this task's description — they were found by
-actually running the overflow suite for the first time. Per this task's
-"do not fix known UI bugs" instruction and since these are newly
-discovered (not previously "known" to be excluded from fixing), they are
-left as normal, **un-suppressed failing tests** — the point of this
-suite is exactly to surface things like this instead of relying on
-visual memory, so hiding them behind `test.fail()` would defeat that.
+Previously the dropdown parent `.nav-link` was both a real navigable
+`<a href>` AND the only way to reveal the dropdown (CSS `:hover`/
+`:focus-within`) — ambiguous on touch, where a tap just navigates away
+immediately with no way to see the children first. Now each dropdown
+item has its own `.nav-dropdown-toggle` button (real `aria-expanded`/
+`aria-controls`, same pattern the mobile submenu button already used),
+independently click/tap/keyboard-operable, with Escape and click-outside
+closing it and only one dropdown open at a time. `:hover` stays as a
+fine-pointer-only enhancement (`@media (hover: hover) and (pointer:
+fine)`); `:focus-within` and the explicit `.is-open` state work
+unconditionally on every device. The parent link's own navigation is
+completely unchanged. See `tests/ui/public/nav-dropdown.spec.js`.
 
-1. **Home page overflows horizontally at 320px** (`scrollWidth` 356 vs
-   `clientWidth` 320, ~36px). Diagnosed to `.service-card.service-card--
-   photo` cards in the services grid rendering at 332px wide inside a
-   320px viewport — `.grid-3`/`.grid-4` do collapse to a single column
-   under 640px (`styles.css` line 361), but the card itself doesn't
-   shrink below ~332px at the very smallest supported width. Reproduces
-   identically on Chromium, Firefox, and WebKit.
-2. **Contact page overflows horizontally at 320/360/390px** (up to 87px
-   at 320px — `scrollWidth` 407 vs `clientWidth` 320). Diagnosed to the
-   `.contact-info-list`/`.section-head--left` column rendering at a fixed
-   ~383–407px regardless of viewport, inside a `.two-col` layout that
-   does collapse to one column under 860px (`styles.css` line 512) but
-   whose right-hand content isn't itself shrinking to fit. Reproduces
-   identically on all three browsers; stops occurring at 430px and above.
-3. **WebKit-only, ~2px, at 320px**: `/services` and `/documents-needed`
-   also fail WebKit's overflow check by 2px (322 vs 320). Given the
-   magnitude, this may be a WebKit-specific scrollbar-gutter or subpixel
-   rounding difference rather than the same class of bug as #1/#2 — flag
-   for the repair task to confirm either way, not treated as urgent.
+### Public-site overflow (home, contact, WebKit /services + /documents-needed)
 
-None of these were fixed in this task (test-harness-only scope). They're
-real, reproducible, and now permanently guarded by
-`tests/ui/public/overflow.spec.js` — recommended as a quick, self-
-contained fix whenever convenient (likely CSS-only), or scheduled into
-Handbook Task 25 ("Public UI regressions").
+**Root cause, all three**: `.grid-2`/`.grid-3`/`.grid-4`, `.two-col`,
+and `.form-grid` used bare `1fr` tracks — CSS shorthand for `minmax(auto,
+1fr)`, which does NOT shrink a track below its content's own min-content
+width. A `.service-card--photo` (home), `.contact-info-list` (contact),
+and `.form-field` (contact's own inquiry form, only visible once the
+`.two-col` overflow was fixed and the form's real width became the next
+constraint) each had content wide enough to force their single-column
+track past the viewport, dragging the whole page wider with it. This is
+also very likely what the WebKit-only ~2px overflow was — no
+WebKit-specific code was touched, and re-running the suite after the fix
+showed it gone on WebKit too.
+
+**Fix**: `minmax(0, 1fr)` instead of bare `1fr` on those five rules
+(base + collapsed-breakpoint variants) — lets tracks shrink to fit
+available space. Zero breakpoint values or column counts changed; this
+only fixes shrink behavior, so `/industries` (which shares `.grid-3`)
+was re-verified to still render its 13 cards (an odd count) correctly
+with no overflow, not assumed safe by association. See
+`tests/ui/public/overflow.spec.js` (all 48 checks now pass on Chromium
+and WebKit) and `industries.spec.js`'s badge/grid-separation and
+odd-count tests.
+
+## Additional Task 25 hardening (not driven by a specific known bug)
+
+- `type="button"` added to every JS-only trigger button that lacked it
+  (accordion triggers) — a `<button>` with no explicit `type` defaults
+  to `type="submit"` if it's ever inside a `<form>`.
+- Collapsed accordion/industry-card panels are now `inert` (removed on
+  open, restored on close) — their content is excluded from Tab order
+  while visually hidden, matching the same fix applied to mobile
+  submenus.
+- Open accordion/industry-card panels recalculate their `max-height` on
+  window `resize`/`orientationchange` (debounced) — previously a stale
+  height captured at open time could clip reflowed content or leave dead
+  space after a viewport change.
+- `tests/ui/public/contact.spec.js` gained a third test exercising a
+  fully valid submission end to end (`fetch()` → success message) with
+  the real `formspree.io` endpoint intercepted via `page.route()` — the
+  two pre-existing tests only ever proved submission was BLOCKED before
+  any network call; this proves the success path itself works, without
+  the real third-party service ever being reached during tests.
+
+## A pre-existing flaky test, found and fixed while verifying Task 25
+
+`industries.spec.js`'s `#industry-N` deep-link test read
+`panel.getBoundingClientRect().height` immediately after `client.js` set
+`panel.style.maxHeight` — but that property is CSS-transitioned
+(`transition: max-height 0.28s ease`), so the *rendered* box height at
+the instant of the read can still be mid-animation, not the target
+value. Reproduced 5/5 times, and confirmed via `git stash` to already
+fail identically on the pre-Task-25 code — this was a latent bug in the
+test itself, not something Task 25 introduced. Fixed by asserting on the
+inline `style.maxHeight` value (the synchronous target `client.js` just
+set) instead of the animated, timing-dependent rendered height.
 
 ## CI
 

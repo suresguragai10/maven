@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
-// Documents Needed accordion -- same component/markup pattern as FAQ
-// (see faq.spec.js for the root-cause explanation of the known bug).
+// Documents Needed accordion -- same shared component/markup as FAQ (see
+// faq.spec.js for the Handbook Task 25 root-cause fix explanation).
 test.describe('Documents Needed accordion', () => {
   test('renders sections, closed items start collapsed', async ({ page }) => {
     await page.goto('/documents-needed');
@@ -24,16 +24,17 @@ test.describe('Documents Needed accordion', () => {
     expect(height).toBeGreaterThan(0);
   });
 
-  // KNOWN BUG -- same root cause as faq.spec.js's equivalent test.
-  test('known bug: the server-pre-opened first section needs two clicks to visibly open', async ({ page }) => {
-    test.fail(true, 'Same root cause as the FAQ page: styles.css has no .is-open override for .accordion-panel. See docs/UI_TESTING.md.');
-
+  test('the server-pre-opened first section is already visually open on load, and closes on a single click (Handbook Task 25 fix)', async ({ page }) => {
     await page.goto('/documents-needed');
     const trigger = page.locator('#trigger-doc-0');
     const panel = page.locator('#panel-doc-0');
 
-    await trigger.click();
-    const height = await panel.evaluate((el) => el.getBoundingClientRect().height);
-    expect(height).toBeGreaterThan(0);
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const openHeight = await panel.evaluate((el) => el.getBoundingClientRect().height);
+    expect(openHeight, 'first section should already be visibly open on page load').toBeGreaterThan(0);
+
+    await trigger.click(); // should CLOSE it, not silently no-op
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toHaveCSS('max-height', '0px');
   });
 });

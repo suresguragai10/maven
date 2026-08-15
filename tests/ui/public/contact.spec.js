@@ -43,4 +43,37 @@ test.describe('Contact form validation', () => {
     await expect(errorEl).toBeVisible();
     await expect(errorEl).toContainText(/email/i);
   });
+
+  // Handbook Task 25: the two tests above only ever prove submission is
+  // BLOCKED before any network call — neither exercises the actual
+  // fetch()/showSuccess() path a real valid submission takes. This test
+  // does, but per this task's own "keep validation from submitting to
+  // Formspree during tests" instruction, the real formspree.io endpoint
+  // is intercepted via page.route() and answered with a fake response —
+  // the test proves client.js's own success handling works without ever
+  // reaching the third-party service, in CI or anywhere else.
+  test('a fully valid submission posts to Formspree exactly once and shows the success message (Formspree intercepted, never hit for real)', async ({ page }) => {
+    await page.goto('/contact');
+
+    let formspreeRequests = 0;
+    let capturedBody = null;
+    await page.route('https://formspree.io/**', async (route) => {
+      formspreeRequests++;
+      capturedBody = route.request().postData();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    });
+
+    await page.locator('#f-name').fill('Test User');
+    await page.locator('#f-phone').fill('9800000000');
+    await page.locator('#f-service').selectOption({ index: 1 });
+    await page.locator('#f-message').fill('Test message body for a fully valid submission.');
+    await page.locator('#f-email').fill('test@example.com');
+
+    await page.locator('#inquiryForm button[type="submit"]').click();
+
+    await expect(page.locator('#formResult')).toBeVisible();
+    await expect(page.locator('#formResult')).toContainText(/thank you/i);
+    expect(formspreeRequests, 'exactly one submission to the (intercepted) Formspree endpoint').toBe(1);
+    expect(capturedBody, 'the real Formspree endpoint must never actually be reached during tests').not.toBeNull();
+  });
 });
