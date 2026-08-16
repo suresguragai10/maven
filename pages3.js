@@ -1,5 +1,5 @@
 const data = require('./data');
-const { esc } = require('./escape');
+const { esc, safeUrl } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, accordionItem, industryCard, ctaBand, bulletList,
@@ -121,11 +121,11 @@ function contact() {
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('phone')}</span>
-            <div><h3>Call / WhatsApp</h3><p>${esc(b.mobile)}${b.landline ? `<br>${esc(b.landline)} (office)` : ''}</p></div>
+            <div><h3>Call / WhatsApp</h3><p><a href="${esc(safeUrl(`tel:${b.mobile.replace(/[^\d+]/g, '')}`))}">${esc(b.mobile)}</a>${b.landline ? `<br>${esc(b.landline)} (office)` : ''}</p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('mail')}</span>
-            <div><h3>Email</h3><p>${esc(b.email)}</p></div>
+            <div><h3>Email</h3><p><a href="${esc(safeUrl(`mailto:${b.email}`))}">${esc(b.email)}</a></p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('clock')}</span>

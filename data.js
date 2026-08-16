@@ -69,7 +69,7 @@ const navStructure = [
     key: 'global-outsourcing', label: 'International', href: 'global-outsourcing.html',
     children: [
       { key: 'global-outsourcing', label: 'International Services', href: 'global-outsourcing.html' },
-      { key: 'international-accounting', label: 'Outsourced Accounting & Bookkeeping', href: 'international-accounting.html' },
+      { key: 'international-accounting', label: 'International Accounting', href: 'international-accounting.html' },
       { key: 'virtual-cfo', label: 'Virtual CFO & Management Reporting', href: 'virtual-cfo.html' },
     ],
   },
