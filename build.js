@@ -125,7 +125,7 @@ const pages = [
   },
   {
     file: 'documents-needed.html', activeKey: 'documents-needed', bodyHtml: documentsNeeded(),
-    title: 'Document Checklist for Registration, PAN/VAT & Accounting | Maven Consultancy',
+    title: 'Documents Checklist for Registration, PAN/VAT & Accounting | Maven Consultancy',
     description: 'General document checklists for company registration, PAN/VAT registration, monthly accounting, tax clearance, and project reports in Nepal.',
   },
   {
@@ -136,7 +136,7 @@ const pages = [
   {
     file: 'resources.html', activeKey: 'resources', bodyHtml: resources(),
     title: 'Resources — Guides, Calculators & Reference Links | Maven Consultancy',
-    description: 'Documents checklists, financial calculators, useful government links, and FAQs for businesses in Nepal — curated by Maven Consultancy.',
+    description: 'Document checklists, financial calculators, useful government links, and FAQs for businesses in Nepal — curated by Maven Consultancy.',
   },
   {
     file: 'useful-links.html', activeKey: 'useful-links', bodyHtml: usefulLinks(),

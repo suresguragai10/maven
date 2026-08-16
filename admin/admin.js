@@ -399,7 +399,7 @@
     arr.forEach(function (pg) {
       var row = el('div', 'page-row');
       var name = el('span', 'page-row-label');
-      name.textContent = (pg.label || pg.key) + '  (' + (pg.href || '') + ')';
+      name.textContent = (pg.label || pg.key) + ' (' + (pg.href || '') + ')';
       row.appendChild(name);
       // "hidden" is inverted for the editor: the tick means "show on site".
       row.appendChild(checkboxField('Show in menu', function () { return pg.hidden !== true; }, function (v) { pg.hidden = !v; }));

@@ -167,7 +167,7 @@ function renderFooter() {
           <img class="brand-mark" src="/images/logo-icon.png" alt="" width="40" height="40">
           <span class="brand-text"><span class="brand-name" style="color:#fff">${esc(b.shortName)}</span></span>
         </div>
-        <p>${esc(b.legalName)}. A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
+        <p>${esc(b.legalName)} A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
         ${socialHtml}
         <address style="margin-top:18px">
           <span class="footer-addr-item">${icon('mapPin')}<span>${esc(b.addressLine)}</span></span>
