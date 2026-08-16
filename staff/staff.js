@@ -244,15 +244,68 @@
     pane.insertBefore(row, pane.firstChild);
   }
 
+  // Handbook Task 26: openModal()/closeModal() are the single shared entry
+  // point every "New Work"/"New Client"/etc. form in this app goes
+  // through, so fixing focus behavior here once covers all of them.
+  // Previously the modal had no role="dialog"/aria-modal (see
+  // #modalCard in index.html), no focus trap, no Escape-to-close, and
+  // never moved focus anywhere on open/close -- a keyboard user opening
+  // a modal stayed focused on the trigger button behind it, and closing
+  // it (click-outside was the only way) left focus wherever it happened
+  // to be. modalReturnFocus restores focus to whatever opened the modal,
+  // same "don't strand keyboard focus" principle used for the mobile nav
+  // and desktop dropdowns on the public site.
+  var modalReturnFocus = null;
+  function modalFocusableEls(card) {
+    return Array.prototype.slice.call(card.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ));
+  }
   function openModal(contentEl) {
     var card = qs('#modalCard');
     clear(card);
     card.appendChild(contentEl);
+    // Every modal's content consistently starts with a
+    // <div class="modal-head"><h2>Title</h2>...</div> (see the many
+    // openXModal() functions below) -- reuse that h2 as the dialog's
+    // accessible name instead of inventing a second, separately
+    // maintained title string per modal.
+    var heading = card.querySelector('h2, h3');
+    if (heading) {
+      if (!heading.id) heading.id = 'modal-heading-' + Date.now();
+      card.setAttribute('aria-labelledby', heading.id);
+    } else {
+      card.removeAttribute('aria-labelledby');
+    }
     qs('#modalOverlay').classList.remove('hidden');
+    modalReturnFocus = document.activeElement;
+    var focusable = modalFocusableEls(card);
+    (focusable[0] || card).focus();
   }
-  function closeModal() { qs('#modalOverlay').classList.add('hidden'); }
+  function closeModal() {
+    qs('#modalOverlay').classList.add('hidden');
+    if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') modalReturnFocus.focus();
+    modalReturnFocus = null;
+  }
   qs('#modalOverlay').addEventListener('click', function (e) {
     if (e.target === qs('#modalOverlay')) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (qs('#modalOverlay').classList.contains('hidden')) return;
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (e.key !== 'Tab') return;
+    var card = qs('#modalCard');
+    var focusable = modalFocusableEls(card);
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   });
 
   function field(labelText, inputEl) {
@@ -806,19 +859,33 @@
   // Routing — minimal hash-based routing so the back button and page
   // refresh both land somewhere sensible, without a full router library.
   // ============================================================
+  // Handbook Task 26: move focus to the new page's own <h1> after every
+  // navigation. Every renderXPage()/renderWorkDetail()/etc. already
+  // builds a real h1 (that part was already correct); what was missing
+  // is that swapping #main's content never told anyone focus should move
+  // there too — a screen-reader user clicking a sidebar item got no
+  // indication their location in the app had changed at all. Given a
+  // tabindex so it's programmatically focusable (an h1 isn't focusable
+  // by default), same technique as errorEl on the public contact form.
+  function focusMainHeading() {
+    var h = qs('#main') && qs('#main').querySelector('h1');
+    if (!h) return;
+    if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1');
+    h.focus();
+  }
   window.addEventListener('hashchange', routeFromHash);
   function routeFromHash() {
     var hash = location.hash.replace(/^#/, '');
     if (hash.indexOf('work/') === 0) {
       state.view = 'work-detail';
       state.workId = hash.slice(5);
-      renderWorkDetail(state.workId);
+      renderWorkDetail(state.workId).then(focusMainHeading);
       return;
     }
     if (hash.indexOf('client/') === 0) {
       state.view = 'client-detail';
       state.clientDetailId = hash.slice(7);
-      renderClientDetail(state.clientDetailId);
+      renderClientDetail(state.clientDetailId).then(focusMainHeading);
       return;
     }
     // Handbook Task 18: Firm Work gets its own detail page (not
@@ -827,7 +894,7 @@
     if (hash.indexOf('firmwork/') === 0) {
       state.view = 'firmwork-detail';
       state.workId = hash.slice(9);
-      renderFirmWorkDetail(state.workId);
+      renderFirmWorkDetail(state.workId).then(focusMainHeading);
       return;
     }
     // Search keeps its filters in the URL as a query string (?q=...&status=
@@ -838,12 +905,25 @@
     if (hash === 'search' || hash.indexOf('search?') === 0) {
       state.view = 'search';
       state.searchQuery = hash.indexOf('?') !== -1 ? hash.slice(hash.indexOf('?') + 1) : '';
-      render();
+      renderAndFocus();
       return;
     }
     var known = ['today', 'my-work', 'team', 'since-last-seen', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
-    render();
+    renderAndFocus();
+  }
+  // render() returns a Promise for most views (their renderXPage()
+  // functions are async) but not all (e.g. renderClients/
+  // renderSettingsPage are synchronous) — this only exists to bridge
+  // that difference for routeFromHash's own navigation-focus call above;
+  // render()'s many OTHER call sites (in-place refreshes after a save,
+  // not real navigations) are deliberately untouched, since yanking
+  // focus to the page heading after e.g. checking a checklist box would
+  // be a regression, not a fix.
+  function renderAndFocus() {
+    var result = render();
+    if (result && typeof result.then === 'function') result.then(focusMainHeading);
+    else focusMainHeading();
   }
   function goto(view) { location.hash = view; }
   function gotoWork(id) { location.hash = 'work/' + id; }
@@ -861,7 +941,9 @@
       b.type = 'button';
       b.appendChild(icon(iconName));
       b.appendChild(document.createTextNode(label));
-      b.classList.toggle('is-active', state.view === view || (state.view === 'work-detail' && view === 'today') || (state.view === 'client-detail' && view === 'clients'));
+      var isActive = state.view === view || (state.view === 'work-detail' && view === 'today') || (state.view === 'client-detail' && view === 'clients');
+      b.classList.toggle('is-active', isActive);
+      if (isActive) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
       b.addEventListener('click', function () { goto(view); });
       nav.appendChild(b);
     }

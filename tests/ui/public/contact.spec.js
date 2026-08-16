@@ -21,8 +21,15 @@ test.describe('Contact form validation', () => {
     await expect(errorEl).not.toBeEmpty();
 
     // Accessible: must actually be discoverable by assistive tech, not
-    // just visually present.
+    // just visually present. Handbook Task 26: role="alert" means a
+    // screen reader announces it the moment it's revealed (no separate
+    // aria-live attribute needed — role=alert implies assertive/atomic),
+    // and moving focus onto it gives a keyboard user a sensible next Tab
+    // stop instead of leaving them on the button they just pressed. See
+    // accessibility.spec.js for the per-field aria-invalid assertions.
     await expect(errorEl).not.toHaveAttribute('hidden', '');
+    await expect(errorEl).toHaveAttribute('role', 'alert');
+    await expect(errorEl).toBeFocused();
 
     await expect(page).toHaveURL(/\/contact/);
     expect(networkSubmitFired).toBe(false);

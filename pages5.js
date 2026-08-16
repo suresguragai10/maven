@@ -82,7 +82,7 @@ function incomeTaxPanel() {
   ).join('');
   const fyCount = tables.length;
 
-  return `<div class="calc-panel active" id="calc-tab-tax">
+  return `<div class="calc-panel active" id="calc-tab-tax" role="tabpanel" aria-labelledby="tab-calc-tab-tax" tabindex="0">
     <div class="calc-split">
       <div class="calc-inputs">
         <div class="calc-seg" id="tax-fy-seg" style="grid-template-columns:repeat(${fyCount},1fr)">
@@ -141,7 +141,7 @@ function incomeTaxPanel() {
       <div class="calc-output">
         <span class="calc-fy-badge" id="tax-out-fy"></span>
         <p class="calc-big-label">Total Annual Tax</p>
-        <div class="calc-big" id="tax-out-annual">NPR 0</div>
+        <div class="calc-big" id="tax-out-annual" aria-live="polite">NPR 0</div>
         <p class="calc-big-sub" id="tax-out-monthly">NPR 0 / month</p>
 
         <div class="calc-out-row"><span>Gross annual income</span><strong id="tax-out-gross">NPR 0</strong></div>
@@ -167,7 +167,7 @@ function vatPanel() {
   const calc = data.calculators || {};
   const vatRate = calc.vatRate != null ? calc.vatRate : 13;
   const vatNote = esc(calc.vatNote || "Nepal's standard VAT rate is " + vatRate + "%.");
-  return `<div class="calc-panel" id="calc-tab-vat">
+  return `<div class="calc-panel" id="calc-tab-vat" role="tabpanel" aria-labelledby="tab-calc-tab-vat" tabindex="0">
     <div class="calc-simple">
       <h2>VAT Calculator (${vatRate}%)</h2>
       <p class="calc-desc">Add VAT to a base amount, or extract the VAT portion from a VAT-inclusive total. Updates as you type.</p>
@@ -187,7 +187,7 @@ function vatPanel() {
       <div class="calc-results">
         <div class="calc-result-row"><span>Amount excluding VAT</span><strong id="vat-base">NPR 0</strong></div>
         <div class="calc-result-row"><span>VAT (${vatRate}%)</span><strong id="vat-tax">NPR 0</strong></div>
-        <div class="calc-result-row total"><span>Amount including VAT</span><strong id="vat-total">NPR 0</strong></div>
+        <div class="calc-result-row total"><span>Amount including VAT</span><strong id="vat-total" aria-live="polite">NPR 0</strong></div>
       </div>
       <p class="calc-note">${vatNote}</p>
     </div>
@@ -201,7 +201,7 @@ function tdsPanel() {
   const options = types.map((t) =>
     `<option value="${esc(String(t.rate))}" data-label="${esc(t.note || t.label)}">${esc(t.label)}</option>`
   ).join('');
-  return `<div class="calc-panel" id="calc-tab-tds">
+  return `<div class="calc-panel" id="calc-tab-tds" role="tabpanel" aria-labelledby="tab-calc-tab-tds" tabindex="0">
     <div class="calc-simple">
       <h2>TDS Calculator</h2>
       <p class="calc-desc">Estimate tax deducted at source on common payment types. TDS is calculated on the VAT-exclusive amount.</p>
@@ -219,7 +219,7 @@ function tdsPanel() {
       </div>
       <div class="calc-results">
         <div class="calc-result-row"><span>TDS rate applied</span><strong id="tds-rate">—</strong></div>
-        <div class="calc-result-row"><span>TDS to deduct &amp; deposit</span><strong id="tds-tax">NPR 0</strong></div>
+        <div class="calc-result-row"><span>TDS to deduct &amp; deposit</span><strong id="tds-tax" aria-live="polite">NPR 0</strong></div>
         <div class="calc-result-row total"><span>Net payable to recipient</span><strong id="tds-net">NPR 0</strong></div>
       </div>
       <p class="calc-note">${tdsNote} <a href="${internalHref('contact.html')}">Confirm the right treatment with Maven</a> before deducting.</p>
@@ -228,7 +228,7 @@ function tdsPanel() {
 }
 
 function emiPanel() {
-  return `<div class="calc-panel" id="calc-tab-emi">
+  return `<div class="calc-panel" id="calc-tab-emi" role="tabpanel" aria-labelledby="tab-calc-tab-emi" tabindex="0">
     <div class="calc-simple">
       <h2>Loan EMI Calculator</h2>
       <p class="calc-desc">Estimate your equal monthly installment for a bank loan. Updates as you type.</p>
@@ -247,13 +247,13 @@ function emiPanel() {
         </div>
       </div>
       <div class="calc-results">
-        <div class="calc-result-row total"><span>Monthly EMI</span><strong id="emi-monthly">NPR 0</strong></div>
+        <div class="calc-result-row total"><span>Monthly EMI</span><strong id="emi-monthly" aria-live="polite">NPR 0</strong></div>
         <div class="calc-result-row"><span>Total Interest Payable</span><strong id="emi-interest">NPR 0</strong></div>
         <div class="calc-result-row"><span>Total Payment (Principal + Interest)</span><strong id="emi-total">NPR 0</strong></div>
       </div>
 
       <div class="emi-sched-actions">
-        <button type="button" id="emi-toggle-sched" class="btn btn-outline btn-sm" disabled>Show Full Schedule</button>
+        <button type="button" id="emi-toggle-sched" class="btn btn-outline btn-sm" aria-expanded="false" aria-controls="emi-sched-wrap" disabled>Show Full Schedule</button>
         <button type="button" id="emi-export-sched" class="btn btn-primary btn-sm" hidden>Export to CSV</button>
       </div>
 
@@ -289,11 +289,19 @@ function calculators() {
     <div class="container" style="max-width:960px">
       ${calcStyles}
 
-      <div class="calc-tabs" role="tablist">
-        <button type="button" class="calc-tab active" data-target="calc-tab-tax">Income Tax</button>
-        <button type="button" class="calc-tab" data-target="calc-tab-vat">VAT</button>
-        <button type="button" class="calc-tab" data-target="calc-tab-tds">TDS</button>
-        <button type="button" class="calc-tab" data-target="calc-tab-emi">Loan EMI</button>
+      <!-- Handbook Task 26: a complete WAI-ARIA Tabs pattern (role=tab/
+      aria-selected/aria-controls on each button, role=tabpanel/
+      aria-labelledby on each panel, roving tabindex + arrow-key
+      navigation in client.js) -- role="tablist" existed before this task
+      with no matching tab/tabpanel roles or keyboard support, which is
+      arguably worse than plain buttons since assistive tech announcing
+      "tab list" sets an expectation (arrow-key navigation) nothing here
+      delivered. -->
+      <div class="calc-tabs" role="tablist" aria-label="Calculator type">
+        <button type="button" role="tab" id="tab-calc-tab-tax" class="calc-tab active" data-target="calc-tab-tax" aria-selected="true" aria-controls="calc-tab-tax" tabindex="0">Income Tax</button>
+        <button type="button" role="tab" id="tab-calc-tab-vat" class="calc-tab" data-target="calc-tab-vat" aria-selected="false" aria-controls="calc-tab-vat" tabindex="-1">VAT</button>
+        <button type="button" role="tab" id="tab-calc-tab-tds" class="calc-tab" data-target="calc-tab-tds" aria-selected="false" aria-controls="calc-tab-tds" tabindex="-1">TDS</button>
+        <button type="button" role="tab" id="tab-calc-tab-emi" class="calc-tab" data-target="calc-tab-emi" aria-selected="false" aria-controls="calc-tab-emi" tabindex="-1">Loan EMI</button>
       </div>
 
       ${incomeTaxPanel()}

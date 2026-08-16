@@ -387,6 +387,30 @@
       form.reset();
     };
 
+    // Handbook Task 26: errorEl already has role="alert" (see pages3.js)
+    // so setting its text announces it to a screen reader as soon as
+    // it's revealed -- but that alone left a keyboard/screen-reader
+    // user's focus sitting wherever it was (usually the Send button),
+    // with no programmatic link from the message back to which
+    // field(s) it's about. clearFieldErrors()/markFieldsInvalid() add
+    // aria-invalid + aria-describedby to the actual offending field(s)
+    // and errorEl.focus() moves focus to the (now-associated) message
+    // itself, so both a screen-reader announcement AND a sensible next
+    // Tab stop happen on a blocked submission, not just a visual cue.
+    var invalidatableIds = ['f-name', 'f-phone', 'f-service', 'f-message', 'f-email'];
+    var clearFieldErrors = function () {
+      invalidatableIds.forEach(function (id) {
+        var fieldEl = document.getElementById(id);
+        if (fieldEl) { fieldEl.removeAttribute('aria-invalid'); fieldEl.removeAttribute('aria-describedby'); }
+      });
+    };
+    var markFieldsInvalid = function (ids) {
+      ids.forEach(function (id) {
+        var fieldEl = document.getElementById(id);
+        if (fieldEl) { fieldEl.setAttribute('aria-invalid', 'true'); fieldEl.setAttribute('aria-describedby', 'formError'); }
+      });
+    };
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var fd = new FormData(form);
@@ -407,6 +431,9 @@
         if (errorEl) {
           errorEl.textContent = 'Please fill in your name, phone, service required, and message before sending.';
           errorEl.hidden = false;
+          clearFieldErrors();
+          markFieldsInvalid([!name && 'f-name', !phone && 'f-phone', !service && 'f-service', !message && 'f-message'].filter(Boolean));
+          errorEl.focus({ preventScroll: true });
           errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         return;
@@ -415,11 +442,15 @@
         if (errorEl) {
           errorEl.textContent = 'That email address doesn\'t look valid. Please check it or leave it blank.';
           errorEl.hidden = false;
+          clearFieldErrors();
+          markFieldsInvalid(['f-email']);
+          errorEl.focus({ preventScroll: true });
           errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         return;
       }
       if (errorEl) errorEl.hidden = true;
+      clearFieldErrors();
 
       var summary = buildSummary(get);
       var cfg = window.MAVEN || {};
@@ -498,16 +529,41 @@
     });
   };
 
-  // ---- Tab switching ----
+  // ---- Tab switching (Handbook Task 26: complete WAI-ARIA Tabs pattern —
+  // role="tablist" existed before this task with no matching tab/tabpanel
+  // roles, aria-selected, or keyboard support, which is worse than plain
+  // buttons since AT announcing "tab list" implies arrow-key navigation
+  // that didn't exist. Roving tabindex + Left/Right/Home/End now match
+  // what the existing click behavior already does: immediate activation.) ----
   var tabBar = document.querySelector('.calc-tabs');
   if (tabBar) {
-    tabBar.querySelectorAll('.calc-tab').forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        tabBar.querySelectorAll('.calc-tab').forEach(function (t) { t.classList.remove('active'); });
-        tab.classList.add('active');
-        document.querySelectorAll('.calc-panel').forEach(function (p) { p.classList.remove('active'); });
-        var panel = document.getElementById(tab.getAttribute('data-target'));
-        if (panel) panel.classList.add('active');
+    var calcTabs = Array.prototype.slice.call(tabBar.querySelectorAll('.calc-tab'));
+    var activateCalcTab = function (tab) {
+      calcTabs.forEach(function (t) {
+        var isActive = t === tab;
+        t.classList.toggle('active', isActive);
+        t.setAttribute('aria-selected', String(isActive));
+        t.tabIndex = isActive ? 0 : -1;
+      });
+      document.querySelectorAll('.calc-panel').forEach(function (p) { p.classList.remove('active'); });
+      var panel = document.getElementById(tab.getAttribute('data-target'));
+      if (panel) panel.classList.add('active');
+    };
+    calcTabs.forEach(function (tab) {
+      tab.addEventListener('click', function () { activateCalcTab(tab); });
+      tab.addEventListener('keydown', function (e) {
+        var idx = calcTabs.indexOf(tab);
+        var newIdx = null;
+        if (e.key === 'ArrowRight') newIdx = (idx + 1) % calcTabs.length;
+        else if (e.key === 'ArrowLeft') newIdx = (idx - 1 + calcTabs.length) % calcTabs.length;
+        else if (e.key === 'Home') newIdx = 0;
+        else if (e.key === 'End') newIdx = calcTabs.length - 1;
+        if (newIdx !== null) {
+          e.preventDefault();
+          var newTab = calcTabs[newIdx];
+          activateCalcTab(newTab);
+          newTab.focus();
+        }
       });
     });
   }
@@ -709,7 +765,7 @@
       if (!valid) {
         setText('emi-monthly', 'NPR 0'); setText('emi-interest', 'NPR 0'); setText('emi-total', 'NPR 0');
         emiSchedule = null; emiLastInputs = null;
-        if (toggleBtn) { toggleBtn.disabled = true; }
+        if (toggleBtn) { toggleBtn.disabled = true; toggleBtn.setAttribute('aria-expanded', 'false'); }
         if (exportBtn) { exportBtn.hidden = true; }
         if (schedWrap) { schedWrap.hidden = true; }
         if (toggleBtn) { toggleBtn.textContent = 'Show Full Schedule'; }
@@ -742,10 +798,12 @@
           schedWrap.hidden = false;
           if (exportBtn) exportBtn.hidden = false;
           toggleBtn.textContent = 'Hide Full Schedule';
+          toggleBtn.setAttribute('aria-expanded', 'true');
         } else {
           schedWrap.hidden = true;
           if (exportBtn) exportBtn.hidden = true;
           toggleBtn.textContent = 'Show Full Schedule';
+          toggleBtn.setAttribute('aria-expanded', 'false');
         }
       });
     }

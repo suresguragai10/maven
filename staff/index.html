@@ -22,9 +22,18 @@
   button{font:inherit;cursor:pointer;}
   input,textarea,select{font:inherit;width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--ink);}
   input:disabled,textarea:disabled,select:disabled{background:var(--mist-dark);color:var(--ink-soft);}
-  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold-500);}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--gold-500);outline-offset:1px;border-color:var(--gold-500);}
+  /* Handbook Task 26: every other interactive element (buttons, links,
+     task rows) relied on the browser's own default focus ring here — this
+     was the one place it was explicitly suppressed and replaced with only
+     a border-color change, which isn't reliably visible enough on its own
+     (e.g. thin borders, or a <select>'s browser-drawn chrome). */
   textarea{resize:vertical;}
   .hidden{display:none !important;}
+
+  /* Handbook Task 26 */
+  .skip-link{position:absolute;left:-999px;top:0;background:var(--navy-900);color:#fff;padding:10px 16px;z-index:200;border-radius:0 0 8px 0;}
+  .skip-link:focus{left:0;}
 
   /* ---- Login screen ---- */
   #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -252,12 +261,14 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
+
 <div id="loginScreen">
   <div class="login-card">
     <div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Consultancy</span></div>
     <h1>Work Desk</h1>
     <p class="sub">Sign in with the email and password you were given.</p>
-    <div id="loginMsg"></div>
+    <div id="loginMsg" role="alert"></div>
     <div class="f">
       <label for="in-email">Email</label>
       <input id="in-email" type="email" autocomplete="username">
@@ -266,7 +277,7 @@
       <label for="in-password">Password</label>
       <input id="in-password" type="password" autocomplete="current-password">
     </div>
-    <button class="btn btn-block" id="loginBtn">Sign In</button>
+    <button class="btn btn-block" id="loginBtn" type="button">Sign In</button>
     <p class="f-hint" style="margin-top:14px;text-align:center">Don't have an account? Ask your admin to invite you.</p>
   </div>
 </div>
@@ -280,17 +291,17 @@
       <span id="notifBadge" class="notif-badge hidden">0</span>
     </button>
     <div class="who"><strong id="whoName">—</strong><span id="whoRole">—</span></div>
-    <button class="btn btn-outline btn-sm" id="logoutBtn">Sign Out</button>
+    <button class="btn btn-outline btn-sm" id="logoutBtn" type="button">Sign Out</button>
   </header>
   <div id="layout">
-    <nav id="sidebar"></nav>
+    <nav id="sidebar" aria-label="Primary"></nav>
     <main id="main"></main>
   </div>
 </div>
 <div id="notifPanel" class="notif-panel hidden"></div>
 
-<div id="toast" class="hidden"></div>
-<div id="modalOverlay" class="hidden"><div id="modalCard"></div></div>
+<div id="toast" class="hidden" role="status" aria-live="polite"></div>
+<div id="modalOverlay" class="hidden"><div id="modalCard" role="dialog" aria-modal="true" tabindex="-1"></div></div>
 
 <script src="supabase.js"></script>
 <script src="staff.js"></script>

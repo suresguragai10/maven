@@ -475,7 +475,7 @@ body.nav-open { overflow: hidden; }
 .industry-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .industry-card-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
 .industry-card-icon .ic { width: 22px; height: 22px; }
-.industry-card h3 { font-size: 1.05rem; margin: 0 0 8px; }
+.industry-card h2 { font-size: 1.05rem; margin: 0 0 8px; }
 .industry-card p { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
 
 .industry-card-toggle {
@@ -521,6 +521,7 @@ body.nav-open { overflow: hidden; }
 /* ---------- Accordion ---------- */
 .accordion { display: flex; flex-direction: column; gap: 12px; }
 .accordion-item { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.accordion-heading { margin: 0; font: inherit; }
 .accordion-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; font-weight: 700; font-size: 1rem; text-align: left; color: var(--navy-900); }
 .accordion-trigger .ic-chevron { width: 20px; height: 20px; color: var(--gold-700); flex-shrink: 0; transition: transform 0.2s ease; }
 .accordion-item.is-open .ic-chevron { transform: rotate(180deg); }
@@ -585,7 +586,7 @@ body.nav-open { overflow: hidden; }
 .contact-info-item { display: flex; gap: 14px; align-items: flex-start; }
 .contact-info-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--navy-950); color: var(--gold-500); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .contact-info-icon .ic { width: 21px; height: 21px; }
-.contact-info-item h4 { font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--navy-800); margin-bottom: 3px; }
+.contact-info-item h3 { font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--navy-800); margin-bottom: 3px; }
 .contact-info-item p { margin: 0; font-size: 0.96rem; }
 .contact-map { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .contact-map iframe { width: 100%; height: 320px; border: 0; display: block; }

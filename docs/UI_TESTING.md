@@ -259,6 +259,110 @@ test itself, not something Task 25 introduced. Fixed by asserting on the
 inline `style.maxHeight` value (the synchronous target `client.js` just
 set) instead of the animated, timing-dependent rendered height.
 
+## Fixed by Handbook Task 26 (accessibility regression pass)
+
+`axe-core` was deliberately NOT added — the task allowed either axe-core
+"if the dependency/maintenance cost is justified" or strong Playwright
+semantic assertions plus a manual keyboard checklist, and this repo has
+added zero new dependencies all session. New coverage lives in
+`tests/ui/public/accessibility.spec.js`:
+
+- **Skip link**: real `<a href="#main">`, first in the DOM, verified as
+  the first real Tab stop on Chromium/Firefox. Skipped on WebKit — its
+  default Tab order excludes plain links (matching real desktop Safari's
+  own default "Tab moves between form controls only" setting), so
+  `keyboard.press('Tab')` never reaches an anchor-only skip link there;
+  this is an engine/OS default, not something site markup can change.
+- **Landmarks**: exactly one `<main>`; the mobile nav overlay is now a
+  real `<nav aria-label="Mobile">` (was a plain unlabeled `<div>`),
+  distinct from the desktop `<nav aria-label="Primary">`. Header/footer
+  toggle buttons (`.nav-toggle`, `.mobile-nav-close`, `.back-to-top`) now
+  all declare `type="button"` — previously only the Task-25-era buttons
+  did.
+- **Heading structure**: `accordionItem()` (`ui.js`) now wraps its
+  trigger button in a real heading element instead of a bare `<span>`, so
+  a screen-reader user browsing by heading finds each FAQ/Documents-
+  Needed/support-area item directly. The level is caller-supplied
+  (`headingLevel`, default `h3`) since the correct level depends on
+  what precedes the accordion on that page — `h2` for FAQ/Documents
+  Needed (no other h2 exists yet), `h3` everywhere a `sectionHead()`
+  already provided one (every NFRS/IFRS-style support accordion).
+  `industryCard()`'s card name and `teamCard()`'s name both moved from
+  h3 to h2 — both pages had no h2 between their h1 and that h3 grid, a
+  genuine skip; `.contact-info-item`'s four h4s became h3 for the same
+  reason (Contact's h2 "Talk to us..." was followed directly by h4s with
+  nothing at h3 until "Send an Inquiry", document order later).
+- **Contact form errors**: `#formError` now has `role="alert"`, and a
+  blocked submission moves focus onto it (`errorEl.focus()`) instead of
+  only `scrollIntoView()`-ing it — a keyboard/screen-reader user
+  previously got no indication a submission failed unless they happened
+  to tab back onto the (visually) revealed message. The actual offending
+  field(s) also get `aria-invalid="true"` + `aria-describedby="formError"`,
+  cleared again once the form is valid.
+- **Calculators page**: the tab bar's `role="tablist"` existed before
+  this task with no matching `role="tab"`/`aria-selected`/`aria-controls`
+  or keyboard support — arguably worse than plain buttons, since
+  assistive tech announcing "tab list" implies arrow-key navigation that
+  didn't exist. Completed the pattern (roving `tabindex`, `role="tabpanel"`,
+  Left/Right/Home/End navigation matching the existing immediate-
+  activation click behavior). The EMI schedule toggle (a bespoke
+  disclosure not built on `accordionItem()`) gained
+  `aria-expanded`/`aria-controls`, kept in sync in `client.js`. The four
+  calculators' headline results (`tax-out-annual`, `vat-total`, `tds-tax`,
+  `emi-monthly`) are now `aria-live="polite"` — deliberately just the one
+  headline figure per calculator, not the whole breakdown/results block,
+  so a screen reader isn't flooded re-reading the full table on every
+  keystroke.
+
+**Work Desk (`staff/`) — no dedicated Playwright suite** (the mock-Supabase
+harness from Task 17 is heavier machinery than this pass's shell-level
+changes warranted): a skip link, `<nav id="sidebar" aria-label="Primary">`,
+`aria-current="page"` on the active sidebar item, `role="alert"` on the
+login error box, and a fixed `outline:none` on all form-field `:focus`
+states (a real, previously-unflagged gap — every OTHER interactive
+element relied on the browser's own default focus ring; this was the one
+place it was explicitly suppressed). `openModal()`/`closeModal()` — the
+single shared entry point every "New Work"/"New Client"/etc. form goes
+through — gained `role="dialog"`/`aria-modal`, a dynamic `aria-labelledby`
+(reusing each modal's existing `<h2>` in its `.modal-head`), a Tab focus
+trap, Escape-to-close, and return-focus-to-trigger on close, matching the
+pattern already used for the public site's mobile nav and desktop
+dropdowns. Route changes now move focus to the new page's `<h1>`
+(`routeFromHash` → `focusMainHeading()`/`renderAndFocus()`) — the many
+OTHER `render()` call sites used for in-place refreshes after a save
+(not real navigations) are deliberately untouched, since yanking focus
+to the page heading after e.g. checking a checklist box would be a
+regression, not a fix. Verified via `node --check`, `node build.js`, and
+manual code review only — see the manual keyboard checklist below for
+what still needs a human pass with real credentials.
+
+**Found but deliberately NOT fixed this task (flagged, not silently
+skipped)**: work-item list rows (`workRow`/`firmWorkRow`/`attentionRow`/
+`notifRow` in `staff.js`, used across Today/My Work/Team/All Work/Search/
+Since Last Seen) are plain clickable `<div>`s with no `tabindex`, `role`,
+or keyboard handler — a keyboard-only user cannot open a work item from
+any list screen at all. This is real and significant, but touches 10+
+call sites across the app's core daily-use screens, well beyond "login/
+basic application shell" scope; fixing it safely deserves its own task
+rather than a scope-expanding side-fix here. See the handbook task
+sequence memory for the explicit decision this needs.
+
+### Manual keyboard checklist (Work Desk — needs a human pass with real
+### credentials; not exercised by any automated test in this repo)
+
+- [ ] Tab from the login form through Sign In reaches the app shell in a
+      sensible order; a failed login's error is announced (role="alert").
+- [ ] Skip link (first Tab press) jumps to `#main`.
+- [ ] Sidebar items are reachable by Tab; the active one has a visible
+      focus ring (the `outline:none` fix above) and `aria-current="page"`.
+- [ ] Opening any "New X" modal traps Tab inside it, Escape closes it,
+      and focus returns to the button that opened it.
+- [ ] Clicking a sidebar item moves focus to the new page's heading
+      (confirm with a screen reader, not just visually).
+- [ ] Known gap: work-item list rows are NOT keyboard-openable (see
+      above) — confirm this still matches the flagged, not-yet-fixed
+      status before relying on this checklist as a completeness signal.
+
 ## CI
 
 Not yet wired into `.github/workflows/deploy.yml` — this task built the

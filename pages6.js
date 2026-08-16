@@ -17,9 +17,13 @@ function teamCard(m) {
   const avatar = m.photo
     ? `<div class="team-card-avatar"><img src="${esc(safeUrl(m.photo))}" alt="${esc(m.name)}" loading="lazy"></div>`
     : `<div class="team-card-avatar" aria-hidden="true">${initials(m.name)}</div>`;
+  // Handbook Task 26: h2, not h3 -- team() has no sectionHead()-style h2
+  // between the page's h1 and this grid, so h3 here was a genuine
+  // heading-level skip. .team-card-name is styled by class, not tag, so
+  // this changes no visual output.
   return `<article class="team-card reveal">
     ${avatar}
-    <h3 class="team-card-name">${esc(m.name)}</h3>
+    <h2 class="team-card-name">${esc(m.name)}</h2>
     ${m.role ? `<p class="team-card-role">${esc(m.role)}</p>` : ''}
     ${loc}
     ${bio}

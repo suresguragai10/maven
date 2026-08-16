@@ -12,6 +12,10 @@ function documentsNeeded() {
     headingHtml: esc(g.title),
     bodyHtml: bulletList(g.items),
     open: i === 0,
+    // Handbook Task 26: h2 -- no sectionHead() (which itself renders an
+    // h2) precedes this accordion, so the default h3 would skip a level
+    // straight from the page's h1.
+    headingLevel: 'h2',
   })).join('');
 
   return `
@@ -75,6 +79,9 @@ function faq() {
     headingHtml: esc(f.q),
     bodyHtml: `<p>${esc(f.a)}</p>`,
     open: i === 0,
+    // Handbook Task 26: same reasoning as documentsNeeded() above -- no
+    // preceding h2 on this page.
+    headingLevel: 'h2',
   })).join('');
 
   return `
@@ -110,19 +117,19 @@ function contact() {
         <div class="contact-info-list">
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('mapPin')}</span>
-            <div><h4>Office</h4><p>${esc(b.addressLine)}<br><span class="tag-note">${esc(b.addressNote)}</span></p></div>
+            <div><h3>Office</h3><p>${esc(b.addressLine)}<br><span class="tag-note">${esc(b.addressNote)}</span></p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('phone')}</span>
-            <div><h4>Call / WhatsApp</h4><p>${esc(b.mobile)}${b.landline ? `<br>${esc(b.landline)} (office)` : ''}</p></div>
+            <div><h3>Call / WhatsApp</h3><p>${esc(b.mobile)}${b.landline ? `<br>${esc(b.landline)} (office)` : ''}</p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('mail')}</span>
-            <div><h4>Email</h4><p>${esc(b.email)}</p></div>
+            <div><h3>Email</h3><p>${esc(b.email)}</p></div>
           </div>
           <div class="contact-info-item">
             <span class="contact-info-icon">${icon('clock')}</span>
-            <div><h4>Hours</h4><p>${esc(b.hours)}</p></div>
+            <div><h3>Hours</h3><p>${esc(b.hours)}</p></div>
           </div>
         </div>
         <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to send an inquiry.')}" target="_blank" rel="noopener">${icon('whatsapp')} Chat on WhatsApp</a>
@@ -135,7 +142,7 @@ function contact() {
         <div class="service-card" style="padding:32px">
           <h3 style="margin-bottom:6px">Send an Inquiry</h3>
           <p class="tag-note" style="margin-bottom:22px">We'll confirm exactly what your business needs before you send any documents.</p>
-          <div id="formError" class="form-error" hidden></div>
+          <div id="formError" class="form-error" role="alert" tabindex="-1" hidden></div>
           <form id="inquiryForm" novalidate>
             <!-- Honeypot: hidden from humans, tempting to bots. Real users leave it empty. -->
             <div class="hp-field" aria-hidden="true">

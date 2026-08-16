@@ -107,9 +107,15 @@ function industryCard(ind, i) {
         <a class="btn btn-outline btn-sm" href="${data.whatsappHref(`Hello Maven, I would like to ask about accounting support for my business (${ind.name}).`)}" target="_blank" rel="noopener">${icon('whatsapp')} Ask About This Industry</a>
       </div>
     </div>` : '';
+  // Handbook Task 26: h2, not h3 -- industryCard() is only ever used on
+  // the standalone Industries page (verified: single call site), which
+  // has no other h2 before the card grid, so h1 -> h3 was a genuine
+  // heading-level skip. Each card is effectively its own top-level
+  // section on that page, so h2 is also the semantically correct level,
+  // not just the numerically convenient one.
   return `<article class="industry-card reveal">
     <span class="industry-card-icon">${icon(ind.icon)}</span>
-    <h3>${esc(ind.name)}</h3>
+    <h2>${esc(ind.name)}</h2>
     ${ind.description ? `<p style="flex:1">${esc(ind.description)}</p>` : ''}
     ${detail}
   </article>`;
@@ -152,7 +158,9 @@ function statRow(stats) {
   </div>`;
 }
 
-function accordionItem({ id, headingHtml, bodyHtml, open = false }) {
+function accordionItem({
+  id, headingHtml, bodyHtml, open = false, headingLevel = 'h3',
+}) {
   // headingHtml/bodyHtml are assembled by the caller; callers pass already-escaped
   // CMS text (see pages3.js faq) or code-built markup.
   //
@@ -171,11 +179,24 @@ function accordionItem({ id, headingHtml, bodyHtml, open = false }) {
   // inert on a closed panel keeps its contents (any links inside an
   // answer) out of Tab order while visually hidden -- collapsed
   // descendants must not be keyboard-focusable.
+  //
+  // Handbook Task 26: the trigger button is now wrapped in a real heading
+  // element (the standard WAI-ARIA accordion pattern) so a screen-reader
+  // user browsing by heading can find each question/item directly,
+  // instead of jumping straight from the page's h1 to whatever heading
+  // happens to follow the accordion. headingLevel is caller-supplied
+  // because the correct level depends on what precedes the accordion on
+  // that particular page (h2 when there's no other h2 yet, e.g. FAQ; h3
+  // when a sectionHead() already provided one, e.g. every NFRS/IFRS-style
+  // support-area accordion).
+  const Heading = headingLevel;
   return `<div class="accordion-item${open ? ' is-open' : ''}">
-    <button type="button" class="accordion-trigger" aria-expanded="${open}" aria-controls="panel-${id}" id="trigger-${id}">
-      <span>${headingHtml}</span>
-      ${icon('chevronDown', 'ic-chevron')}
-    </button>
+    <${Heading} class="accordion-heading">
+      <button type="button" class="accordion-trigger" aria-expanded="${open}" aria-controls="panel-${id}" id="trigger-${id}">
+        <span>${headingHtml}</span>
+        ${icon('chevronDown', 'ic-chevron')}
+      </button>
+    </${Heading}>
     <div class="accordion-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:${open ? 'none' : '0'}"${open ? '' : ' inert'}>
       <div class="accordion-panel-inner">${bodyHtml}</div>
     </div>

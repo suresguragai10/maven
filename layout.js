@@ -59,17 +59,17 @@ function renderMobileNav(activeKey) {
     }
     return `<li><a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a></li>`;
   }).join('');
-  return `<div class="mobile-nav" id="mobileNav">
+  return `<nav class="mobile-nav" id="mobileNav" aria-label="Mobile">
     <div class="mobile-nav-top">
       <span class="brand-name" style="color:#fff">${esc(data.brand.shortName)}</span>
-      <button class="mobile-nav-close" aria-label="Close menu">${icon('close')}</button>
+      <button type="button" class="mobile-nav-close" aria-label="Close menu">${icon('close')}</button>
     </div>
     <ul>${items}</ul>
     <div class="mobile-nav-cta">
       <a class="btn btn-primary" href="${internalHref('contact.html')}">Book Free Consultation</a>
       <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to ask about your services.')}" target="_blank" rel="noopener">${icon('whatsapp')} WhatsApp Us</a>
     </div>
-  </div>`;
+  </nav>`;
 }
 
 function renderHeader(activeKey) {
@@ -96,7 +96,7 @@ function renderHeader(activeKey) {
       <div class="header-cta">
         <a class="btn btn-primary btn-sm" href="${internalHref('contact.html')}">Book Free Consultation</a>
       </div>
-      <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">${icon('menu')}</button>
+      <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">${icon('menu')}</button>
     </div>
   </header>
   ${renderMobileNav(activeKey)}`;
@@ -190,7 +190,7 @@ function renderFooter() {
     </div>
   </footer>
   <a class="whatsapp-float" href="${data.whatsappHref('Hello Maven, I would like to ask about your services.')}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">${icon('whatsapp')}</a>
-  <button class="back-to-top" aria-label="Back to top">${icon('arrowUp')}</button>`;
+  <button type="button" class="back-to-top" aria-label="Back to top">${icon('arrowUp')}</button>`;
 }
 
 function jsonLd() {
