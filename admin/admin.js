@@ -5,7 +5,13 @@
   'use strict';
 
   var CONTENT_PATH = 'content/site.yaml';
-  var state = { owner: '', repo: '', branch: 'main', token: '', sha: null, content: null, dirty: false };
+  // originalContent: a snapshot of content exactly as last loaded/saved —
+  // never mutated by the form editors (only state.content is). Used to
+  // compute the pre-save "what actually changed" summary (Handbook Task
+  // 30) by diffing against the live, edited state.content.
+  var state = { owner: '', repo: '', branch: 'main', token: '', sha: null, content: null, originalContent: null, dirty: false };
+
+  function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
   // ---------- utils ----------
   function b64DecodeUtf8(b64) {
@@ -43,6 +49,13 @@
   }
 
   // ---------- GitHub API ----------
+  // Handbook Task 30: the thrown Error now carries the real HTTP status
+  // (err.status) alongside the message — previously only GitHub's text
+  // message survived, so a stale-SHA conflict (409) and a malformed-body
+  // rejection (422) were indistinguishable from any other failure once
+  // they reached the save handler. Nothing here logs state.token or any
+  // header — only the parsed JSON body and status code ever leave this
+  // function.
   function ghApi(path, opts) {
     opts = opts || {};
     var headers = Object.assign({
@@ -54,7 +67,9 @@
         return res.json().catch(function () { return {}; }).then(function (data) {
           if (!res.ok) {
             var msg = (data && data.message) || (res.status + ' ' + res.statusText);
-            throw new Error(msg);
+            var err = new Error(msg);
+            err.status = res.status;
+            throw err;
           }
           return data;
         });
@@ -67,6 +82,14 @@
       state.sha = data.sha;
       var text = b64DecodeUtf8(data.content);
       state.content = jsyaml.load(text);
+      // state.originalContent is snapshotted at the END of renderForm()
+      // instead of here — renderForm() defensively fills in missing
+      // sub-objects/arrays (e.g. c.seo[file] = {title:'',description:''}
+      // for every page) as a side effect of building the UI, and that
+      // normalization must already be reflected in BOTH originalContent
+      // and content before any diff is computed, or every one of those
+      // auto-filled empty fields would show up as a false "changed" line
+      // the very first time Save is clicked, even with zero real edits.
       return state.content;
     });
   }
@@ -83,6 +106,7 @@
     return ghApi(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (data) {
         state.sha = data.content.sha;
+        state.originalContent = deepClone(state.content);
       });
   }
 
@@ -629,8 +653,37 @@
   }
   function slugFromFilename(name) { return slugify(name.replace(/\.md$/i, '')); }
 
+  // Handbook Task 30: whether the Blog PAGE itself is hidden from the site
+  // menu/footer (see "Pages: Hide & Headings") is a completely separate
+  // fact from whether a given post file exists in content/blog/ — a post
+  // can be saved to GitHub while the page that would show it is still
+  // hidden. Every "post saved" message below checks this live, so it
+  // never implies public visibility that hasn't actually been turned on.
+  function isBlogPageHidden() {
+    var pages = (state.content && state.content.pages) || [];
+    var pg = pages.filter(function (p) { return p && p.key === 'blog'; })[0];
+    return !pg || pg.hidden === true;
+  }
+
   function blogEditor() {
     var wrap = el('div');
+    var visNote = el('p', 'desc');
+    visNote.id = 'blogVisibilityNote';
+    function refreshVisNote() {
+      if (isBlogPageHidden()) {
+        visNote.innerHTML = '';
+        visNote.textContent = 'Blog page is currently HIDDEN from the site menu — saved posts will not be publicly visible until you tick "Show in menu" for Blog under ';
+        var a = el('a'); a.href = '#sec-pages'; a.textContent = 'Pages: Hide & Headings';
+        visNote.appendChild(a);
+        visNote.appendChild(document.createTextNode('.'));
+        visNote.style.color = 'var(--red)'; visNote.style.fontWeight = '700';
+      } else {
+        visNote.textContent = 'Blog page is currently shown in the site menu — saved posts become publicly visible once the automatic deploy finishes.';
+        visNote.style.color = ''; visNote.style.fontWeight = '';
+      }
+    }
+    refreshVisNote();
+    wrap.appendChild(visNote);
     var addBtn = el('button', 'btn-add'); addBtn.type = 'button'; addBtn.textContent = '+ Write New Post';
     addBtn.addEventListener('click', function () { showForm(null); });
     wrap.appendChild(addBtn);
@@ -690,12 +743,26 @@
         var text = frontmatter + (post.body || '');
         saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
         ghPutFile(path, text, post.sha, (isNew ? 'Add blog post: ' : 'Update blog post: ') + title).then(function () {
-          showToast((isNew ? 'Post published! ' : 'Post updated! ') + 'The site will rebuild automatically — check "View Actions" in about a minute.', false);
+          // Handbook Task 30: this always says "saved," never "published" —
+          // saving this file to GitHub is real, confirmed evidence; whether
+          // it's actually visible to a visitor depends on TWO separate,
+          // unconfirmed things this toast must not gloss over: the Blog
+          // page itself being shown (checked live, right here) and the
+          // GitHub Actions deploy having finished (never assumed).
+          var visibility = isBlogPageHidden()
+            ? 'The Blog page is currently hidden from the site menu, so this will not be publicly visible until you show it under "Pages: Hide & Headings" and the deploy finishes.'
+            : 'It will appear on the live Blog page once the automatic deploy finishes — check "View Actions" to confirm.';
+          showToast('Post saved to GitHub. ' + visibility, false);
           formWrap.innerHTML = '';
           loadList();
+          refreshVisNote();
         }).catch(function (err) {
-          saveBtn.disabled = false; saveBtn.textContent = isNew ? 'Publish Post' : 'Save Post';
-          showToast('Could not save post: ' + err.message, true);
+          saveBtn.disabled = false; saveBtn.textContent = isNew ? 'Save New Post' : 'Save Post';
+          if (isConflictStatus(err.status)) {
+            showToast('Could not save: this post file changed on GitHub since it was loaded here. Re-open it to get the latest version before saving again.', true);
+          } else {
+            showToast('Could not save post: ' + err.message, true);
+          }
         });
       }
 
@@ -725,7 +792,7 @@
 
         var btnRow = el('div'); btnRow.style.cssText = 'display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;';
         saveBtn = el('button', 'btn'); saveBtn.type = 'button'; saveBtn.style.width = 'auto';
-        saveBtn.textContent = isNew ? 'Publish Post' : 'Save Post';
+        saveBtn.textContent = isNew ? 'Save New Post' : 'Save Post';
         saveBtn.addEventListener('click', doSave);
         btnRow.appendChild(saveBtn);
         if (!isNew) {
@@ -811,6 +878,203 @@
     if (desc) { var p = el('p', 'desc'); p.textContent = desc; card.appendChild(p); }
     card.appendChild(bodyEl);
     return card;
+  }
+
+  // ============================================================
+  // Handbook Task 30: validateContent(content) — a structural validation
+  // layer that runs entirely client-side, before any network request.
+  // This never judges whether a value is the RIGHT one (e.g. it does not
+  // second-guess a tax rate or a phone number) — only whether the shape
+  // is well-formed enough that the public build won't silently render
+  // broken or the calculators won't silently compute wrong numbers.
+  // Returns an array of { id, field, message } issues; an empty array
+  // means the content is safe to commit. `id` is the sidebar section
+  // anchor (e.g. "sec-brand") so the caller can link straight to it.
+  // ============================================================
+  function isNonEmptyString(v) { return typeof v === 'string' && v.trim() !== ''; }
+  function isFiniteNumber(v) { return typeof v === 'number' && isFinite(v); }
+  function looksLikeEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  function looksLikeHttpUrl(v) { return /^https?:\/\/\S+$/i.test(v); }
+  // Team photos specifically may also be an internal /images/... path —
+  // see the existing hint text in teamEditor() preferring that over an
+  // external host.
+  function looksLikeMediaUrl(v) { return looksLikeHttpUrl(v) || /^\//.test(v); }
+
+  function validateContent(content) {
+    var issues = [];
+    function add(id, field, message) { issues.push({ id: id, field: field, message: message }); }
+    var c = content || {};
+
+    // ---- Required brand fields ----
+    var b = c.brand || {};
+    if (!isNonEmptyString(b.legalName)) add('sec-brand', 'Legal Name', 'Legal Name cannot be empty — it appears in the footer, schema.org data, and page titles on every page.');
+    if (!isNonEmptyString(b.shortName)) add('sec-brand', 'Short Name', 'Short Name cannot be empty — it appears in the header logo and browser tab title.');
+    if (!isNonEmptyString(b.mobile)) add('sec-brand', 'Mobile / WhatsApp (display)', 'Mobile/WhatsApp display number cannot be empty — it is shown on the Contact page.');
+    if (!isNonEmptyString(b.addressLine)) add('sec-brand', 'Address Line', 'Address Line cannot be empty — it is shown on the Contact page and in schema.org data.');
+    // ---- Malformed emails/URLs ----
+    if (!isNonEmptyString(b.email) || !looksLikeEmail(b.email)) add('sec-brand', 'Email', 'Email must be a real-looking address (e.g. name@example.com).');
+    if (isNonEmptyString(b.siteUrl) && !looksLikeHttpUrl(b.siteUrl)) add('sec-brand', 'Website URL', 'Website URL must start with http:// or https://, or be left blank.');
+    if (isNonEmptyString(b.formspreeId) && /^https?:\/\//i.test(b.formspreeId)) add('sec-brand', 'Formspree Form ID', 'This field wants just the ID (e.g. "xgojnjby"), not a full web address — paste only the part after the last "/".');
+    ['facebook', 'instagram', 'tiktok', 'linkedin'].forEach(function (k) {
+      var v = b.social && b.social[k];
+      if (isNonEmptyString(v) && !looksLikeHttpUrl(v)) add('sec-brand', k.charAt(0).toUpperCase() + k.slice(1) + ' URL', 'Must start with http:// or https://, or be left blank to hide the icon.');
+    });
+
+    // ---- Pages: visibility entries + duplicate/empty keys ----
+    if (!Array.isArray(c.pages)) {
+      add('sec-pages', 'Pages', 'Pages must be a list — this file may be corrupted.');
+    } else {
+      var pageKeys = {};
+      c.pages.forEach(function (pg, idx) {
+        if (!pg || typeof pg !== 'object') { add('sec-pages', 'Pages', 'Page entry #' + (idx + 1) + ' is malformed (not a proper record).'); return; }
+        if (!isNonEmptyString(pg.key)) add('sec-pages', 'Pages', 'Page entry #' + (idx + 1) + ' has no key — this would break page visibility/nav lookups.');
+        else if (pageKeys[pg.key]) add('sec-pages', 'Pages', 'Duplicate page key "' + pg.key + '" — each page must have a unique key.');
+        else pageKeys[pg.key] = true;
+        if (pg.hidden !== undefined && typeof pg.hidden !== 'boolean') add('sec-pages', 'Pages', 'Page "' + (pg.key || '?') + '" has an invalid Show/Hide value — untick and re-tick its checkbox to fix.');
+      });
+    }
+
+    // ---- Team / Testimonials: hidden must be boolean ----
+    (c.teamMembers || []).forEach(function (m, idx) {
+      if (m && m.hidden !== undefined && typeof m.hidden !== 'boolean') add('sec-team', 'Team Member ' + (idx + 1), 'Invalid Hide value — untick and re-tick its checkbox to fix.');
+      if (m && isNonEmptyString(m.photo) && !looksLikeMediaUrl(m.photo)) add('sec-team', 'Team Member ' + (idx + 1) + ' — Photo URL', 'Photo URL should start with http://, https://, or / — or be left blank.');
+    });
+    (c.testimonials || []).forEach(function (t, idx) {
+      if (t && t.hidden !== undefined && typeof t.hidden !== 'boolean') add('sec-testimonials', 'Testimonial ' + (idx + 1), 'Invalid Hide value — untick and re-tick its checkbox to fix.');
+    });
+
+    // ---- Useful Links: name/url/description shape ----
+    (c.usefulLinks || []).forEach(function (link, idx) {
+      if (!link || typeof link !== 'object') { add('sec-useful-links', 'Link ' + (idx + 1), 'Malformed entry.'); return; }
+      if (!isNonEmptyString(link.name)) add('sec-useful-links', 'Link ' + (idx + 1), 'Name cannot be empty.');
+      if (!isNonEmptyString(link.url) || !looksLikeHttpUrl(link.url)) add('sec-useful-links', 'Link ' + (idx + 1), 'Web Address must start with https:// (or http://).');
+    });
+
+    // ---- FAQs / page-level FAQ lists: {q, a} shape ----
+    function checkFaqList(id, label, arr) {
+      (arr || []).forEach(function (f, idx) {
+        if (!f || typeof f !== 'object') { add(id, label + ' ' + (idx + 1), 'Malformed entry.'); return; }
+        if (!isNonEmptyString(f.q)) add(id, label + ' ' + (idx + 1), 'Question cannot be empty.');
+        if (!isNonEmptyString(f.a)) add(id, label + ' ' + (idx + 1), 'Answer cannot be empty.');
+      });
+    }
+    checkFaqList('sec-faqs', 'FAQ', c.faqs);
+    checkFaqList('sec-nfrs-ifrs', 'NFRS/IFRS FAQ', c.nfrsIfrs && c.nfrsIfrs.faqs);
+    checkFaqList('sec-international-accounting', 'International Accounting FAQ', c.internationalAccounting && c.internationalAccounting.faqs);
+    checkFaqList('sec-virtual-cfo', 'Virtual CFO FAQ', c.virtualCfo && c.virtualCfo.faqs);
+
+    // ---- Service categories / Packages / Document groups: array + item shape ----
+    (c.serviceCategories || []).forEach(function (cat, idx) {
+      if (!cat || typeof cat !== 'object' || !isNonEmptyString(cat.title)) add('sec-services', 'Category ' + (idx + 1), 'Title cannot be empty.');
+      if (cat && !Array.isArray(cat.items)) add('sec-services', 'Category ' + (idx + 1), 'Services list is malformed — this may be corrupted.');
+    });
+    var pkgKeys = {};
+    (c.packages || []).forEach(function (pkg, idx) {
+      if (!pkg || typeof pkg !== 'object') { add('sec-packages', 'Package ' + (idx + 1), 'Malformed entry.'); return; }
+      if (!isNonEmptyString(pkg.name)) add('sec-packages', 'Package ' + (idx + 1), 'Package Name cannot be empty.');
+      else if (pkgKeys[pkg.name]) add('sec-packages', 'Package ' + (idx + 1), 'Duplicate package name "' + pkg.name + '" — each package should have a distinct name.');
+      else pkgKeys[pkg.name] = true;
+      if (!Array.isArray(pkg.items)) add('sec-packages', 'Package ' + (idx + 1), 'What\'s Included list is malformed.');
+    });
+    (c.documentGroups || []).forEach(function (grp, idx) {
+      if (!grp || typeof grp !== 'object' || !isNonEmptyString(grp.title)) add('sec-documents', 'Group ' + (idx + 1), 'Group Title cannot be empty.');
+      if (grp && !Array.isArray(grp.items)) add('sec-documents', 'Group ' + (idx + 1), 'Documents list is malformed.');
+    });
+
+    // ---- Calculator configuration: shape/type only, never the values themselves ----
+    // (Whether a rate is the legally correct one is a Task 29 question for
+    // an owner/professional, not something this function judges.)
+    var cc = c.calculators || {};
+    if (isNonEmptyString(String(cc.vatRate)) && !isFiniteNumber(cc.vatRate)) add('sec-calculators', 'VAT Rate', 'VAT Rate must be a plain number (e.g. 13).');
+    else if (isFiniteNumber(cc.vatRate) && (cc.vatRate < 0 || cc.vatRate > 100)) add('sec-calculators', 'VAT Rate', 'VAT Rate should be between 0 and 100.');
+    ['deductionCapRetirement', 'deductionCapLife', 'deductionCapHealth'].forEach(function (k) {
+      if (!isFiniteNumber(cc[k]) || cc[k] < 0) add('sec-calculators', k, 'Deduction cap must be a number 0 or greater.');
+    });
+    var tableKeys = {};
+    (cc.taxTables || []).forEach(function (table, idx) {
+      var label = 'FY ' + (table && table.key || '#' + (idx + 1));
+      if (!table || typeof table !== 'object') { add('sec-calculators', label, 'Malformed fiscal-year table.'); return; }
+      if (!isNonEmptyString(table.key)) add('sec-calculators', label, 'FY Key cannot be empty.');
+      else if (tableKeys[table.key]) add('sec-calculators', label, 'Duplicate FY Key "' + table.key + '" — the calculator can\'t tell these fiscal years apart.');
+      else tableKeys[table.key] = true;
+      if (!isNonEmptyString(table.label)) add('sec-calculators', label, 'Label cannot be empty — this is what shows on the FY selector button.');
+      function checkBands(bandsLabel, bands) {
+        if (!Array.isArray(bands) || !bands.length) { add('sec-calculators', label + ' — ' + bandsLabel, 'Needs at least one slab.'); return; }
+        bands.forEach(function (band, bIdx) {
+          if (!band || typeof band !== 'object') { add('sec-calculators', label + ' — ' + bandsLabel, 'Slab #' + (bIdx + 1) + ' is malformed.'); return; }
+          if (!isFiniteNumber(band.rate) || band.rate < 0 || band.rate > 100) add('sec-calculators', label + ' — ' + bandsLabel, 'Slab #' + (bIdx + 1) + ': Rate % must be a number between 0 and 100.');
+          if (band.width !== null && !isFiniteNumber(band.width)) add('sec-calculators', label + ' — ' + bandsLabel, 'Slab #' + (bIdx + 1) + ': Width must be a number, or blank for "unlimited".');
+          if (band.width === null && bIdx !== bands.length - 1) add('sec-calculators', label + ' — ' + bandsLabel, 'Only the LAST slab may be left blank ("unlimited") — slab #' + (bIdx + 1) + ' is blank but has slabs after it, which the calculator would silently never apply.');
+        });
+      }
+      checkBands('Individual slabs', table.single);
+      if (table.hasCouple) checkBands('Married couple slabs', table.couple);
+    });
+    (cc.tdsTypes || []).forEach(function (t, idx) {
+      var label = 'TDS Type ' + (idx + 1);
+      if (!t || typeof t !== 'object' || !isNonEmptyString(t.label)) add('sec-calculators', label, 'Dropdown Label cannot be empty.');
+      if (t && (!isFiniteNumber(t.rate) || t.rate < 0 || t.rate > 100)) add('sec-calculators', label, 'Rate % must be a number between 0 and 100.');
+    });
+
+    return issues;
+  }
+
+  // ============================================================
+  // Handbook Task 30: computeChangedSummary(original, current) — a
+  // compact list of WHICH top-level fields/sections changed since the
+  // content was last loaded or saved, instead of dumping the whole YAML
+  // for the admin to eyeball. Deliberately shallow past a couple of
+  // levels: arrays/objects beyond that report as "N item(s) changed"
+  // rather than expanding every nested field, so this stays a summary,
+  // not a second copy of the giant YAML wall it exists to avoid.
+  // ============================================================
+  function describeValue(v) {
+    if (v == null || v === '') return '(empty)';
+    if (typeof v === 'string') return v.length > 40 ? '"' + v.slice(0, 40) + '…"' : '"' + v + '"';
+    if (typeof v === 'boolean' || typeof v === 'number') return String(v);
+    return null; // objects/arrays handled by the caller, not stringified here
+  }
+  function computeChangedSummary(original, current) {
+    var lines = [];
+    function walk(path, before, after, depth) {
+      if (before === after) return;
+      var beforeIsObj = before && typeof before === 'object';
+      var afterIsObj = after && typeof after === 'object';
+      if (!beforeIsObj && !afterIsObj) {
+        if (before !== after) lines.push(path + ': ' + describeValue(before) + ' → ' + describeValue(after));
+        return;
+      }
+      if (Array.isArray(before) || Array.isArray(after)) {
+        var bArr = Array.isArray(before) ? before : [];
+        var aArr = Array.isArray(after) ? after : [];
+        if (depth >= 2) {
+          if (bArr.length !== aArr.length || JSON.stringify(bArr) !== JSON.stringify(aArr)) {
+            lines.push(path + ': ' + bArr.length + ' → ' + aArr.length + ' item(s), content changed');
+          }
+          return;
+        }
+        if (bArr.length !== aArr.length) lines.push(path + ': ' + bArr.length + ' → ' + aArr.length + ' item(s)');
+        var max = Math.max(bArr.length, aArr.length);
+        for (var i = 0; i < max; i++) walk(path + '[' + i + ']', bArr[i], aArr[i], depth + 1);
+        return;
+      }
+      // Plain objects
+      var bObj = beforeIsObj ? before : {};
+      var aObj = afterIsObj ? after : {};
+      var keys = {};
+      Object.keys(bObj).forEach(function (k) { keys[k] = true; });
+      Object.keys(aObj).forEach(function (k) { keys[k] = true; });
+      Object.keys(keys).forEach(function (k) {
+        walk(path ? path + '.' + k : k, bObj[k], aObj[k], depth + 1);
+      });
+    }
+    walk('', original || {}, current || {}, 0);
+    var MAX_LINES = 25;
+    return {
+      count: lines.length,
+      lines: lines.slice(0, MAX_LINES),
+      truncated: lines.length > MAX_LINES,
+    };
   }
 
   function renderForm() {
@@ -1061,6 +1325,10 @@
     footBody.appendChild(btWrap);
     area.appendChild(section('sec-footer', 'Footer & Form Options', '', footBody));
 
+    // Handbook Task 30: snapshot AFTER every defensive c.x = c.x || ...
+    // normalization above has already run — see loadContent()'s comment
+    // for why this can't happen at load time instead.
+    state.originalContent = deepClone(c);
     clearDirty();
   }
 
@@ -1115,18 +1383,149 @@
     connect(owner, repo, branch, token);
   });
 
-  document.getElementById('saveBtn').addEventListener('click', function () {
+  // ---------- save banner: validation errors / pre-save diff confirm / GitHub conflict ----------
+  // Handbook Task 30: a single container at the top of #formArea, reused
+  // for all three banner types below, so exactly one is ever visible at
+  // once (a stale confirm banner can't linger under a fresh error, etc.).
+  function clearSaveBanner() {
+    var existing = document.getElementById('saveBanner');
+    if (existing) existing.remove();
+  }
+  function showSaveBanner(kind, buildEl) {
+    clearSaveBanner();
+    var area = document.getElementById('formArea');
+    var banner = el('div', 'save-banner ' + kind);
+    banner.id = 'saveBanner';
+    buildEl(banner);
+    area.insertBefore(banner, area.firstChild);
+    banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function showValidationBanner(issues) {
+    showSaveBanner('error', function (banner) {
+      var h = el('h3'); h.textContent = 'Cannot save — ' + issues.length + ' issue' + (issues.length === 1 ? '' : 's') + ' need fixing first';
+      banner.appendChild(h);
+      var p = el('p'); p.textContent = 'Nothing has been sent to GitHub. Fix the issues below, then click Save Changes again.';
+      banner.appendChild(p);
+      var ul = el('ul');
+      issues.forEach(function (issue) {
+        var li = el('li');
+        if (issue.id) {
+          var a = el('a'); a.href = '#' + issue.id; a.textContent = issue.field;
+          li.appendChild(a);
+        } else {
+          var strong = el('strong'); strong.textContent = issue.field; li.appendChild(strong);
+        }
+        li.appendChild(document.createTextNode(' — ' + issue.message));
+        ul.appendChild(li);
+      });
+      banner.appendChild(ul);
+    });
+  }
+
+  function showConfirmBanner(diff, onConfirm) {
+    showSaveBanner('confirm', function (banner) {
+      var h = el('h3'); h.textContent = 'Ready to save ' + diff.count + ' change' + (diff.count === 1 ? '' : 's') + ' to GitHub';
+      banner.appendChild(h);
+      var p = el('p'); p.textContent = 'This creates a commit on the "' + state.branch + '" branch. Saving to GitHub is not the same as the site going live — GitHub Actions has to build and deploy afterward, which is a separate step you can check under "View Actions".';
+      banner.appendChild(p);
+      if (diff.lines.length) {
+        var ul = el('ul');
+        diff.lines.forEach(function (line) { var li = el('li'); li.textContent = line; ul.appendChild(li); });
+        if (diff.truncated) { var li2 = el('li'); li2.textContent = '…and more changes not shown here.'; ul.appendChild(li2); }
+        banner.appendChild(ul);
+      }
+      var actions = el('div', 'banner-actions');
+      var confirmBtn = el('button', 'btn'); confirmBtn.type = 'button'; confirmBtn.textContent = 'Confirm & Save to GitHub';
+      confirmBtn.addEventListener('click', onConfirm);
+      var cancelBtn = el('button', 'btn-outline'); cancelBtn.type = 'button'; cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', clearSaveBanner);
+      actions.appendChild(confirmBtn); actions.appendChild(cancelBtn);
+      banner.appendChild(actions);
+    });
+  }
+
+  // Handbook Task 30: GitHub's Contents API returns 409 when the sha we
+  // sent no longer matches the file's current sha on the branch — i.e.
+  // someone (another admin, another tab, a direct commit) changed
+  // content/site.yaml since this page last loaded/saved it. Blindly
+  // retrying the PUT would silently overwrite whatever they did; this
+  // banner instead stops and requires an explicit, informed reload.
+  // (422 is also treated as conflict-shaped since GitHub uses it for a
+  // handful of "the request no longer makes sense" cases on this
+  // endpoint, e.g. a sha referencing a commit that no longer exists —
+  // rare, but the safe response is the same: stop and reload, don't guess.)
+  function isConflictStatus(status) { return status === 409 || status === 422; }
+  function showConflictBanner(err) {
+    showSaveBanner('conflict', function (banner) {
+      var h = el('h3'); h.textContent = 'Someone else’s changes are newer — nothing was saved';
+      banner.appendChild(h);
+      var p = el('p'); p.textContent = 'The copy of content/site.yaml on GitHub has changed since this page loaded it (another admin, another browser tab, or a direct commit). To avoid silently overwriting that work, this save was stopped. Your own edits are still here in this tab — reload the latest content, then re-apply anything you still need.';
+      banner.appendChild(p);
+      var detail = el('p'); detail.style.fontSize = '.78rem'; detail.textContent = 'GitHub said: ' + err.message;
+      banner.appendChild(detail);
+      var actions = el('div', 'banner-actions');
+      var reloadBtn = el('button', 'btn'); reloadBtn.type = 'button'; reloadBtn.textContent = 'Reload Latest Content';
+      reloadBtn.addEventListener('click', function () {
+        if (state.dirty && !window.confirm('This discards your current unsaved edits in this tab and loads the latest version from GitHub. Continue?')) return;
+        clearSaveBanner();
+        loadContent().then(function () {
+          renderForm();
+          showToast('Reloaded the latest content from GitHub. Please re-apply any changes you still need.', false);
+        }).catch(function (loadErr) { showToast('Could not reload: ' + loadErr.message, true); });
+      });
+      var cancelBtn = el('button', 'btn-outline'); cancelBtn.type = 'button'; cancelBtn.textContent = 'Dismiss';
+      cancelBtn.addEventListener('click', clearSaveBanner);
+      actions.appendChild(reloadBtn); actions.appendChild(cancelBtn);
+      banner.appendChild(actions);
+    });
+  }
+
+  function doActualSave() {
     var btn = document.getElementById('saveBtn');
     btn.disabled = true; btn.textContent = 'Saving…';
     saveContent().then(function () {
       clearDirty();
-      showToast('Saved! The site will rebuild automatically — check "View Actions" in about a minute.', false);
+      clearSaveBanner();
+      // Handbook Task 30: these are two separate, explicitly labeled
+      // facts. The PUT succeeding is real, confirmed evidence — say so
+      // plainly. Whether the site has actually redeployed is NOT
+      // something this page has checked (no code path here polls GitHub
+      // Actions), so it is never phrased as having happened, only as a
+      // next step to go verify.
+      showToast('Saved to GitHub. Deployment has not been confirmed yet — GitHub Actions will build and publish automatically; open "View Actions" to check when it finishes.', false);
     }).catch(function (err) {
       markDirty();
-      showToast('Save failed: ' + err.message, true);
+      btn.disabled = false; btn.textContent = 'Save Changes •';
+      if (isConflictStatus(err.status)) {
+        showConflictBanner(err);
+      } else {
+        showToast('Save failed: ' + err.message, true);
+      }
     });
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', function () {
+    var issues = validateContent(state.content);
+    if (issues.length) {
+      showValidationBanner(issues);
+      showToast('Cannot save — ' + issues.length + ' issue' + (issues.length === 1 ? '' : 's') + ' need fixing. See details above.', true);
+      return;
+    }
+    var diff = computeChangedSummary(state.originalContent, state.content);
+    if (!diff.count) {
+      showToast('Nothing has changed since the last save.', false);
+      return;
+    }
+    showConfirmBanner(diff, doActualSave);
   });
 
+  // Handbook Task 30 (verified, not changed — this already worked
+  // correctly): sessionStorage.clear() removes the token from browser
+  // storage, and location.reload() re-runs this whole script from
+  // scratch, which wipes state.token (and everything else in `state`)
+  // from memory too — there is no path where the token survives a
+  // disconnect.
   document.getElementById('disconnectBtn').addEventListener('click', function () {
     localStorage.removeItem('maven_admin_token'); // clears any token saved by older versions of this page
     sessionStorage.clear();

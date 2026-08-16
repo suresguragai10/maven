@@ -87,6 +87,22 @@
   #toast{position:fixed;bottom:24px;right:24px;max-width:360px;background:var(--navy-950);color:#fff;padding:16px 20px;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.3);z-index:50;font-size:.9rem;}
   #toast.error{background:var(--red);}
   #toast a{color:var(--gold-500);}
+
+  /* ---- Save banners: validation errors / pre-save diff confirm / GitHub conflict ---- */
+  .save-banner{border-radius:12px;padding:20px 22px;margin-bottom:22px;border:1.5px solid;}
+  .save-banner h3{font-size:1rem;margin-bottom:8px;}
+  .save-banner p{font-size:.88rem;margin:0 0 10px;color:var(--ink-soft);}
+  .save-banner.error{background:#FBEAE9;border-color:#F1BEBA;}
+  .save-banner.error h3{color:var(--red);}
+  .save-banner.confirm{background:var(--gold-100);border-color:#E6D3A3;}
+  .save-banner.confirm h3{color:var(--navy-950);}
+  .save-banner.conflict{background:#FBEAE9;border-color:#F1BEBA;}
+  .save-banner.conflict h3{color:var(--red);}
+  .save-banner ul{margin:0 0 14px;padding-left:20px;font-size:.86rem;color:var(--ink);}
+  .save-banner li{margin-bottom:5px;}
+  .save-banner li a{font-weight:700;}
+  .save-banner .banner-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .save-banner .banner-actions .btn{width:auto;padding:10px 18px;}
   @media (max-width:820px){ #layout{flex-direction:column;} #sidebar{position:static;height:auto;width:100%;display:flex;flex-wrap:wrap;gap:4px;} .f-grid{grid-template-columns:1fr;} }
 </style>
 </head>
@@ -143,7 +159,10 @@
       <a href="#sec-about">About</a>
       <a href="#sec-services">Services</a>
       <a href="#sec-outsourced">Outsourced Accounting</a>
-      <a href="#sec-global-outsourcing">Global Outsourcing</a>
+      <a href="#sec-nfrs-ifrs">NFRS / IFRS Support</a>
+      <a href="#sec-international-hub">International — Overview</a>
+      <a href="#sec-international-accounting">International — Outsourced Accounting</a>
+      <a href="#sec-virtual-cfo">International — Virtual CFO</a>
       <a href="#sec-packages">Packages</a>
       <a href="#sec-documents">Documents Checklist</a>
       <a href="#sec-industries">Industries</a>
