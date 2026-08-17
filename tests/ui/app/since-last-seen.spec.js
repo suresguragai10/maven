@@ -35,8 +35,8 @@ async function loginToFeed(page, user, tables) {
   await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.locator('#app')).not.toHaveClass(/hidden/);
-  await page.getByRole('button', { name: 'Since Last Seen' }).click();
-  await expect(page.getByRole('heading', { name: 'Since Last Seen' })).toBeVisible();
+  await page.getByRole('button', { name: 'Recent Updates' }).click();
+  await expect(page.getByRole('heading', { name: 'Recent Updates' })).toBeVisible();
 }
 
 test.describe('Since Last Seen (Handbook Task 22)', () => {
@@ -139,6 +139,6 @@ test.describe('Since Last Seen (Handbook Task 22)', () => {
     // params, so after re-render the (now-stale) activity row is still
     // technically present in this mock -- what matters here is that the
     // RPC call itself fired and the page didn't error out re-rendering.
-    await expect(page.getByRole('heading', { name: 'Since Last Seen' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recent Updates' })).toBeVisible();
   });
 });

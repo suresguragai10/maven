@@ -16,18 +16,19 @@ const { esc, safeUrl, internalHref } = require('./escape');
 // guard) — never the only way in.
 function renderDesktopNav(activeKey) {
   const items = data.nav.map((item) => {
-    const isActive = item.key === activeKey || (item.children && item.children.some((c) => c.key === activeKey));
+    const exactActive = item.key === activeKey;
+    const sectionActive = exactActive || (item.children && item.children.some((c) => c.key === activeKey));
     if (item.children) {
       const dropdownId = `dropdown-${item.key}`;
       return `<li class="nav-item">
-        <a class="nav-link" href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>
+        <a class="nav-link${sectionActive ? ' is-section-active' : ''}" href="${item.href}" ${exactActive ? 'aria-current="page"' : ''}>${item.label}</a>
         <button type="button" class="nav-dropdown-toggle" aria-expanded="false" aria-controls="${dropdownId}" aria-label="Show ${esc(item.label)} menu">${icon('chevronDown', 'ic-chevron')}</button>
         <div class="dropdown" id="${dropdownId}">
-          ${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}
+          ${item.children.map((c) => `<a href="${c.href}" ${c.key === activeKey ? 'aria-current="page"' : ''}>${c.label}</a>`).join('')}
         </div>
       </li>`;
     }
-    return `<li class="nav-item"><a class="nav-link" href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a></li>`;
+    return `<li class="nav-item"><a class="nav-link" href="${item.href}" ${exactActive ? 'aria-current="page"' : ''}>${item.label}</a></li>`;
   }).join('');
   return `<nav class="main-nav" aria-label="Primary"><ul>${items}</ul></nav>`;
 }
@@ -40,7 +41,8 @@ function renderDesktopNav(activeKey) {
 // overview page as before.
 function renderMobileNav(activeKey) {
   const items = data.nav.map((item) => {
-    const isActive = item.key === activeKey || (item.children && item.children.some((c) => c.key === activeKey));
+    const exactActive = item.key === activeKey;
+    const sectionActive = exactActive || (item.children && item.children.some((c) => c.key === activeKey));
     if (item.children) {
       const subId = `mobile-sub-${item.key}`;
       // Handbook Task 25: submenus always start collapsed, and inert
@@ -48,16 +50,16 @@ function renderMobileNav(activeKey) {
       // order while visually hidden — previously they were fully
       // focusable even at max-height:0, so a keyboard user tabbing
       // through a closed mobile menu would stop on invisible links.
-      const sub = `<div class="mobile-sub" id="${subId}" style="max-height:0" inert>${item.children.map((c) => `<a href="${c.href}">${c.label}</a>`).join('')}</div>`;
+      const sub = `<div class="mobile-sub" id="${subId}" style="max-height:0" inert>${item.children.map((c) => `<a href="${c.href}" ${c.key === activeKey ? 'aria-current="page"' : ''}>${c.label}</a>`).join('')}</div>`;
       return `<li>
         <div class="mobile-nav-row">
-          <a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>
+          <a class="${sectionActive ? 'is-section-active' : ''}" href="${item.href}" ${exactActive ? 'aria-current="page"' : ''}>${item.label}</a>
           <button type="button" class="mobile-sub-toggle" aria-expanded="false" aria-controls="${subId}" aria-label="Show ${esc(item.label)} submenu">${icon('chevronDown', 'ic-chevron')}</button>
         </div>
         ${sub}
       </li>`;
     }
-    return `<li><a href="${item.href}" ${isActive ? 'aria-current="page"' : ''}>${item.label}</a></li>`;
+    return `<li><a href="${item.href}" ${exactActive ? 'aria-current="page"' : ''}>${item.label}</a></li>`;
   }).join('');
   return `<nav class="mobile-nav" id="mobileNav" aria-label="Mobile">
     <div class="mobile-nav-top">

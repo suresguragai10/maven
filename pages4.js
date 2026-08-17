@@ -7,7 +7,7 @@ function usefulLinksCard(link) {
   return `<article class="service-card reveal" style="display:flex;flex-direction:column;">
     <div class="service-card-head">
       <span class="service-icon">${icon('external')}</span>
-      <div><h3 style="margin-top:2px">${esc(link.name)}</h3></div>
+      <div><h2 style="margin-top:2px;font-size:1.18rem">${esc(link.name)}</h2></div>
     </div>
     <p class="service-tagline" style="flex:1">${esc(link.description)}</p>
     <a class="btn btn-outline" href="${esc(safeUrl(link.url))}" target="_blank" rel="noopener noreferrer">Visit Website ${icon('external')}</a>

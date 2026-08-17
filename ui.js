@@ -42,17 +42,25 @@ function bulletList(items, cls = 'stamp-list') {
   return `<ul class="${cls}">${items.map(i => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}</ul>`;
 }
 
-function serviceCard(cat) {
-  return `<article class="service-card reveal" id="${esc(cat.key)}">
-    <div class="service-card-head">
-      <span class="service-icon">${icon(cat.icon)}</span>
-      <div>
-        <span class="service-letter">Category ${esc(cat.letter)}</span>
-        <h3>${esc(cat.title)}</h3>
-      </div>
+function serviceCard(cat, index = 0) {
+  // Full Services page: use an editorial image/content row instead of
+  // repeating another generic bordered card grid. Existing approved Maven
+  // service imagery is reused locally (no third-party dependency). NFRS/IFRS
+  // intentionally shares the reporting image until a dedicated approved
+  // photo is supplied.
+  const photoKey = cat.key === 'nfrs-ifrs' ? 'reporting' : cat.key;
+  const reverse = index % 2 ? ' service-editorial--reverse' : '';
+  return `<article class="service-editorial reveal${reverse}" id="${esc(cat.key)}">
+    <div class="service-editorial-photo" style="background-image:linear-gradient(180deg,rgba(10,31,58,.08),rgba(10,31,58,.34)),url('/images/card-${esc(photoKey)}.jpg')" aria-hidden="true">
+      <span class="service-editorial-icon">${icon(cat.icon)}</span>
     </div>
-    <p class="service-tagline">${esc(cat.tagline)}</p>
-    ${bulletList(cat.items)}
+    <div class="service-editorial-body">
+      <span class="service-letter">Category ${esc(cat.letter)}</span>
+      <h2>${esc(cat.title)}</h2>
+      <p class="service-tagline">${esc(cat.tagline)}</p>
+      ${bulletList(cat.items)}
+      <div class="service-editorial-actions"><a class="btn btn-outline btn-sm" href="${internalHref('contact.html')}">Discuss This Service</a></div>
+    </div>
   </article>`;
 }
 
@@ -94,38 +102,53 @@ function industryBadge(ind, i) {
 // trigger here is a card footer, not a full-width question row.
 function industryCard(ind, i) {
   const id = `industry-${i}`;
-  const hasDetail = (ind.needs && ind.needs.length) || (ind.howWeHelp && ind.howWeHelp.length);
-  const detail = hasDetail ? `
-    <button type="button" class="industry-card-toggle" aria-expanded="false" aria-controls="panel-${id}" id="trigger-${id}">
-      <span>Where this gets complex &amp; how we help</span>
-      ${icon('chevronDown', 'ic-chevron')}
-    </button>
-    <div class="industry-card-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:0" inert>
-      <div class="industry-card-panel-inner">
-        ${ind.needs && ind.needs.length ? `<span class="service-letter">Common needs</span>${bulletList(ind.needs, 'stamp-list stamp-list--pkg')}` : ''}
-        ${ind.howWeHelp && ind.howWeHelp.length ? `<span class="service-letter">How Maven helps</span>${bulletList(ind.howWeHelp, 'stamp-list stamp-list--pkg')}` : ''}
-        <a class="btn btn-outline btn-sm" href="${data.whatsappHref(`Hello Maven, I would like to ask about accounting support for my business (${ind.name}).`)}" target="_blank" rel="noopener">${icon('whatsapp')} Ask About This Industry</a>
-      </div>
-    </div>` : '';
-  // Handbook Task 26: h2, not h3 -- industryCard() is only ever used on
-  // the standalone Industries page (verified: single call site), which
-  // has no other h2 before the card grid, so h1 -> h3 was a genuine
-  // heading-level skip. Each card is effectively its own top-level
-  // section on that page, so h2 is also the semantically correct level,
-  // not just the numerically convenient one.
-  return `<article class="industry-card reveal">
+  // The old design expanded detail inside one item of a three-column CSS
+  // grid. That made the entire row inherit the tallest card's height and
+  // produced the large empty white blocks visible in the reported bug.
+  // Cards are now stable selectors; rich detail renders in a dedicated
+  // full-width stage below the grid instead of changing one grid row's
+  // geometry.
+  return `<article class="industry-card reveal" id="${id}">
     <span class="industry-card-icon">${icon(ind.icon)}</span>
     <h2>${esc(ind.name)}</h2>
-    ${ind.description ? `<p style="flex:1">${esc(ind.description)}</p>` : ''}
-    ${detail}
+    ${ind.description ? `<p>${esc(ind.description)}</p>` : ''}
+    <button type="button" class="industry-card-select" aria-expanded="false" aria-controls="detail-${id}" data-industry-index="${i}">
+      <span>View common needs &amp; support</span>
+      ${icon('arrowRight')}
+    </button>
   </article>`;
+}
+
+function industryDetail(ind, i) {
+  const id = `industry-${i}`;
+  return `<section class="industry-detail-panel" id="detail-${id}" data-industry-detail="${i}" hidden aria-labelledby="detail-title-${id}">
+    <div class="industry-detail-heading">
+      <span class="industry-detail-icon">${icon(ind.icon)}</span>
+      <div><span class="service-letter">Industry support</span><h2 id="detail-title-${id}">${esc(ind.name)}</h2></div>
+    </div>
+    ${ind.description ? `<p class="industry-detail-intro">${esc(ind.description)}</p>` : ''}
+    <div class="industry-detail-grid">
+      <div>
+        <h3>Common needs</h3>
+        ${bulletList(ind.needs || [], 'stamp-list stamp-list--pkg')}
+      </div>
+      <div>
+        <h3>How Maven helps</h3>
+        ${bulletList(ind.howWeHelp || [], 'stamp-list stamp-list--pkg')}
+      </div>
+    </div>
+    <div class="industry-detail-actions">
+      <a class="btn btn-primary btn-sm" href="${data.whatsappHref(`Hello Maven, I would like to ask about accounting support for my business (${ind.name}).`)}" target="_blank" rel="noopener">${icon('whatsapp')} Ask About This Industry</a>
+      <a class="btn btn-outline btn-sm" href="${internalHref('contact.html')}">Book a Consultation</a>
+    </div>
+  </section>`;
 }
 
 function packageCard(pkg, i) {
   const highlight = i === 1;
   return `<article class="package-card reveal${highlight ? ' package-card--highlight' : ''}">
     <span class="package-index">0${i + 1}</span>
-    <h3>${esc(pkg.name)}</h3>
+    <h2>${esc(pkg.name)}</h2>
     <p class="package-audience">${esc(pkg.audience)}</p>
     <p class="package-price">Quote after review</p>
     ${bulletList(pkg.items, 'stamp-list stamp-list--pkg')}
@@ -222,5 +245,5 @@ function trustBar(points) {
 
 module.exports = {
   button, eyebrow, sectionHead, pageHero, bulletList, serviceCard, valueCard, whyCard,
-  industryBadge, industryCard, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow,
+  industryBadge, industryCard, industryDetail, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow,
 };

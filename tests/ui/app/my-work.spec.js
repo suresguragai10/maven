@@ -46,8 +46,8 @@ async function loginToMyWork(page, tables) {
   await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.locator('#app')).not.toHaveClass(/hidden/);
-  await page.getByRole('button', { name: 'My Work' }).click();
-  await expect(page.getByRole('heading', { name: 'My Work' })).toBeVisible();
+  await page.getByRole('button', { name: 'My Tasks' }).click();
+  await expect(page.getByRole('heading', { name: 'My Tasks' })).toBeVisible();
 }
 
 test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
@@ -134,7 +134,7 @@ test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
     await expect(page.getByText('Buy office snacks')).not.toBeVisible();
 
     // And the reverse: My To-Do stays a private, separate page unaffected by this task.
-    await page.getByRole('button', { name: 'My To-Do List' }).click();
+    await page.getByRole('button', { name: 'My To-Do' }).click();
     await expect(page.getByText('Buy office snacks (private todo)')).toBeVisible();
   });
 });

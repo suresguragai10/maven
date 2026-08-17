@@ -14,7 +14,7 @@ function supportAreaAccordion(area, i) {
     id: `nfrs-area-${i}`,
     headingHtml: esc(area.title),
     bodyHtml: `<p>${esc(area.intro)}</p>${bulletList(area.items, 'stamp-list stamp-list--pkg')}${output}${note}`,
-    open: i === 0,
+    open: false,
   });
 }
 
@@ -23,7 +23,7 @@ function nfrsIfrs() {
   const n = data.nfrsIfrs || {};
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/card-reporting.jpg')}
 
   <section class="section-pad-sm">
     <div class="container text-center" style="max-width:820px">
@@ -128,7 +128,7 @@ function nfrsIfrs() {
           id: `nfrs-faq-${i}`,
           headingHtml: esc(f.q),
           bodyHtml: `<p>${esc(f.a)}</p>`,
-          open: i === 0,
+          open: false,
         })).join('')}
       </div>
     </div>
@@ -148,7 +148,7 @@ function internationalAccounting() {
   const a = data.internationalAccounting || {};
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/global-outsourcing-hero-bg.jpg')}
 
   <section class="section-pad-sm">
     <div class="container text-center" style="max-width:820px">
@@ -229,7 +229,7 @@ function internationalAccounting() {
           id: `intl-faq-${i}`,
           headingHtml: esc(f.q),
           bodyHtml: `<p>${esc(f.a)}</p>`,
-          open: i === 0,
+          open: false,
         })).join('')}
       </div>
     </div>
@@ -249,7 +249,7 @@ function virtualCfo() {
   const v = data.virtualCfo || {};
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle)}
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/card-advisory.jpg')}
 
   <section class="section-pad-sm">
     <div class="container text-center" style="max-width:820px">
@@ -285,7 +285,7 @@ function virtualCfo() {
           id: `cfo-faq-${i}`,
           headingHtml: esc(f.q),
           bodyHtml: `<p>${esc(f.a)}</p>`,
-          open: i === 0,
+          open: false,
         })).join('')}
       </div>
       <p class="text-center tag-note" style="margin-top:24px">Looking for day-to-day bookkeeping instead? See <a href="${internalHref('international-accounting.html')}" style="color:var(--gold-700);font-weight:700">International Outsourced Accounting</a>.</p>
@@ -305,7 +305,7 @@ function resourceTile(tile) {
   return `<article class="service-card reveal">
     <div class="service-card-head">
       <span class="service-icon">${icon(tile.icon)}</span>
-      <h3>${esc(tile.title)}</h3>
+      <h2>${esc(tile.title)}</h2>
     </div>
     <p>${esc(tile.text)}</p>
     <div style="margin-top:20px">${button(esc(tile.cta), tile.href, 'outline')}</div>

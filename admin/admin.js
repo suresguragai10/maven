@@ -233,6 +233,61 @@
     return wrap;
   }
 
+  // Rich editorial blocks used by the detailed NFRS / international pages.
+  // Keeps all public copy editable from the CMS instead of requiring YAML edits.
+  function richSupportAreasEditor(arr, itemLabel) {
+    var wrap = el('div');
+    function render() {
+      wrap.innerHTML = '';
+      arr.forEach(function (obj, idx) {
+        if (!obj || typeof obj !== 'object') obj = arr[idx] = { title: '', intro: '', items: [] };
+        if (!Array.isArray(obj.items)) obj.items = [];
+        var card = el('div', 'sub-card');
+        var head = el('div', 'sub-head');
+        var strong = el('strong'); strong.textContent = (itemLabel || 'Area') + ' ' + (idx + 1);
+        var rm = el('button', 'btn-remove'); rm.type = 'button'; rm.textContent = '✕';
+        rm.addEventListener('click', function () { if (!window.confirm('Remove this item? This cannot be undone once you Save.')) return; arr.splice(idx, 1); markDirty(); render(); });
+        head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
+        card.appendChild(head);
+        card.appendChild(textField('Title', function () { return obj.title; }, function (v) { obj.title = v; }));
+        card.appendChild(textField('Intro', function () { return obj.intro; }, function (v) { obj.intro = v; }, { multiline: true, rows: 3 }));
+        var itemsWrap = el('div', 'f-field');
+        var itemsLabel = el('label'); itemsLabel.textContent = 'Items'; itemsWrap.appendChild(itemsLabel);
+        itemsWrap.appendChild(stringListEditor(obj.items, 'item'));
+        card.appendChild(itemsWrap);
+        if (Object.prototype.hasOwnProperty.call(obj, 'output')) {
+          if (!Array.isArray(obj.output)) obj.output = [];
+          var outWrap = el('div', 'f-field');
+          var outLabel = el('label'); outLabel.textContent = 'Outputs / Deliverables'; outWrap.appendChild(outLabel);
+          outWrap.appendChild(stringListEditor(obj.output, 'output'));
+          card.appendChild(outWrap);
+        }
+        card.appendChild(textField('Note (optional)', function () { return obj.note; }, function (v) { obj.note = v; }, { multiline: true, rows: 2 }));
+        wrap.appendChild(card);
+      });
+      var add = el('button', 'btn-add'); add.type = 'button'; add.textContent = '+ Add ' + (itemLabel || 'area');
+      add.addEventListener('click', function () { arr.push({ title: '', intro: '', items: [], note: '' }); markDirty(); render(); });
+      wrap.appendChild(add);
+    }
+    render();
+    return wrap;
+  }
+
+  function editorialBlockEditor(obj, opts) {
+    opts = opts || {};
+    if (!obj || typeof obj !== 'object') obj = {};
+    if (!Array.isArray(obj.items)) obj.items = [];
+    var wrap = el('div', 'sub-card');
+    if (opts.headingField) wrap.appendChild(textField('Heading', function () { return obj.heading; }, function (v) { obj.heading = v; }));
+    wrap.appendChild(textField('Intro', function () { return obj.intro; }, function (v) { obj.intro = v; }, { multiline: true, rows: 3 }));
+    var itemsWrap = el('div', 'f-field');
+    var itemsLabel = el('label'); itemsLabel.textContent = opts.itemsLabel || 'Items'; itemsWrap.appendChild(itemsLabel);
+    itemsWrap.appendChild(stringListEditor(obj.items, opts.itemLabel || 'item'));
+    wrap.appendChild(itemsWrap);
+    wrap.appendChild(textField('Note (optional)', function () { return obj.note; }, function (v) { obj.note = v; }, { multiline: true, rows: 2 }));
+    return wrap;
+  }
+
   // FAQs: list of {q, a}
   function faqListEditor(arr) {
     var wrap = el('div');
@@ -393,6 +448,14 @@
       card.appendChild(head);
       card.appendChild(textField('Name', function () { return ind.name; }, function (v) { ind.name = v; strong.textContent = v || 'Industry'; }));
       card.appendChild(textField('Short description (shown on the Industries page)', function () { return ind.description; }, function (v) { ind.description = v; }, { multiline: true, rows: 2 }));
+      if (!Array.isArray(ind.needs)) ind.needs = [];
+      if (!Array.isArray(ind.howWeHelp)) ind.howWeHelp = [];
+      var needsWrap = el('div', 'f-field'); var needsLabel = el('label'); needsLabel.textContent = 'Common Needs'; needsWrap.appendChild(needsLabel);
+      needsWrap.appendChild(stringListEditor(ind.needs, 'need'));
+      card.appendChild(needsWrap);
+      var helpWrap = el('div', 'f-field'); var helpLabel = el('label'); helpLabel.textContent = 'How Maven Helps'; helpWrap.appendChild(helpLabel);
+      helpWrap.appendChild(stringListEditor(ind.howWeHelp, 'support item'));
+      card.appendChild(helpWrap);
       wrap.appendChild(card);
     });
     var hint = el('span', 'f-hint');
@@ -1157,6 +1220,12 @@
     if (!Array.isArray(nf.whoFor)) nf.whoFor = [];
     if (!Array.isArray(nf.whyChoose)) nf.whyChoose = [];
     if (!Array.isArray(nf.faqs)) nf.faqs = [];
+    if (!Array.isArray(nf.supportAreas)) nf.supportAreas = [];
+    if (!Array.isArray(nf.process)) nf.process = [];
+    if (!nf.statementPrep || typeof nf.statementPrep !== 'object') nf.statementPrep = { heading: '', intro: '', items: [], note: '' };
+    if (!nf.policies || typeof nf.policies !== 'object') nf.policies = { intro: '', items: [], note: '' };
+    if (!nf.managementReporting || typeof nf.managementReporting !== 'object') nf.managementReporting = { intro: '', items: [], note: '' };
+    if (!nf.auditPrep || typeof nf.auditPrep !== 'object') nf.auditPrep = { intro: '', items: [], note: '' };
     var nfBody = el('div');
     nfBody.appendChild(textField('Intro Paragraph (top of page)', function () { return nf.intro; }, function (v) { nf.intro = v; }, { multiline: true, rows: 3 }));
     nfBody.appendChild(textField('"From Accounting Records..." — Heading', function () { return nf.introHeading; }, function (v) { nf.introHeading = v; }));
@@ -1176,8 +1245,20 @@
     nfFaqWrap.appendChild(faqListEditor(nf.faqs));
     nfBody.appendChild(nfFaqWrap);
     nfBody.appendChild(textField('Call-to-Action Text', function () { return nf.cta; }, function (v) { nf.cta = v; }));
-    var nfNote = el('p', 'f-hint'); nfNote.textContent = 'The "How We Can Support You" accordion, "Financial Statements," "Accounting Policies," "Management Reporting," "Audit Preparation," and "Our Implementation Approach" sections aren\'t editable here yet — edit content/site.yaml directly (nfrsIfrs.supportAreas / .statementPrep / .policies / .managementReporting / .auditPrep / .process) if those need updates.';
-    nfBody.appendChild(nfNote);
+    var nfSupportWrap = el('div', 'f-field'); var nfSupportL = el('label'); nfSupportL.textContent = 'How We Can Support You'; nfSupportWrap.appendChild(nfSupportL);
+    nfSupportWrap.appendChild(richSupportAreasEditor(nf.supportAreas, 'Support Area'));
+    nfBody.appendChild(nfSupportWrap);
+    var nfStatementL = el('label', 'block-label'); nfStatementL.textContent = 'Financial Statement Preparation'; nfBody.appendChild(nfStatementL);
+    nfBody.appendChild(editorialBlockEditor(nf.statementPrep, { headingField: true, itemLabel: 'statement item' }));
+    var nfPoliciesL = el('label', 'block-label'); nfPoliciesL.textContent = 'Accounting Policies & Procedures'; nfBody.appendChild(nfPoliciesL);
+    nfBody.appendChild(editorialBlockEditor(nf.policies, { itemLabel: 'policy item' }));
+    var nfMgmtL = el('label', 'block-label'); nfMgmtL.textContent = 'Management Reporting'; nfBody.appendChild(nfMgmtL);
+    nfBody.appendChild(editorialBlockEditor(nf.managementReporting, { itemLabel: 'reporting item' }));
+    var nfAuditL = el('label', 'block-label'); nfAuditL.textContent = 'Audit Preparation Support'; nfBody.appendChild(nfAuditL);
+    nfBody.appendChild(editorialBlockEditor(nf.auditPrep, { itemLabel: 'audit-prep item' }));
+    var nfProcessWrap = el('div', 'f-field'); var nfProcessL = el('label'); nfProcessL.textContent = 'Our Implementation Approach'; nfProcessWrap.appendChild(nfProcessL);
+    nfProcessWrap.appendChild(titleTextListEditor(nf.process, 'Step'));
+    nfBody.appendChild(nfProcessWrap);
     area.appendChild(section('sec-nfrs-ifrs', 'NFRS / IFRS Support', 'Content for the NFRS / IFRS Implementation & Financial Reporting Support page.', nfBody));
 
     // International — Overview (hub page linking to the two sub-pages below)
@@ -1199,6 +1280,9 @@
     if (!Array.isArray(ia.benefits)) ia.benefits = [];
     if (!Array.isArray(ia.process)) ia.process = [];
     if (!Array.isArray(ia.faqs)) ia.faqs = [];
+    if (!ia.firmSupport || typeof ia.firmSupport !== 'object') ia.firmSupport = { intro: '', items: [], note: '' };
+    if (!ia.tools || typeof ia.tools !== 'object') ia.tools = { intro: '', items: [], note: '' };
+    if (!ia.startSmall || typeof ia.startSmall !== 'object') ia.startSmall = { intro: '', items: [], note: '' };
     var iaBody = el('div');
     iaBody.appendChild(textField('Intro Paragraph', function () { return ia.intro; }, function (v) { ia.intro = v; }, { multiline: true, rows: 3 }));
     var iaSvcWrap = el('div', 'f-field'); var iaSvcL = el('label'); iaSvcL.textContent = 'What We Support (services list)'; iaSvcWrap.appendChild(iaSvcL);
@@ -1217,8 +1301,12 @@
     iaFaqWrap.appendChild(faqListEditor(ia.faqs));
     iaBody.appendChild(iaFaqWrap);
     iaBody.appendChild(textField('Call-to-Action Text', function () { return ia.cta; }, function (v) { ia.cta = v; }));
-    var iaNote = el('p', 'f-hint'); iaNote.textContent = 'The "Support For Accounting Firms," "Tools & Working Environment," and "Start Small" sections on this page aren\'t editable here yet — edit content/site.yaml directly (internationalAccounting.firmSupport / .tools / .startSmall) if those need updates.';
-    iaBody.appendChild(iaNote);
+    var iaFirmL = el('label', 'block-label'); iaFirmL.textContent = 'Support for Accounting Firms'; iaBody.appendChild(iaFirmL);
+    iaBody.appendChild(editorialBlockEditor(ia.firmSupport, { itemLabel: 'support item' }));
+    var iaToolsL = el('label', 'block-label'); iaToolsL.textContent = 'Tools & Working Environment'; iaBody.appendChild(iaToolsL);
+    iaBody.appendChild(editorialBlockEditor(ia.tools, { itemLabel: 'tool / workflow item' }));
+    var iaSmallL = el('label', 'block-label'); iaSmallL.textContent = 'Start Small'; iaBody.appendChild(iaSmallL);
+    iaBody.appendChild(editorialBlockEditor(ia.startSmall, { itemLabel: 'starter scope item' }));
     area.appendChild(section('sec-international-accounting', 'International — Outsourced Accounting', 'Content for the International Outsourced Accounting & Bookkeeping page.', iaBody));
 
     // International — Virtual CFO & Management Reporting
@@ -1226,6 +1314,7 @@
     var vc = c.virtualCfo;
     if (!Array.isArray(vc.levels)) vc.levels = [];
     if (!Array.isArray(vc.faqs)) vc.faqs = [];
+    if (!Array.isArray(vc.supportAreas)) vc.supportAreas = [];
     var vcBody = el('div');
     vcBody.appendChild(textField('Intro Paragraph', function () { return vc.intro; }, function (v) { vc.intro = v; }, { multiline: true, rows: 3 }));
     var vcLvlWrap = el('div', 'f-field'); var vcLvlL = el('label'); vcLvlL.textContent = 'A Flexible Finance Model (levels, in order)'; vcLvlWrap.appendChild(vcLvlL);
@@ -1236,8 +1325,9 @@
     vcFaqWrap.appendChild(faqListEditor(vc.faqs));
     vcBody.appendChild(vcFaqWrap);
     vcBody.appendChild(textField('Call-to-Action Text', function () { return vc.cta; }, function (v) { vc.cta = v; }));
-    var vcNote = el('p', 'f-hint'); vcNote.textContent = 'The "Virtual CFO Support Can Include" accordion (Monthly Management Reporting, Cash-Flow Forecasting, etc.) isn\'t editable here yet — edit content/site.yaml directly (virtualCfo.supportAreas) if those need updates.';
-    vcBody.appendChild(vcNote);
+    var vcSupportWrap = el('div', 'f-field'); var vcSupportL = el('label'); vcSupportL.textContent = 'Virtual CFO Support Can Include'; vcSupportWrap.appendChild(vcSupportL);
+    vcSupportWrap.appendChild(richSupportAreasEditor(vc.supportAreas, 'Support Area'));
+    vcBody.appendChild(vcSupportWrap);
     area.appendChild(section('sec-virtual-cfo', 'International — Virtual CFO', 'Content for the Virtual CFO & Management Reporting page.', vcBody));
 
     // Packages
@@ -1556,4 +1646,35 @@
     document.getElementById('in-branch').value = savedBranch;
     if (savedToken) document.getElementById('in-token').value = savedToken;
   })();
+
+  function setupAdminNavigation() {
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    var search = document.getElementById('adminNavSearch');
+    var links = Array.prototype.slice.call(sidebar.querySelectorAll('a[href^="#sec-"]'));
+    if (search) search.addEventListener('input', function () {
+      var q = String(search.value || '').trim().toLowerCase();
+      links.forEach(function (link) {
+        link.classList.toggle('nav-hidden', !!q && link.textContent.toLowerCase().indexOf(q) === -1);
+      });
+      Array.prototype.slice.call(sidebar.querySelectorAll('.sidebar-label')).forEach(function (label) {
+        var next = label.nextElementSibling;
+        var anyVisible = false;
+        while (next && !next.classList.contains('sidebar-label')) {
+          if (next.tagName === 'A' && !next.classList.contains('nav-hidden')) anyVisible = true;
+          next = next.nextElementSibling;
+        }
+        label.style.display = anyVisible ? '' : 'none';
+      });
+    });
+    links.forEach(function (link) {
+      link.addEventListener('click', function () {
+        links.forEach(function (l) { l.classList.remove('is-active'); });
+        link.classList.add('is-active');
+      });
+    });
+  }
+
+  setupAdminNavigation();
+
 })();

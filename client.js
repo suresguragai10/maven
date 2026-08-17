@@ -106,7 +106,8 @@
     };
     window.addEventListener('scroll', onScrollTop, { passive: true });
     backToTop.addEventListener('click', function () {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
     });
     onScrollTop();
   }
@@ -149,43 +150,36 @@
     });
   });
 
-  // ---- Industry card expand (Industries page) ----
-  // Same expand/collapse technique as the accordion above, kept separate
-  // (distinct classes/state target) because the trigger here is a card
-  // footer, not a full-width question row, and lives inside a grid rather
-  // than a single stacked list.
-  function setIndustryCardOpen(card, open) {
-    var btn = card.querySelector('.industry-card-toggle');
-    var panel = card.querySelector('.industry-card-panel');
-    if (!btn || !panel) return;
-    card.classList.toggle('is-open', open);
-    btn.setAttribute('aria-expanded', String(open));
-    if (open) {
-      panel.removeAttribute('inert');
-      panel.style.maxHeight = panel.scrollHeight + 'px';
-    } else {
-      panel.style.maxHeight = '0px';
-      panel.setAttribute('inert', '');
+  // ---- Industries master/detail selector ----
+  // Detail no longer expands inside a CSS-grid card. A single full-width
+  // stage below the card grid prevents the tall-card/empty-sibling bug and
+  // keeps scanning stable on desktop and mobile.
+  var industrySelectButtons = document.querySelectorAll('.industry-card-select');
+  var industryDetails = document.querySelectorAll('[data-industry-detail]');
+  var industryPlaceholder = document.getElementById('industry-detail-placeholder');
+  function selectIndustry(index, shouldScroll) {
+    var target = document.querySelector('[data-industry-detail="' + index + '"]');
+    if (!target) return;
+    industryDetails.forEach(function (panel) { panel.hidden = panel !== target; });
+    industrySelectButtons.forEach(function (btn) {
+      var selected = btn.getAttribute('data-industry-index') === String(index);
+      btn.setAttribute('aria-expanded', String(selected));
+      var card = btn.closest('.industry-card');
+      if (card) card.classList.toggle('is-selected', selected);
+    });
+    if (industryPlaceholder) industryPlaceholder.hidden = true;
+    if (history && history.replaceState) history.replaceState(null, '', '#industry-' + index);
+    if (shouldScroll) {
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     }
   }
-  document.querySelectorAll('.industry-card-toggle').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var card = btn.closest('.industry-card');
-      setIndustryCardOpen(card, !card.classList.contains('is-open'));
-    });
+  industrySelectButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { selectIndustry(btn.getAttribute('data-industry-index'), true); });
   });
-  // Homepage/About industry badges link here as #industry-N (see ui.js
-  // industryBadge) — a visitor clicking "Startups" on the homepage wants to
-  // land ON that industry's detail, not back on a page of collapsed cards
-  // they have to re-find it on. Opens the matching card and scrolls to it.
   if (location.hash.indexOf('#industry-') === 0) {
-    var panelId = 'panel-' + location.hash.slice(1);
-    var panelEl = document.getElementById(panelId);
-    var cardEl = panelEl ? panelEl.closest('.industry-card') : null;
-    if (cardEl) {
-      setIndustryCardOpen(cardEl, true);
-      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    var industryIndex = location.hash.replace('#industry-', '');
+    if (/^\d+$/.test(industryIndex)) selectIndustry(industryIndex, false);
   }
 
   // ---- Recalculate open accordion/industry-card panel heights on resize
@@ -200,7 +194,7 @@
   // open right now — closed panels stay at max-height:0 regardless.
   var recalcOpenPanelsTimer = null;
   function recalcOpenPanelsNow() {
-    document.querySelectorAll('.accordion-item.is-open .accordion-panel, .industry-card.is-open .industry-card-panel').forEach(function (panel) {
+    document.querySelectorAll('.accordion-item.is-open .accordion-panel').forEach(function (panel) {
       panel.style.maxHeight = panel.scrollHeight + 'px';
     });
   }
@@ -327,6 +321,7 @@
   var revealEls = document.querySelectorAll('.reveal');
   if (revealEls.length) {
     if ('IntersectionObserver' in window) {
+      document.documentElement.classList.add('reveal-enabled');
       var obs = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (entry) {

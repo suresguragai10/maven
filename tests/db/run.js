@@ -41,6 +41,7 @@ const MATRIX_FILES = [
   'since_last_seen',
   'firm_work_search_isolation',
   'security_definer_grants',
+  'attendance',
 ];
 
 function renderMarkdown(results, meta) {

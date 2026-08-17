@@ -180,16 +180,19 @@ function home() {
     ${heroSkyline()}
   </section>
 
-  <section class="section-pad">
-    <div class="container two-col">
-      <div class="reveal">
+  <section class="section-pad home-about-section">
+    <div class="container about-snapshot">
+      <div class="about-snapshot-copy reveal">
         ${sectionHead({ eyebrow: 'About Maven', title: 'A practical consultancy partner, not a large impersonal firm', align: 'left' })}
         <p>${esc(data.aboutText)}</p>
         <div style="margin-top:22px">${button('Learn More About Us', 'about.html', 'outline')}</div>
       </div>
-      <ul class="stamp-list">
-        ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
-      </ul>
+      <aside class="proof-panel reveal" aria-label="Maven at a glance">
+        <span class="service-letter">Maven at a glance</span>
+        <ul class="stamp-list">
+          ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
+        </ul>
+      </aside>
     </div>
     <div class="container">
       ${statRow([
@@ -221,17 +224,17 @@ function home() {
     </div>
   </section>
 
-  <section class="section-pad bg-navy skyline-section">
-    <div class="container two-col">
-      <div class="reveal">
+  <section class="section-pad bg-navy skyline-section international-showcase">
+    <div class="container international-showcase-grid">
+      <div class="reveal international-showcase-copy">
         <p class="eyebrow eyebrow--on-dark">International Services</p>
         <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
         <p style="margin-top:14px">${esc(data.internationalHub.intro)}</p>
         <div style="margin-top:26px">${button(esc(data.internationalHub.cta), 'global-outsourcing.html', 'primary')}</div>
       </div>
-      <ul class="stamp-list reveal">
-        ${data.internationalAccounting.benefits.slice(0, 6).map((b) => `<li>${stampMark('stamp-sm')}<span style="color:rgba(255,255,255,0.85)">${esc(b.title)}</span></li>`).join('')}
-      </ul>
+      <div class="international-proof-grid reveal" aria-label="International service strengths">
+        ${data.internationalAccounting.benefits.slice(0, 6).map((b) => `<div class="international-proof-item">${stampMark('stamp-sm')}<span>${esc(b.title)}</span></div>`).join('')}
+      </div>
     </div>
     ${globalSkyline()}
   </section>
@@ -309,16 +312,19 @@ function about() {
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/about-hero-bg.jpg')}
 
-  <section class="section-pad">
-    <div class="container two-col">
-      <div class="reveal">
+  <section class="section-pad home-about-section">
+    <div class="container about-snapshot">
+      <div class="about-snapshot-copy reveal">
         ${sectionHead({ eyebrow: 'Who We Are', title: 'Practical support, organized records, clear communication', align: 'left' })}
         <p>${esc(data.aboutText)}</p>
         <p style="margin-top:16px">${esc(data.aboutClosing)}</p>
       </div>
-      <ul class="stamp-list reveal">
-        ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
-      </ul>
+      <aside class="proof-panel reveal" aria-label="Maven facts">
+        <span class="service-letter">Maven facts</span>
+        <ul class="stamp-list">
+          ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
+        </ul>
+      </aside>
     </div>
   </section>
 

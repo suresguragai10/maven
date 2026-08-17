@@ -44,7 +44,7 @@ async function loginToTeam(page, tables) {
   await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.locator('#app')).not.toHaveClass(/hidden/);
-  await page.getByRole('button', { name: 'Team', exact: true }).click();
+  await page.getByRole('button', { name: 'Team Work', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible();
 }
 

@@ -908,7 +908,7 @@
       renderAndFocus();
       return;
     }
-    var known = ['today', 'my-work', 'team', 'since-last-seen', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'templates', 'staff', 'settings'];
+    var known = ['today', 'search', 'my-work', 'team', 'since-last-seen', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'attendance', 'directory', 'profile', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     renderAndFocus();
   }
@@ -936,62 +936,63 @@
   function renderSidebar() {
     var nav = qs('#sidebar');
     clear(nav);
+    function group(label) {
+      var g = el('div', 'sidebar-group'); g.textContent = label; nav.appendChild(g);
+    }
     function item(view, label, iconName) {
       var b = el('button');
       b.type = 'button';
       b.appendChild(icon(iconName));
       b.appendChild(document.createTextNode(label));
-      var isActive = state.view === view || (state.view === 'work-detail' && view === 'today') || (state.view === 'client-detail' && view === 'clients');
+      var isActive = state.view === view ||
+        (state.view === 'work-detail' && (view === 'my-work' || view === 'all-work')) ||
+        (state.view === 'client-detail' && view === 'clients') ||
+        (state.view === 'firmwork-detail' && view === 'firm-work');
       b.classList.toggle('is-active', isActive);
       if (isActive) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
       b.addEventListener('click', function () { goto(view); });
       nav.appendChild(b);
     }
-    var group1 = el('div', 'sidebar-group'); group1.textContent = 'Work';
-    nav.appendChild(group1);
-    item('today', 'Today', 'sun');
-    item('search', 'Search', 'search');
-    item('my-work', 'My Work', 'clipboard');
-    // Handbook Task 21: open to every active teammate, not role-gated —
-    // "who owns what" coordination, not a manager-only view. Deliberately
-    // separate from Manager Dashboard (workload counts/exceptions,
-    // reviewer/admin only) — this shows the actual per-person item lists.
-    item('team', 'Team', 'users');
-    // Handbook Task 22: open to every active teammate, same as Team —
-    // a catch-up feed, not a role-gated report.
-    item('since-last-seen', 'Since Last Seen', 'clock');
-    if (isReviewerOrAdmin()) {
-      item('review', 'Review', 'check');
-      item('all-work', 'All Work', 'folder');
+    function externalItem(label, href, iconName) {
+      var a = el('a', 'admin-link-btn'); a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      a.appendChild(icon(iconName)); a.appendChild(document.createTextNode(label)); nav.appendChild(a);
     }
+
+    // Navigation is organized by the real question a staff member is asking,
+    // not by which feature happened to be implemented first.
+    group('Workspace');
+    item('today', 'Dashboard', 'sun');
+    item('my-work', 'My Tasks', 'clipboard');
+    item('firm-work', 'Firm Work', 'briefcase');
+    item('search', 'Global Search', 'search');
+
+    group('Client Delivery');
+    if (isReviewerOrAdmin()) item('review', 'Review Queue', 'check');
+    if (isReviewerOrAdmin()) item('all-work', 'Client Work', 'folder');
     item('deadlines', 'Deadlines', 'calendar');
-    if (isReviewerOrAdmin()) item('manager', 'Manager Dashboard', 'users');
+    item('clients', 'Clients', 'building');
+
+    group('Team');
+    item('team', 'Team Work', 'users');
+    item('directory', 'Staff Directory', 'idcard');
+    item('attendance', 'Attendance', 'clock');
+    item('since-last-seen', 'Recent Updates', 'message');
+
+    group('Personal');
+    item('profile', 'My Profile', 'user');
+    item('todo', 'My To-Do', 'list');
+
+    group('Insights');
+    if (isReviewerOrAdmin()) item('manager', 'Operations Overview', 'users');
     if (isReviewerOrAdmin()) item('reports', 'Reports', 'chart');
     item('periods', 'Period Summary', 'calendar');
-    item('todo', 'My To-Do List', 'list');
-    // Firm Work gets its own nav group, deliberately separate from
-    // "Work" (Client Work) — same "keep them visually separate"
-    // requirement as the list screen itself. Open to every active team
-    // member, not gated by role: matches work_items_read RLS, which
-    // grants unconditional read on work_scope='firm' rows to anyone.
-    var groupFirm = el('div', 'sidebar-group'); groupFirm.textContent = 'Firm';
-    nav.appendChild(groupFirm);
-    item('firm-work', 'Firm Work', 'briefcase');
-    // Every active staff member can look clients up (name, contact info,
-    // active work/services) — that's just read access the app already
-    // grants via RLS for the New Work modal's client picker. Only admin
-    // gets the write actions (New Client, Edit, Deactivate) — those are
-    // gated individually inside renderClients/renderClientDetail, not by
-    // hiding the whole page.
-    var group2 = el('div', 'sidebar-group'); group2.textContent = 'Clients';
-    nav.appendChild(group2);
-    item('clients', 'Clients', 'building');
+
     if (isAdmin()) {
-      var group3 = el('div', 'sidebar-group'); group3.textContent = 'Manage';
-      nav.appendChild(group3);
+      group('Administration');
+      item('staff', 'Staff & Access', 'users');
       item('templates', 'Templates', 'flag');
-      item('staff', 'Staff', 'users');
       item('settings', 'Settings', 'settings');
+      externalItem('Website Content Admin', '/admin/', 'settings');
     }
   }
 
@@ -1013,6 +1014,9 @@
     if (state.view === 'todo') return renderTodoPage(main);
     if (state.view === 'firm-work') return renderFirmWorkPage(main);
     if (state.view === 'clients') return renderClients(main);
+    if (state.view === 'attendance') return renderAttendancePage(main);
+    if (state.view === 'directory') return renderDirectoryPage(main);
+    if (state.view === 'profile') return renderProfilePage(main);
     if (state.view === 'templates') return renderTemplates(main);
     if (state.view === 'staff') return renderStaff(main);
     if (state.view === 'settings') return renderSettingsPage(main);
@@ -6376,66 +6380,193 @@
   }
 
   // ============================================================
+  // Staff Profile + Internal Directory
+  // The internal directory is operational only. It is deliberately not
+  // connected to the public website Team page/content.
+  // ============================================================
+  function initials(name) {
+    return (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join('') || '?';
+  }
+  function profilePhoto(p, large) {
+    if (p && p.photo_url) {
+      var img = el('img', 'profile-photo' + (large ? ' profile-photo-lg' : ''));
+      img.src = p.photo_url; img.alt = ''; img.loading = 'lazy';
+      return img;
+    }
+    var fallback = el('div', 'profile-photo profile-photo-fallback' + (large ? ' profile-photo-lg' : ''));
+    fallback.setAttribute('aria-hidden', 'true'); fallback.textContent = initials(p && p.full_name);
+    return fallback;
+  }
+
+  function renderDirectoryPage(main) {
+    var head = el('div', 'page-head'); var h1 = el('h1'); h1.textContent = 'Staff Directory'; head.appendChild(h1); main.appendChild(head);
+    var intro = el('p', 'workspace-intro'); intro.textContent = 'Internal Maven staff contacts and roles. This directory is separate from the public Team page.'; main.appendChild(intro);
+    var grid = el('div', 'directory-grid');
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) {
+      var card = el('article', 'directory-card'); card.appendChild(profilePhoto(p, false));
+      var body = el('div');
+      var n = el('h3'); n.textContent = p.full_name || 'Unnamed staff'; body.appendChild(n);
+      var role = el('div', 'dir-role'); role.textContent = p.designation || (p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : 'Team member'); body.appendChild(role);
+      if (p.work_email) { var em = el('div', 'dir-line'); em.textContent = p.work_email; body.appendChild(em); }
+      if (p.phone) { var ph = el('div', 'dir-line'); ph.textContent = p.phone; body.appendChild(ph); }
+      if (p.join_date) { var jd = el('div', 'dir-line'); jd.textContent = 'Joined ' + fmtDate(p.join_date); body.appendChild(jd); }
+      card.appendChild(body); grid.appendChild(card);
+    });
+    main.appendChild(grid);
+  }
+
+  function renderProfilePage(main) {
+    var p = state.profile;
+    var hero = el('div', 'card profile-hero'); hero.appendChild(profilePhoto(p, true));
+    var text = el('div'); var h1 = el('h1'); h1.textContent = p.full_name || 'My Profile'; text.appendChild(h1);
+    var meta = el('div', 'profile-meta'); meta.textContent = (p.designation || 'Maven team member') + ' · ' + (p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : ''); text.appendChild(meta);
+    hero.appendChild(text); main.appendChild(hero);
+
+    var info = el('div', 'card'); var h2 = el('h2'); h2.textContent = 'Profile details'; info.appendChild(h2);
+    var grid = el('div', 'profile-grid');
+    function readOnly(label, value) { var inp = el('input'); inp.value = value || ''; inp.disabled = true; grid.appendChild(field(label, inp)); }
+    readOnly('Full name', p.full_name); readOnly('Designation', p.designation); readOnly('Work email', p.work_email || state.user.email); readOnly('Join date', p.join_date ? fmtDate(p.join_date) : '');
+    var phone = el('input'); phone.value = p.phone || ''; grid.appendChild(field('Phone', phone));
+    var photo = el('input'); photo.type = 'url'; photo.placeholder = 'https://...'; photo.value = p.photo_url || ''; grid.appendChild(field('Profile photo URL (optional)', photo));
+    info.appendChild(grid);
+    var hint = el('p', 'f-hint'); hint.textContent = 'Name, role, designation, work email and join date are managed by an admin. You can update your own phone and profile photo URL.'; info.appendChild(hint);
+    var save = el('button', 'btn btn-sm'); save.type = 'button'; save.textContent = 'Save My Profile';
+    save.addEventListener('click', async function () {
+      save.disabled = true;
+      var res = await sb.rpc('update_my_profile', { p_phone: phone.value.trim(), p_photo_url: photo.value.trim() });
+      save.disabled = false;
+      if (res.error) { toast('Could not update profile: ' + res.error.message, true); return; }
+      await loadProfiles();
+      state.profile = state.profiles.find(function (x) { return x.id === state.user.id; }) || state.profile;
+      qs('#whoName').textContent = state.profile.full_name || state.user.email;
+      toast('Profile updated.'); render();
+    });
+    info.appendChild(save); main.appendChild(info);
+  }
+
+  // ============================================================
+  // Attendance — punch in/out + Gregorian monthly calendar/summary.
+  // No location, IP, device, presence or productivity tracking.
+  // ============================================================
+  function attendanceTodayDateStr() {
+    try {
+      var parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kathmandu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      var map = {}; parts.forEach(function (x) { if (x.type !== 'literal') map[x.type] = x.value; });
+      return map.year + '-' + map.month + '-' + map.day;
+    } catch (e) { return localDateStr(); }
+  }
+  function attendanceMonthBounds(monthKey) {
+    var parts = monthKey.split('-'); var y = Number(parts[0]); var m = Number(parts[1]);
+    var nextY = m === 12 ? y + 1 : y; var nextM = m === 12 ? 1 : m + 1;
+    return { start: monthKey + '-01', next: nextY + '-' + String(nextM).padStart(2, '0') + '-01', year: y, month: m };
+  }
+  function attendanceSeconds(entry) {
+    if (!entry || !entry.punched_in_at || !entry.punched_out_at) return 0;
+    return Math.max(0, Math.round((new Date(entry.punched_out_at) - new Date(entry.punched_in_at)) / 1000));
+  }
+  function durationText(seconds) {
+    seconds = Math.max(0, seconds || 0); var h = Math.floor(seconds / 3600); var min = Math.floor((seconds % 3600) / 60);
+    return h + 'h ' + String(min).padStart(2, '0') + 'm';
+  }
+  function timeOnly(iso) {
+    if (!iso) return '—'; return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  function datetimeLocalValue(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d.getTime())) return '';
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function csvCell(value) { value = value == null ? '' : String(value); return '"' + value.replace(/"/g, '""') + '"'; }
+  function downloadAttendanceCsv(entries, monthKey) {
+    var rows = [['Date','Staff','Punch In','Punch Out','Total Hours','Status']];
+    entries.forEach(function (r) {
+      rows.push([r.work_date, profileName(r.user_id), r.punched_in_at || '', r.punched_out_at || '', (attendanceSeconds(r) / 3600).toFixed(2), r.punched_out_at ? 'Completed' : 'Open']);
+    });
+    var csv = rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'maven-attendance-' + monthKey + '.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function loadAttendanceEntries(monthKey, personId) {
+    var b = attendanceMonthBounds(monthKey);
+    var q = sb.from('attendance_entries').select('*').gte('work_date', b.start).lt('work_date', b.next).order('work_date', { ascending: true });
+    if (!isAdmin()) q = q.eq('user_id', state.user.id);
+    else if (personId && personId !== '__all__') q = q.eq('user_id', personId);
+    var res = await q; if (res.error) { toast('Could not load attendance: ' + res.error.message, true); return []; } return res.data || [];
+  }
+  async function loadTodayAttendance() {
+    var res = await sb.from('attendance_entries').select('*').eq('user_id', state.user.id).eq('work_date', attendanceTodayDateStr()).maybeSingle();
+    if (res.error) return null; return res.data || null;
+  }
+  function renderAttendanceMetrics(main, entries) {
+    var complete = entries.filter(function (r) { return !!r.punched_out_at; });
+    var total = complete.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
+    var vals = [
+      ['Punch days', entries.length], ['Completed days', complete.length], ['Open / incomplete', entries.length - complete.length], ['Total time', durationText(total)]
+    ];
+    var grid = el('div', 'metric-grid'); vals.forEach(function (v) { var c = el('div', 'metric-card'); var l = el('span','metric-label'); l.textContent=v[0]; var x=el('span','metric-value'); x.textContent=String(v[1]); c.appendChild(l); c.appendChild(x); grid.appendChild(c); }); main.appendChild(grid);
+  }
+  function renderAttendanceCalendar(main, entries, monthKey) {
+    var b = attendanceMonthBounds(monthKey); var card = el('div','card'); var h2=el('h2'); h2.textContent='Monthly calendar'; card.appendChild(h2);
+    var byDate={}; entries.forEach(function(r){byDate[r.work_date]=r;}); var cal=el('div','attendance-calendar');
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){var x=el('div','cal-head');x.textContent=d;cal.appendChild(x);});
+    var first=new Date(b.year,b.month-1,1); var days=new Date(b.year,b.month,0).getDate();
+    for(var blank=0;blank<first.getDay();blank++) cal.appendChild(el('div','cal-day is-empty'));
+    for(var day=1;day<=days;day++){
+      var ds=b.year+'-'+String(b.month).padStart(2,'0')+'-'+String(day).padStart(2,'0'); var r=byDate[ds]; var cell=el('div','cal-day'+(r?' has-record '+(r.punched_out_at?'is-complete':'is-open'):''));
+      var n=el('div','day-num');n.textContent=String(day);cell.appendChild(n);var st=el('div','day-status');
+      st.textContent=r?(r.punched_out_at?durationText(attendanceSeconds(r)):'Punched in'):'No record';cell.appendChild(st);cal.appendChild(cell);
+    }
+    card.appendChild(cal);main.appendChild(card);
+  }
+  function renderTeamAttendanceSummary(main, entries) {
+    if (!isAdmin()) return;
+    var by={}; entries.forEach(function(r){if(!by[r.user_id])by[r.user_id]=[];by[r.user_id].push(r);});
+    var card=el('div','card');var h2=el('h2');h2.textContent='Team monthly summary';card.appendChild(h2);var table=el('table');var thd=el('thead');var trh=el('tr');['Staff','Punch days','Completed','Open','Total time'].forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});thd.appendChild(trh);table.appendChild(thd);var tb=el('tbody');
+    state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){var arr=by[p.id]||[];var comp=arr.filter(function(r){return r.punched_out_at;});var sec=comp.reduce(function(sum,r){return sum+attendanceSeconds(r);},0);var tr=el('tr');[p.full_name,arr.length,comp.length,arr.length-comp.length,durationText(sec)].forEach(function(v){var td=el('td');td.textContent=String(v);tr.appendChild(td);});tb.appendChild(tr);});table.appendChild(tb);card.appendChild(table);main.appendChild(card);
+  }
+  function openAttendanceCorrection(entry, selectedPerson, monthKey, onSaved) {
+    if (!isAdmin()) return;
+    var wrap=el('div');var head=el('div','modal-head');var h2=el('h2');h2.textContent=entry?'Correct Attendance':'Add Missing Attendance';var cancel=el('button','btn btn-outline btn-sm');cancel.type='button';cancel.textContent='Cancel';cancel.addEventListener('click',closeModal);head.appendChild(h2);head.appendChild(cancel);wrap.appendChild(head);
+    var person=el('select');state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){person.appendChild(new Option(p.full_name,p.id));});person.value=entry?entry.user_id:(selectedPerson&&selectedPerson!=='__all__'?selectedPerson:state.user.id);wrap.appendChild(field('Staff member',person));
+    var date=el('input');date.type='date';date.value=entry?entry.work_date:attendanceTodayDateStr();wrap.appendChild(field('Work date (Gregorian)',date));
+    var pin=el('input');pin.type='datetime-local';pin.value=entry?datetimeLocalValue(entry.punched_in_at):'';wrap.appendChild(field('Punch in',pin));
+    var pout=el('input');pout.type='datetime-local';pout.value=entry?datetimeLocalValue(entry.punched_out_at):'';wrap.appendChild(field('Punch out (optional)',pout));
+    var reason=el('textarea');reason.rows=3;reason.placeholder='Required: why is this record being corrected?';wrap.appendChild(field('Correction reason',reason));
+    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Correction';save.addEventListener('click',async function(){if(!person.value||!date.value||!pin.value||reason.value.trim().length<3){toast('Staff, date, punch-in and a correction reason are required.',true);return;}var inIso=new Date(pin.value).toISOString();var outIso=pout.value?new Date(pout.value).toISOString():null;if(outIso&&new Date(outIso)<new Date(inIso)){toast('Punch-out cannot be earlier than punch-in.',true);return;}save.disabled=true;var res=await sb.rpc('attendance_admin_correct',{p_user_id:person.value,p_work_date:date.value,p_punched_in_at:inIso,p_punched_out_at:outIso,p_reason:reason.value.trim()});save.disabled=false;if(res.error){toast('Could not correct attendance: '+res.error.message,true);return;}closeModal();toast('Attendance correction saved with audit history.');if(onSaved)onSaved();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
+  }
+  async function renderAttendancePage(main) {
+    var head=el('div','page-head');var h1=el('h1');h1.textContent='Attendance';head.appendChild(h1);main.appendChild(head);var intro=el('p','workspace-intro');intro.textContent=isAdmin()?'Punch in/out for your own day, review team attendance, export monthly CSV, and correct records with an audit reason.':'Punch in/out and review your own monthly attendance. Other employees\' attendance is private to admins.';main.appendChild(intro);
+    var punchCard=el('div','card attendance-punch-card');var pLeft=el('div');var ph=el('h2');ph.textContent='Today · '+fmtDate(attendanceTodayDateStr());pLeft.appendChild(ph);var pd=el('p','desc');pd.textContent='One punch-in and one punch-out per Gregorian work date. No location or IP data is collected.';pLeft.appendChild(pd);var stateLine=el('div','punch-state');pLeft.appendChild(stateLine);punchCard.appendChild(pLeft);var actionWrap=el('div');punchCard.appendChild(actionWrap);main.appendChild(punchCard);
+    async function refreshPunch(){clear(stateLine);clear(actionWrap);var today=await loadTodayAttendance();if(!today){stateLine.textContent='Not punched in yet.';var b=el('button','btn');b.type='button';b.textContent='Punch In';b.addEventListener('click',async function(){b.disabled=true;var r=await sb.rpc('attendance_punch_in');b.disabled=false;if(r.error){toast('Punch in failed: '+r.error.message,true);return;}toast('Punched in.');render();});actionWrap.appendChild(b);}else if(!today.punched_out_at){stateLine.textContent='Punched in '+timeOnly(today.punched_in_at)+' · currently open';var b2=el('button','btn');b2.type='button';b2.textContent='Punch Out';b2.addEventListener('click',async function(){b2.disabled=true;var r=await sb.rpc('attendance_punch_out');b2.disabled=false;if(r.error){toast('Punch out failed: '+r.error.message,true);return;}toast('Punched out.');render();});actionWrap.appendChild(b2);}else{stateLine.textContent='In '+timeOnly(today.punched_in_at)+' · Out '+timeOnly(today.punched_out_at)+' · '+durationText(attendanceSeconds(today));var done=el('span','attendance-status-pill complete');done.textContent='Completed';actionWrap.appendChild(done);}}
+    await refreshPunch();
+
+    var controlsCard=el('div','card');var controls=el('div','attendance-controls');var month=el('input');month.type='month';month.value=attendanceTodayDateStr().slice(0,7);controls.appendChild(field('Month',month));var person=null;if(isAdmin()){person=el('select');person.appendChild(new Option('All staff','__all__'));state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){person.appendChild(new Option(p.full_name,p.id));});controls.appendChild(field('Staff view',person));}else{var own=el('input');own.value=state.profile.full_name;own.disabled=true;controls.appendChild(field('Staff',own));}var exportBtn=el('button','btn btn-outline btn-sm');exportBtn.type='button';exportBtn.textContent='Export CSV';controls.appendChild(exportBtn);controlsCard.appendChild(controls);main.appendChild(controlsCard);
+    var results=el('div');main.appendChild(results);
+    async function refreshResults(){clear(results);var personId=isAdmin()?person.value:state.user.id;var entries=await loadAttendanceEntries(month.value,personId);renderAttendanceMetrics(results,entries);if(isAdmin()&&personId==='__all__')renderTeamAttendanceSummary(results,entries);else renderAttendanceCalendar(results,entries,month.value);var card=el('div','card');var hh=el('h2');hh.textContent='Attendance records';card.appendChild(hh);if(isAdmin()){var add=el('button','btn btn-outline btn-sm');add.type='button';add.textContent='Add / Correct Missing Record';add.style.marginBottom='14px';add.addEventListener('click',function(){openAttendanceCorrection(null,personId,month.value,refreshResults);});card.appendChild(add);}if(!entries.length){var none=el('div','empty-note');none.textContent='No attendance records for this month.';card.appendChild(none);}else{var table=el('table');var hd=el('thead');var trh=el('tr');var heads=['Date'];if(isAdmin()&&personId==='__all__')heads.push('Staff');heads=heads.concat(['Punch In','Punch Out','Total','Status']);if(isAdmin())heads.push('');heads.forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});hd.appendChild(trh);table.appendChild(hd);var tb=el('tbody');entries.forEach(function(r){var tr=el('tr');function td(v){var x=el('td');x.textContent=v;tr.appendChild(x);}td(fmtDate(r.work_date));if(isAdmin()&&personId==='__all__')td(profileName(r.user_id));td(timeOnly(r.punched_in_at));td(timeOnly(r.punched_out_at));td(r.punched_out_at?durationText(attendanceSeconds(r)):'—');var st=el('td');var pill=el('span','attendance-status-pill '+(r.punched_out_at?'complete':'open'));pill.textContent=r.punched_out_at?'Completed':'Open';st.appendChild(pill);tr.appendChild(st);if(isAdmin()){var act=el('td');var edit=el('button','btn btn-outline btn-sm');edit.type='button';edit.textContent='Correct';edit.addEventListener('click',function(){openAttendanceCorrection(r,personId,month.value,refreshResults);});act.appendChild(edit);tr.appendChild(act);}tb.appendChild(tr);});table.appendChild(tb);card.appendChild(table);}results.appendChild(card);exportBtn.onclick=function(){downloadAttendanceCsv(entries,month.value);};}
+    month.addEventListener('change',refreshResults);if(person)person.addEventListener('change',refreshResults);await refreshResults();
+  }
+
+  // ============================================================
   // Admin: Staff (role assignment + activation)
   // ============================================================
+  function openStaffProfileModal(p2) {
+    var wrap=el('div');var head=el('div','modal-head');var h2=el('h2');h2.textContent='Edit Staff Profile';var cancel=el('button','btn btn-outline btn-sm');cancel.type='button';cancel.textContent='Cancel';cancel.addEventListener('click',closeModal);head.appendChild(h2);head.appendChild(cancel);wrap.appendChild(head);
+    var name=el('input');name.value=p2.full_name||'';wrap.appendChild(field('Full name',name));
+    var designation=el('input');designation.value=p2.designation||'';wrap.appendChild(field('Designation',designation));
+    var email=el('input');email.type='email';email.value=p2.work_email||'';wrap.appendChild(field('Work email',email));
+    var phone=el('input');phone.value=p2.phone||'';wrap.appendChild(field('Phone',phone));
+    var join=el('input');join.type='date';join.value=p2.join_date||'';wrap.appendChild(field('Join date (Gregorian)',join));
+    var photo=el('input');photo.type='url';photo.value=p2.photo_url||'';photo.placeholder='https://...';wrap.appendChild(field('Profile photo URL',photo));
+    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Profile';save.addEventListener('click',async function(){if(!name.value.trim()){toast('Full name is required.',true);return;}save.disabled=true;var res=await sb.from('profiles').update({full_name:name.value.trim(),designation:designation.value.trim()||null,work_email:email.value.trim()||null,phone:phone.value.trim()||null,join_date:join.value||null,photo_url:photo.value.trim()||null}).eq('id',p2.id);save.disabled=false;if(res.error){toast('Could not update staff profile: '+res.error.message,true);return;}closeModal();await loadProfiles();if(p2.id===state.user.id)state.profile=state.profiles.find(function(x){return x.id===state.user.id;})||state.profile;toast('Staff profile updated.');render();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
+  }
+
   function renderStaff(main) {
-    var head = el('div', 'page-head');
-    var h1 = el('h1'); h1.textContent = 'Staff'; head.appendChild(h1);
-    main.appendChild(head);
-
-    var inviteNote = el('div', 'card');
-    var p = el('p', 'desc');
-    p.style.margin = '0';
-    p.textContent = 'To add someone new, invite them in the Supabase dashboard (Authentication → Users → Add user) — that part isn\'t done from here yet. Once they exist, manage their role and access below.';
-    inviteNote.appendChild(p);
-    main.appendChild(inviteNote);
-
-    var card = el('div', 'card');
-    var table = el('table');
-    var thead = el('thead'); var trh = el('tr');
-    ['Name', 'Role', 'Status', ''].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
-    thead.appendChild(trh); table.appendChild(thead);
-    var tbody = el('tbody');
-    state.profiles.forEach(function (p2) {
-      var isSelf = p2.id === state.user.id;
-      var tr = el('tr', p2.is_active ? '' : 'inactive-row');
-      var tdName = el('td'); tdName.textContent = p2.full_name + (isSelf ? ' (you)' : '');
-      var tdRole = el('td');
-      var roleSel = el('select', 'role-select');
-      ['employee', 'reviewer', 'admin'].forEach(function (r) { roleSel.appendChild(new Option(r.charAt(0).toUpperCase() + r.slice(1), r)); });
-      roleSel.value = p2.role;
-      roleSel.disabled = isSelf;
-      roleSel.addEventListener('change', async function () {
-        var res = await sb.from('profiles').update({ role: roleSel.value }).eq('id', p2.id);
-        if (res.error) { toast('Could not update role: ' + res.error.message, true); roleSel.value = p2.role; return; }
-        p2.role = roleSel.value;
-        toast(p2.full_name + ' is now ' + roleSel.value + '.');
-      });
-      tdRole.appendChild(roleSel);
-      var tdStatus = el('td');
-      var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
-      toggleBtn.textContent = p2.is_active ? 'Deactivate' : 'Reactivate';
-      toggleBtn.disabled = isSelf;
-      toggleBtn.addEventListener('click', async function () {
-        if (!p2.is_active) {
-          // Reactivating needs no extra care — just flip it back on.
-          var reactivateRes = await sb.from('profiles').update({ is_active: true }).eq('id', p2.id);
-          if (reactivateRes.error) { toast('Could not update: ' + reactivateRes.error.message, true); return; }
-          await loadProfiles();
-          render();
-          return;
-        }
-        await confirmDeactivateStaff(p2);
-      });
-      tdStatus.appendChild(toggleBtn);
-      var tdBlank = el('td');
-      if (isSelf) { var hint = el('span', 'f-hint'); hint.textContent = "Can't change your own role/status here."; tdBlank.appendChild(hint); }
-      tr.appendChild(tdName); tr.appendChild(tdRole); tr.appendChild(tdStatus); tr.appendChild(tdBlank);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    card.appendChild(table);
-    main.appendChild(card);
+    var head=el('div','page-head');var h1=el('h1');h1.textContent='Staff & Access';head.appendChild(h1);main.appendChild(head);
+    var intro=el('div','card');var p=el('p','desc');p.style.margin='0';p.textContent='Add the authentication user in Supabase first, then manage the person’s internal profile, role and active access here. Public website Team profiles remain separate.';intro.appendChild(p);main.appendChild(intro);
+    var card=el('div','card');var table=el('table');var thead=el('thead');var trh=el('tr');['Name','Designation','Role','Status','Profile'].forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});thead.appendChild(trh);table.appendChild(thead);var tbody=el('tbody');
+    state.profiles.forEach(function(p2){var isSelf=p2.id===state.user.id;var tr=el('tr',p2.is_active?'':'inactive-row');var tdName=el('td');tdName.textContent=p2.full_name+(isSelf?' (you)':'');tr.appendChild(tdName);var tdDes=el('td');tdDes.textContent=p2.designation||'—';tr.appendChild(tdDes);var tdRole=el('td');var roleSel=el('select','role-select');['employee','reviewer','admin'].forEach(function(r){roleSel.appendChild(new Option(r.charAt(0).toUpperCase()+r.slice(1),r));});roleSel.value=p2.role;roleSel.disabled=isSelf;roleSel.addEventListener('change',async function(){var res=await sb.from('profiles').update({role:roleSel.value}).eq('id',p2.id);if(res.error){toast('Could not update role: '+res.error.message,true);roleSel.value=p2.role;return;}p2.role=roleSel.value;toast(p2.full_name+' is now '+roleSel.value+'.');});tdRole.appendChild(roleSel);tr.appendChild(tdRole);var tdStatus=el('td');var toggle=el('button','btn btn-outline btn-sm');toggle.type='button';toggle.textContent=p2.is_active?'Deactivate':'Reactivate';toggle.disabled=isSelf;toggle.addEventListener('click',async function(){if(!p2.is_active){var r=await sb.from('profiles').update({is_active:true}).eq('id',p2.id);if(r.error){toast('Could not update: '+r.error.message,true);return;}await loadProfiles();render();return;}await confirmDeactivateStaff(p2);});tdStatus.appendChild(toggle);tr.appendChild(tdStatus);var tdEdit=el('td');var edit=el('button','btn btn-outline btn-sm');edit.type='button';edit.textContent='Edit';edit.addEventListener('click',function(){openStaffProfileModal(p2);});tdEdit.appendChild(edit);tr.appendChild(tdEdit);tbody.appendChild(tr);});
+    table.appendChild(tbody);card.appendChild(table);main.appendChild(card);
   }
 
   // ============================================================

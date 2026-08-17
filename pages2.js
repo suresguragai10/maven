@@ -12,8 +12,8 @@ function services() {
 
   <section class="section-pad">
     <div class="container">
-      <div class="grid grid-2">
-        ${data.serviceCategories.map(serviceCard).join('')}
+      <div class="service-editorial-list">
+        ${data.serviceCategories.map((cat, i) => serviceCard(cat, i)).join('')}
       </div>
     </div>
   </section>

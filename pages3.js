@@ -2,7 +2,7 @@ const data = require('./data');
 const { esc, safeUrl } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
-  button, sectionHead, pageHero, accordionItem, industryCard, ctaBand, bulletList,
+  button, sectionHead, pageHero, accordionItem, industryCard, industryDetail, ctaBand, bulletList,
 } = require('./ui');
 
 function documentsNeeded() {
@@ -11,7 +11,7 @@ function documentsNeeded() {
     id: `doc-${i}`,
     headingHtml: esc(g.title),
     bodyHtml: bulletList(g.items),
-    open: i === 0,
+    open: false,
     // Handbook Task 26: h2 -- no sectionHead() (which itself renders an
     // h2) precedes this accordion, so the default h3 would skip a level
     // straight from the page's h1.
@@ -56,8 +56,16 @@ function industries() {
 
   <section class="section-pad" style="padding-top:0">
     <div class="container">
-      <div class="grid grid-3">
+      <div class="industry-picker-grid">
         ${data.industries.map(industryCard).join('')}
+      </div>
+      <div class="industry-detail-stage" id="industry-detail-stage" aria-live="polite">
+        <div class="industry-detail-placeholder" id="industry-detail-placeholder">
+          <span class="service-letter">Explore by industry</span>
+          <h2>Select an industry to see common needs and how Maven can help.</h2>
+          <p>The cards stay compact and consistent; detailed guidance opens here without stretching neighbouring cards.</p>
+        </div>
+        ${data.industries.map(industryDetail).join('')}
       </div>
       <p class="text-center tag-note" style="margin-top:28px">Don't see your type of business listed? Reach out — Maven supports most business structures across Nepal.</p>
     </div>
@@ -78,7 +86,7 @@ function faq() {
     id: `faq-${i}`,
     headingHtml: esc(f.q),
     bodyHtml: `<p>${esc(f.a)}</p>`,
-    open: i === 0,
+    open: false,
     // Handbook Task 26: same reasoning as documentsNeeded() above -- no
     // preceding h2 on this page.
     headingLevel: 'h2',
