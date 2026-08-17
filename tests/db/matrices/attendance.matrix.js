@@ -27,6 +27,9 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
   await asRole(IDENTITIES.reviewerA, async (c) => {
     const other = await tryQuery(c, 'select id from public.attendance_entries where user_id = $1', [IDENTITIES.employeeA.id]);
     record({ area, action: 'Reviewer reads employee attendance', identity: 'reviewerA', allowed: other.rowCount > 0, expectedSecure: 'deny', note: other.error || `${other.rowCount} row(s) — reviewer has no all-attendance privilege` });
+
+    const ownPunch = await tryQuery(c, 'select (public.attendance_punch_in()).id as id', []);
+    record({ area, action: 'Reviewer punches own attendance', identity: 'reviewerA', allowed: ownPunch.ok && ownPunch.rows.length > 0, expectedSecure: 'allow', note: ownPunch.error || 'reviewer created own attendance entry' });
   });
 
   await asRole(IDENTITIES.admin, async (c) => {
@@ -44,6 +47,20 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
   });
 
   await asRole(IDENTITIES.employeeA, async (c) => {
+    const directUpdate = await tryQuery(c,
+      `update public.attendance_entries set punched_out_at = now() where user_id = $1`,
+      [IDENTITIES.employeeA.id]
+    );
+    record({ area, action: 'Direct UPDATE attendance bypassing punch RPC', identity: 'employeeA', allowed: directUpdate.ok && directUpdate.rowCount > 0, expectedSecure: 'deny', note: directUpdate.error || `${directUpdate.rowCount} row(s) affected — no UPDATE RLS policy should exist` });
+
+    const directDelete = await tryQuery(c,
+      `delete from public.attendance_entries where user_id = $1`,
+      [IDENTITIES.employeeA.id]
+    );
+    record({ area, action: 'Direct DELETE attendance bypassing controlled RPCs', identity: 'employeeA', allowed: directDelete.ok && directDelete.rowCount > 0, expectedSecure: 'deny', note: directDelete.error || `${directDelete.rowCount} row(s) affected — no DELETE RLS policy should exist` });
+  });
+
+  await asRole(IDENTITIES.employeeA, async (c) => {
     const correction = await tryQuery(c,
       `select (public.attendance_admin_correct($1, current_date - 5, now() - interval '8 hours', now(), 'employee bypass attempt')).id`,
       [IDENTITIES.employeeA.id]
@@ -52,6 +69,12 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
   });
 
   await asRole(IDENTITIES.admin, async (c) => {
+    const missingReason = await tryQuery(c,
+      `select (public.attendance_admin_correct($1, current_date - 6, now() - interval '8 hours', now(), ' ')).id as id`,
+      [IDENTITIES.employeeB.id]
+    );
+    record({ area, action: 'Admin correction without meaningful reason', identity: 'admin', allowed: missingReason.ok && missingReason.rows.length > 0, expectedSecure: 'deny', note: missingReason.error || 'unexpectedly accepted blank correction reason' });
+
     const correction = await tryQuery(c,
       `select (public.attendance_admin_correct($1, current_date - 5, now() - interval '8 hours', now(), 'approved missing punch correction')).id as id`,
       [IDENTITIES.employeeB.id]
@@ -73,6 +96,18 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
   await asRole(IDENTITIES.employeeB, async (c) => {
     const audit = await tryQuery(c, 'select id from public.attendance_corrections where user_id = $1', [IDENTITIES.employeeB.id]);
     record({ area, action: 'Read own correction history', identity: 'employeeB', allowed: audit.rowCount > 0, expectedSecure: 'allow', note: audit.error || `${audit.rowCount} row(s)` });
+  });
+
+  await asSuperuser(async (c) => {
+    const boundary = await tryQuery(c,
+      `select
+         public.attendance_nepal_work_date('2026-08-17 18:14:59+00'::timestamptz) as before_midnight,
+         public.attendance_nepal_work_date('2026-08-17 18:15:00+00'::timestamptz) as at_midnight`,
+      []
+    );
+    const row = boundary.rows && boundary.rows[0];
+    const allowed = !!row && String(row.before_midnight).slice(0, 10) === '2026-08-17' && String(row.at_midnight).slice(0, 10) === '2026-08-18';
+    record({ area, action: 'Nepal midnight work-date boundary', identity: 'database', allowed, expectedSecure: 'allow', note: boundary.error || JSON.stringify(row) });
   });
 
   await asRole(IDENTITIES.inactive, async (c) => {

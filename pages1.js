@@ -3,7 +3,7 @@ const { esc, internalHref } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
-  statRow,
+  statRow, servicePhotoMeta,
 } = require('./ui');
 
 // Decorative Kathmandu skyline: generic building silhouettes plus three
@@ -135,9 +135,12 @@ function docCardArt() {
 // card that only *looked* fully clickable but wasn't would be the same
 // "looks clickable, does nothing" trap fixed earlier for industry badges.
 function homeServiceCard(cat) {
+  const photo = servicePhotoMeta(cat);
   return `<a class="service-card service-card--photo reveal" href="${internalHref(`services.html#${cat.key}`)}">
-    <div class="service-card-photo" style="background-image:url('/images/card-${esc(cat.key)}.jpg')">
-      <span class="service-card-photo-badge">${icon(cat.icon)}</span>
+    <div class="service-card-photo">
+      <img src="/images/card-${esc(photo.file)}.jpg" alt="" loading="lazy" decoding="async">
+      <span class="service-card-photo-shade" aria-hidden="true"></span>
+      <span class="service-card-photo-badge" aria-hidden="true">${icon(cat.icon)}</span>
     </div>
     <div class="service-card-body">
       <span class="service-letter">Category ${esc(cat.letter)}</span>
@@ -171,7 +174,6 @@ function home() {
         <div class="hero-actions">
           ${button('Book Free Consultation', 'contact.html', 'primary')}
           ${button('View Services', 'services.html', 'ghost-light')}
-          ${button(`${icon('whatsapp')} Send Inquiry on WhatsApp`, data.whatsappHref('Hello Maven, I would like to send an inquiry about your services.'), 'whatsapp', 'target="_blank" rel="noopener"')}
         </div>
       </div>
       ${docCardArt()}
@@ -224,20 +226,7 @@ function home() {
     </div>
   </section>
 
-  <section class="section-pad bg-navy skyline-section international-showcase">
-    <div class="container international-showcase-grid">
-      <div class="reveal international-showcase-copy">
-        <p class="eyebrow eyebrow--on-dark">International Services</p>
-        <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
-        <p style="margin-top:14px">${esc(data.internationalHub.intro)}</p>
-        <div style="margin-top:26px">${button(esc(data.internationalHub.cta), 'global-outsourcing.html', 'primary')}</div>
-      </div>
-      <div class="international-proof-grid reveal" aria-label="International service strengths">
-        ${data.internationalAccounting.benefits.slice(0, 6).map((b) => `<div class="international-proof-item">${stampMark('stamp-sm')}<span>${esc(b.title)}</span></div>`).join('')}
-      </div>
-    </div>
-    ${globalSkyline()}
-  </section>
+
 
   <section class="section-pad">
     <div class="container">
@@ -285,6 +274,20 @@ function home() {
     </div>
   </section>
 
+  <section class="section-pad bg-navy skyline-section international-showcase">
+    <div class="container international-showcase-grid">
+      <div class="reveal international-showcase-copy">
+        <p class="eyebrow eyebrow--on-dark">International Services</p>
+        <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
+        <p style="margin-top:14px">${esc(data.internationalHub.intro)}</p>
+        <div style="margin-top:26px">${button(esc(data.internationalHub.cta), 'global-outsourcing.html', 'primary')}</div>
+      </div>
+      <div class="international-proof-grid reveal" aria-label="International service strengths">
+        ${data.internationalAccounting.benefits.slice(0, 6).map((b) => `<div class="international-proof-item">${stampMark('stamp-sm')}<span>${esc(b.title)}</span></div>`).join('')}
+      </div>
+    </div>
+    ${globalSkyline()}
+  </section>
   <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'Frequently Asked', title: 'Quick answers before you reach out' })}

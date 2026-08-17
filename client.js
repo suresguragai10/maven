@@ -1,6 +1,14 @@
 (function () {
   'use strict';
 
+  function motionReduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  function scrollElementIntoView(target, block) {
+    if (!target || typeof target.scrollIntoView !== 'function') return;
+    target.scrollIntoView({ behavior: motionReduced() ? 'auto' : 'smooth', block: block || 'center' });
+  }
+
   // ---- Footer year ----
   var yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
@@ -106,8 +114,7 @@
     };
     window.addEventListener('scroll', onScrollTop, { passive: true });
     backToTop.addEventListener('click', function () {
-      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+      window.scrollTo({ top: 0, behavior: motionReduced() ? 'auto' : 'smooth' });
     });
     onScrollTop();
   }
@@ -170,8 +177,7 @@
     if (industryPlaceholder) industryPlaceholder.hidden = true;
     if (history && history.replaceState) history.replaceState(null, '', '#industry-' + index);
     if (shouldScroll) {
-      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      scrollElementIntoView(target, 'start');
     }
   }
   industrySelectButtons.forEach(function (btn) {
@@ -309,8 +315,7 @@
     });
 
     setActiveDocTab(0);
-    var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!prefersReducedMotion && docTabs.length) {
+    if (!motionReduced() && docTabs.length) {
       docCycleTimer = setInterval(function () {
         setActiveDocTab((docActiveIndex + 1) % docTabs.length);
       }, 3000);
@@ -368,7 +373,7 @@
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
         resultBox.hidden = false;
-        resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollElementIntoView(resultBox, 'center');
       }
     };
 
@@ -377,7 +382,7 @@
       if (resultBox) {
         resultBox.innerHTML = '<h3>✓ Inquiry sent — thank you!</h3><p class="tag-note">We\'ve received your message and will get back to you within one business day. If it\'s urgent, feel free to call or WhatsApp us directly.</p>';
         resultBox.hidden = false;
-        resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollElementIntoView(resultBox, 'center');
       }
       form.reset();
     };
@@ -429,7 +434,7 @@
           clearFieldErrors();
           markFieldsInvalid([!name && 'f-name', !phone && 'f-phone', !service && 'f-service', !message && 'f-message'].filter(Boolean));
           errorEl.focus({ preventScroll: true });
-          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scrollElementIntoView(errorEl, 'center');
         }
         return;
       }
@@ -440,7 +445,7 @@
           clearFieldErrors();
           markFieldsInvalid(['f-email']);
           errorEl.focus({ preventScroll: true });
-          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scrollElementIntoView(errorEl, 'center');
         }
         return;
       }

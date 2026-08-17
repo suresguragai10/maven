@@ -7,7 +7,7 @@ module.exports = {
   // A representative slice of the site, not every page: enough variety
   // (hero, cards, forms, long content) to catch layout overflow without
   // multiplying every width by all ~20 pages.
-  OVERFLOW_PAGES: ['/', '/faq', '/industries', '/contact', '/services', '/documents-needed'],
+  OVERFLOW_PAGES: ['/', '/about', '/services', '/global-outsourcing', '/international-accounting', '/virtual-cfo', '/nfrs-ifrs', '/packages', '/documents-needed', '/industries', '/resources', '/calculators', '/faq', '/contact'],
 
   // Matches the task's required breakpoint set exactly.
   OVERFLOW_WIDTHS: [320, 360, 390, 430, 768, 1024, 1280, 1440],

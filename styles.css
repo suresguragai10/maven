@@ -35,6 +35,16 @@
   --shadow-sm: 0 1px 2px rgba(16, 42, 76, 0.06), 0 1px 1px rgba(16, 42, 76, 0.04);
   --shadow-md: 0 10px 30px -12px rgba(16, 42, 76, 0.22);
   --shadow-lg: 0 24px 48px -16px rgba(16, 42, 76, 0.28);
+  --radius-lg: 18px;
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+  --section-y: 88px;
+  --section-y-mobile: 56px;
 }
 
 /* ---------- Reset & base ---------- */
@@ -80,7 +90,7 @@ p { color: var(--ink-soft); }
 .container-wide { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px; }
 
 section { position: relative; }
-.section-pad { padding: 88px 0; }
+.section-pad { padding: var(--section-y) 0; }
 .section-pad-sm { padding: 56px 0; }
 .bg-mist { background: var(--mist); }
 .bg-navy { background: var(--navy-950); color: rgba(255,255,255,0.92); }
@@ -88,7 +98,7 @@ section { position: relative; }
 .bg-navy p { color: rgba(255,255,255,0.72); }
 
 @media (max-width: 768px) {
-  .section-pad { padding: 56px 0; }
+  .section-pad { padding: var(--section-y-mobile) 0; }
   .section-pad-sm { padding: 40px 0; }
 }
 
@@ -280,20 +290,14 @@ body.nav-open { overflow: hidden; }
 .hero-skyline { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; opacity: 0.22; z-index: 1; }
 .hero-art { position: relative; }
 
-/* Gentle continuous bob, not a one-off entrance — reads as "floating," not
-   "animating in." Two variants: plain translateY for elements with no other
-   transform, and one that preserves .doc-card-stamp's existing rotation
-   (animating `transform` wholesale would otherwise silently drop it). Both
-   respect the site-wide prefers-reduced-motion override (see reset above,
-   which forces animation-duration to ~0 for anyone who's asked for that). */
-@keyframes hero-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-@keyframes hero-float-rotated { 0%, 100% { transform: rotate(8deg) translateY(0); } 50% { transform: rotate(8deg) translateY(-8px); } }
-
+/* Motion guardrail: hero accents stay visually light but do not bob forever.
+   The normal reveal system provides the one-off entrance animation; persistent
+   floating/bouncing is intentionally avoided for a calmer consultancy tone. */
 .hero-float-badge {
   position: absolute; top: -22px; left: -20px; z-index: 3;
   display: flex; align-items: center; gap: 10px;
   background: rgba(255,255,255,0.96); border-radius: 14px; padding: 12px 16px;
-  box-shadow: var(--shadow-lg); animation: hero-float 4.2s ease-in-out infinite; animation-delay: 0.5s;
+  box-shadow: var(--shadow-lg); transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .hero-float-badge .ic { width: 20px; height: 20px; color: var(--gold-600); flex-shrink: 0; }
 .hero-float-badge strong { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--navy-950); line-height: 1.1; }
@@ -341,7 +345,7 @@ body.nav-open { overflow: hidden; }
 .doc-card-stamp {
   position: absolute; right: -18px; bottom: -22px; width: 92px; height: 92px; color: var(--gold-500);
   background: #fff; border-radius: 50%; box-shadow: var(--shadow-md); display: flex; align-items: center;
-  justify-content: center; animation: hero-float-rotated 3.6s ease-in-out infinite;
+  justify-content: center;
 }
 .doc-card-stamp .stamp { width: 66px; height: 66px; }
 .doc-card-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
@@ -411,16 +415,16 @@ body.nav-open { overflow: hidden; }
 .service-card h3 { font-size: 1.15rem; margin-top: 2px; }
 .service-tagline { font-size: 0.94rem; margin: 10px 0 16px; }
 
-/* Photo-header variant of .service-card (homepage "What We Do" only — the
-   dedicated Services page keeps the plain icon card, which already shows
-   every item and doesn't need the extra visual weight). Padding moves from
-   the card itself to .service-card-body so the photo can bleed to the
-   card's edges. */
+/* Photo-header variant of .service-card on the homepage. The full Services
+   page uses the separate editorial-row system below. Images are real <img>
+   elements for predictable cropping/loading; the overlay is a separate
+   decorative layer rather than baked into a CSS background. */
 .service-card--photo { display: block; padding: 0; overflow: hidden; }
 .service-card-photo {
-  position: relative; aspect-ratio: 4 / 3; background-size: cover; background-position: center;
-  background-color: var(--navy-950);
+  position: relative; aspect-ratio: 4 / 3; overflow: hidden; background-color: var(--navy-950);
 }
+.service-card-photo img { width:100%; height:100%; object-fit:cover; object-position:center; }
+.service-card-photo-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,31,58,.02),rgba(10,31,58,.32)); pointer-events:none; }
 .service-card-photo-badge {
   position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 10px;
   background: var(--navy-950); color: var(--gold-500); display: flex; align-items: center; justify-content: center;
@@ -615,7 +619,7 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Floating actions ---------- */
 .whatsapp-float {
-  position: fixed; bottom: 24px; right: 24px; width: 58px; height: 58px; border-radius: 50%;
+  position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); right: calc(24px + env(safe-area-inset-right, 0px)); width: 58px; height: 58px; border-radius: 50%;
   background: var(--whatsapp); color: var(--navy-950); display: flex; align-items: center; justify-content: center;
   box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 120; transition: transform 0.15s ease;
 }
@@ -623,14 +627,19 @@ body.nav-open { overflow: hidden; }
 .whatsapp-float .ic { width: 28px; height: 28px; }
 
 .back-to-top {
-  position: fixed; bottom: 24px; right: 92px; width: 44px; height: 44px; border-radius: 50%;
+  position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); right: calc(92px + env(safe-area-inset-right, 0px)); width: 44px; height: 44px; border-radius: 50%;
   background: var(--navy-900); color: #fff; display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 18px rgba(0,0,0,0.2); z-index: 120; opacity: 0; visibility: hidden; transform: translateY(8px);
   transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
 }
 .back-to-top.is-visible { opacity: 1; visibility: visible; transform: none; }
 .back-to-top .ic { width: 20px; height: 20px; }
-@media (max-width: 560px) { .whatsapp-float { width: 52px; height: 52px; bottom: 18px; right: 18px; } .back-to-top { right: 82px; bottom: 18px; width: 44px; height: 44px; } }
+@media (max-width: 560px) {
+  .whatsapp-float { width: 50px; height: 50px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: calc(16px + env(safe-area-inset-right, 0px)); }
+  .back-to-top { right: calc(76px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 40px; height: 40px; }
+  .whatsapp-float .ic { width:24px; height:24px; }
+  .back-to-top .ic { width:18px; height:18px; }
+}
 
 /* ---------- Reveal-on-scroll ---------- */
 .reveal { opacity: 1; transform: none; }
@@ -760,7 +769,9 @@ strong { color: var(--navy-900); }
 .service-editorial { display:grid; grid-template-columns:minmax(240px,.72fr) minmax(0,1.28fr); border:1px solid var(--border); border-radius:16px; overflow:hidden; background:#fff; box-shadow:var(--shadow-sm); min-height:300px; }
 .service-editorial--reverse { grid-template-columns:minmax(0,1.28fr) minmax(240px,.72fr); }
 .service-editorial--reverse .service-editorial-photo { order:2; }
-.service-editorial-photo { min-height:100%; background-size:cover; background-position:center; position:relative; }
+.service-editorial-photo { min-height:100%; position:relative; overflow:hidden; background:var(--navy-950); }
+.service-editorial-photo img { width:100%; height:100%; min-height:300px; object-fit:cover; object-position:center; }
+.service-editorial-photo-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,31,58,.02),rgba(10,31,58,.34)); pointer-events:none; }
 .service-editorial-icon { position:absolute; top:20px; right:20px; width:48px; height:48px; border-radius:12px; background:var(--navy-950); color:var(--gold-500); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-md); }
 .service-editorial-icon .ic { width:22px; height:22px; }
 .service-editorial-body { padding:34px 38px 36px; }
@@ -768,7 +779,7 @@ strong { color: var(--navy-900); }
 .service-editorial-body .service-tagline { font-size:1rem; margin-bottom:20px; }
 .service-editorial-body .stamp-list { gap:9px; }
 .service-editorial-actions { margin-top:24px; }
-@media (max-width:760px){ .service-editorial,.service-editorial--reverse{grid-template-columns:1fr}.service-editorial--reverse .service-editorial-photo{order:0}.service-editorial-photo{min-height:210px}.service-editorial-body{padding:26px 24px 30px} }
+@media (max-width:760px){ .service-editorial,.service-editorial--reverse{grid-template-columns:1fr}.service-editorial--reverse .service-editorial-photo{order:0}.service-editorial-photo{min-height:210px}.service-editorial-photo img{min-height:210px;aspect-ratio:16/9}.service-editorial-body{padding:26px 24px 30px} }
 
 /* Industries: selection cards stay the same height; rich detail has its own stage. */
 .industry-picker-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; align-items:stretch; }

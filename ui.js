@@ -2,6 +2,20 @@ const { icon, stampMark } = require('./icons');
 const { esc, internalHref } = require('./escape');
 const data = require('./data');
 
+const SERVICE_PHOTO_META = {
+  registration: { file: 'registration', alt: 'Business registration documents prepared for review' },
+  bookkeeping: { file: 'bookkeeping', alt: 'Accounting records and bookkeeping working papers' },
+  tax: { file: 'tax', alt: 'Tax and compliance documents arranged for review' },
+  payroll: { file: 'payroll', alt: 'Payroll records and employee payment documentation' },
+  reporting: { file: 'reporting', alt: 'Financial reports and management reporting documents' },
+  advisory: { file: 'advisory', alt: 'Business advisory notes and financial planning materials' },
+  'nfrs-ifrs': { file: 'reporting', alt: 'Financial reporting materials used for NFRS and IFRS support' },
+};
+
+function servicePhotoMeta(cat) {
+  return SERVICE_PHOTO_META[cat.key] || { file: 'reporting', alt: cat.title + ' service supporting documents' };
+}
+
 function button(label, href, variant = 'primary', extra = '') {
   // label may legitimately contain code-built markup (e.g. an icon), so it is
   // NOT escaped here. href comes from code, not the CMS.
@@ -48,11 +62,13 @@ function serviceCard(cat, index = 0) {
   // service imagery is reused locally (no third-party dependency). NFRS/IFRS
   // intentionally shares the reporting image until a dedicated approved
   // photo is supplied.
-  const photoKey = cat.key === 'nfrs-ifrs' ? 'reporting' : cat.key;
+  const photo = servicePhotoMeta(cat);
   const reverse = index % 2 ? ' service-editorial--reverse' : '';
   return `<article class="service-editorial reveal${reverse}" id="${esc(cat.key)}">
-    <div class="service-editorial-photo" style="background-image:linear-gradient(180deg,rgba(10,31,58,.08),rgba(10,31,58,.34)),url('/images/card-${esc(photoKey)}.jpg')" aria-hidden="true">
-      <span class="service-editorial-icon">${icon(cat.icon)}</span>
+    <div class="service-editorial-photo">
+      <img src="/images/card-${esc(photo.file)}.jpg" alt="${esc(photo.alt)}" loading="lazy" decoding="async">
+      <span class="service-editorial-photo-shade" aria-hidden="true"></span>
+      <span class="service-editorial-icon" aria-hidden="true">${icon(cat.icon)}</span>
     </div>
     <div class="service-editorial-body">
       <span class="service-letter">Category ${esc(cat.letter)}</span>
@@ -245,5 +261,5 @@ function trustBar(points) {
 
 module.exports = {
   button, eyebrow, sectionHead, pageHero, bulletList, serviceCard, valueCard, whyCard,
-  industryBadge, industryCard, industryDetail, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow,
+  industryBadge, industryCard, industryDetail, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow, servicePhotoMeta,
 };

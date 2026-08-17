@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node build.js",
     "test": "node --test",
+    "test:syntax": "node scripts/check-syntax.js",
     "test:ui": "playwright test --project=chromium",
     "test:ui:all": "playwright test",
     "test:ui:install-browsers": "playwright install chromium firefox webkit",

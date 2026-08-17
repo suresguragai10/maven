@@ -13,6 +13,20 @@
 -- - The internal Staff Directory is operational and is NOT linked to the
 --   public website Team page.
 
+-- Keep the Nepal business-date rule in one deterministic helper so the
+-- midnight boundary can be regression-tested without changing a system clock.
+-- It is intentionally not exposed as an application RPC.
+create or replace function public.attendance_nepal_work_date(p_at timestamptz default now())
+returns date
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select (p_at at time zone 'Asia/Kathmandu')::date;
+$$;
+
+revoke all on function public.attendance_nepal_work_date(timestamptz) from public, anon, authenticated;
+
 alter table public.profiles
   add column if not exists designation text,
   add column if not exists work_email text,
@@ -30,7 +44,7 @@ create or replace function public.update_my_profile(
 returns public.profiles
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   result public.profiles;
@@ -119,10 +133,10 @@ create or replace function public.attendance_punch_in()
 returns public.attendance_entries
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
-  today_nepal date := (now() at time zone 'Asia/Kathmandu')::date;
+  today_nepal date := public.attendance_nepal_work_date(now());
   existing public.attendance_entries;
   result public.attendance_entries;
 begin
@@ -153,10 +167,10 @@ create or replace function public.attendance_punch_out()
 returns public.attendance_entries
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
-  today_nepal date := (now() at time zone 'Asia/Kathmandu')::date;
+  today_nepal date := public.attendance_nepal_work_date(now());
   result public.attendance_entries;
 begin
   if not public.current_user_active() then
@@ -191,7 +205,7 @@ create or replace function public.attendance_admin_correct(
 returns public.attendance_entries
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   old_row public.attendance_entries;

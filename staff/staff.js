@@ -1002,7 +1002,7 @@
     clear(main);
     if (state.view === 'today') return renderTodayPage(main);
     if (state.view === 'search') return renderSearchPage(main, state.searchQuery || '');
-    if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
+    if (state.view === 'my-work') return renderWorkListView(main, 'My Tasks', 'mine');
     if (state.view === 'team') return renderTeamPage(main);
     if (state.view === 'since-last-seen') return renderSinceLastSeenPage(main);
     if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
@@ -1150,13 +1150,22 @@
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = title;
     head.appendChild(h1);
-    // Everyone can log their own work now, not just reviewers/admins —
-    // openNewWorkModal() locks the assignee to "self" for employees (see
-    // there), so this doesn't let anyone hand work to someone else.
-    var addBtn = el('button', 'btn btn-sm');
-    addBtn.type = 'button'; addBtn.appendChild(icon('plus')); addBtn.appendChild(document.createTextNode('New Work'));
-    addBtn.addEventListener('click', function () { openNewWorkModal(); });
-    head.appendChild(addBtn);
+    // My Tasks spans two genuinely different workflows. Keep creation choices
+    // explicit instead of a vague "New Work" button that silently opens only
+    // the Client Work form.
+    var headActions = el('div', 'page-head-actions');
+    var addClientBtn = el('button', 'btn btn-sm');
+    addClientBtn.type = 'button'; addClientBtn.appendChild(icon('plus'));
+    addClientBtn.appendChild(document.createTextNode(mode === 'mine' ? 'New Client Work' : 'New Work'));
+    addClientBtn.addEventListener('click', function () { openNewWorkModal(); });
+    headActions.appendChild(addClientBtn);
+    if (mode === 'mine') {
+      var addFirmBtn = el('button', 'btn btn-outline btn-sm');
+      addFirmBtn.type = 'button'; addFirmBtn.appendChild(icon('briefcase')); addFirmBtn.appendChild(document.createTextNode('New Firm Work'));
+      addFirmBtn.addEventListener('click', function () { openFirmWorkModal(function (newId) { if (newId) gotoFirmWork(newId); else render(); }); });
+      headActions.appendChild(addFirmBtn);
+    }
+    head.appendChild(headActions);
     main.appendChild(head);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
@@ -1285,32 +1294,52 @@
   // own server-side assignee_id filter (see renderWorkListView), never a
   // client-side download-then-filter of every Firm Work row.
   function renderMyWorkCombined(main, clientItems, firmItems) {
-    var filterCard = el('div', 'card'); filterCard.style.cssText = 'margin-bottom:16px;padding:14px 18px;';
-    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
-    var filterLabel = el('span'); filterLabel.style.cssText = 'font-size:.85rem;color:var(--ink-soft);'; filterLabel.textContent = 'Show:';
-    var scopeSel = el('select'); scopeSel.style.width = 'auto';
-    scopeSel.appendChild(new Option('All (' + (clientItems.length + firmItems.length) + ')', 'all'));
-    scopeSel.appendChild(new Option('Client (' + clientItems.length + ')', 'client'));
-    scopeSel.appendChild(new Option('Firm (' + firmItems.length + ')', 'firm'));
-    filterRow.appendChild(filterLabel); filterRow.appendChild(scopeSel);
-    filterCard.appendChild(filterRow);
-    main.appendChild(filterCard);
+    var intro = el('p', 'workspace-intro');
+    intro.textContent = 'One place for work assigned to you. Client Work keeps compliance urgency and deadlines; Firm Work keeps lighter internal target dates.';
+    main.appendChild(intro);
+
+    var filterCard = el('div', 'card my-tasks-filter');
+    var filterLabel = el('span', 'scope-tabs-label'); filterLabel.textContent = 'Task scope';
+    var tabs = el('div', 'scope-tabs'); tabs.setAttribute('role', 'group'); tabs.setAttribute('aria-label', 'Filter My Tasks by scope');
+    var currentScope = 'all';
+    var buttons = {};
+    [
+      ['all', 'All', clientItems.length + firmItems.length],
+      ['client', 'Client', clientItems.length],
+      ['firm', 'Firm', firmItems.length]
+    ].forEach(function (entry) {
+      var b = el('button', 'scope-tab'); b.type = 'button'; b.dataset.scope = entry[0];
+      b.textContent = entry[1] + ' (' + entry[2] + ')';
+      b.addEventListener('click', function () { currentScope = entry[0]; apply(); });
+      buttons[entry[0]] = b; tabs.appendChild(b);
+    });
+    filterCard.appendChild(filterLabel); filterCard.appendChild(tabs); main.appendChild(filterCard);
 
     var listWrap = el('div');
     main.appendChild(listWrap);
 
     function apply() {
+      Object.keys(buttons).forEach(function (key) {
+        var active = key === currentScope;
+        buttons[key].classList.toggle('is-active', active);
+        buttons[key].setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
       clear(listWrap);
-      var scope = scopeSel.value;
       var shownClient = 0, shownFirm = 0;
 
-      if (scope !== 'firm') {
+      if (currentScope !== 'firm') {
+        if (clientItems.length) {
+          var clientHead = el('div', 'scope-section-head');
+          var clientTitle = el('h2'); clientTitle.textContent = 'Client Work'; clientHead.appendChild(clientTitle);
+          var clientNote = el('p'); clientNote.textContent = 'Compliance work — filing/internal deadlines and review states remain priority signals.'; clientHead.appendChild(clientNote);
+          listWrap.appendChild(clientHead);
+        }
         shownClient = renderGroupedWork(listWrap, clientItems, { rowRenderer: function (w) { return workRow(w, true); }, suppressEmpty: true });
       }
-      if (scope !== 'client' && firmItems.length) {
-        var firmHead = el('h2'); firmHead.style.cssText = 'font-size:1rem;margin:' + (shownClient ? '8px' : '0') + ' 0 4px;';
-        firmHead.appendChild(icon('briefcase'));
-        firmHead.appendChild(document.createTextNode('Firm Work'));
+      if (currentScope !== 'client' && firmItems.length) {
+        var firmHead = el('div', 'scope-section-head scope-section-head--firm');
+        var firmTitle = el('h2'); firmTitle.textContent = 'Firm Work'; firmHead.appendChild(firmTitle);
+        var firmNote = el('p'); firmNote.textContent = 'Internal Maven work — targets, blockers and next action without statutory-risk styling.'; firmHead.appendChild(firmNote);
         listWrap.appendChild(firmHead);
         shownFirm = renderFirmWorkGroups(listWrap, firmItems);
       }
@@ -1318,14 +1347,13 @@
       if (!shownClient && !shownFirm) {
         var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard'));
         empty.appendChild(document.createTextNode(
-          scope === 'client' ? 'No Client Work assigned to you.' :
-          scope === 'firm' ? 'No Firm Work assigned to you.' :
+          currentScope === 'client' ? 'No Client Work assigned to you.' :
+          currentScope === 'firm' ? 'No Firm Work assigned to you.' :
           'No work assigned to you yet.'
         ));
         listWrap.appendChild(empty);
       }
     }
-    scopeSel.addEventListener('change', apply);
     apply();
   }
 
@@ -6468,20 +6496,46 @@
     seconds = Math.max(0, seconds || 0); var h = Math.floor(seconds / 3600); var min = Math.floor((seconds % 3600) / 60);
     return h + 'h ' + String(min).padStart(2, '0') + 'm';
   }
+  function nepalDateTimeParts(date) {
+    var parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kathmandu', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(date);
+    var map = {}; parts.forEach(function (x) { if (x.type !== 'literal') map[x.type] = x.value; });
+    return map;
+  }
   function timeOnly(iso) {
-    if (!iso) return '—'; return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (!iso) return '—';
+    var d = new Date(iso); if (isNaN(d.getTime())) return '—';
+    return d.toLocaleTimeString('en-US', { timeZone: 'Asia/Kathmandu', hour: 'numeric', minute: '2-digit' });
   }
   function datetimeLocalValue(iso) {
     if (!iso) return '';
     var d = new Date(iso); if (isNaN(d.getTime())) return '';
-    var pad = function (n) { return String(n).padStart(2, '0'); };
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var p = nepalDateTimeParts(d);
+    return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
+  }
+  // HTML datetime-local has no timezone. Attendance corrections are always
+  // entered as Nepal local time, so convert the value explicitly using
+  // Nepal's fixed UTC+05:45 offset instead of the admin's browser timezone.
+  function nepalLocalInputToIso(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value || '');
+    if (!m) return null;
+    var utcMs = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])) - (5 * 60 + 45) * 60 * 1000;
+    var d = new Date(utcMs);
+    return isNaN(d.getTime()) ? null : d.toISOString();
   }
   function csvCell(value) { value = value == null ? '' : String(value); return '"' + value.replace(/"/g, '""') + '"'; }
+  function nepalCsvDateTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d.getTime())) return '';
+    var p = nepalDateTimeParts(d);
+    return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute;
+  }
   function downloadAttendanceCsv(entries, monthKey) {
-    var rows = [['Date','Staff','Punch In','Punch Out','Total Hours','Status']];
+    var rows = [['Work Date','Staff','Punch In (Nepal)','Punch Out (Nepal)','Total Hours','Status']];
     entries.forEach(function (r) {
-      rows.push([r.work_date, profileName(r.user_id), r.punched_in_at || '', r.punched_out_at || '', (attendanceSeconds(r) / 3600).toFixed(2), r.punched_out_at ? 'Completed' : 'Open']);
+      rows.push([r.work_date, profileName(r.user_id), nepalCsvDateTime(r.punched_in_at), nepalCsvDateTime(r.punched_out_at), (attendanceSeconds(r) / 3600).toFixed(2), r.punched_out_at ? 'Completed' : 'Open']);
     });
     var csv = rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); var url = URL.createObjectURL(blob);
@@ -6497,6 +6551,42 @@
   async function loadTodayAttendance() {
     var res = await sb.from('attendance_entries').select('*').eq('user_id', state.user.id).eq('work_date', attendanceTodayDateStr()).maybeSingle();
     if (res.error) return null; return res.data || null;
+  }
+  async function loadAttendanceCorrections(monthKey, personId) {
+    var b = attendanceMonthBounds(monthKey);
+    var q = sb.from('attendance_corrections').select('*').gte('work_date', b.start).lt('work_date', b.next).order('corrected_at', { ascending: false });
+    if (!isAdmin()) q = q.eq('user_id', state.user.id);
+    else if (personId && personId !== '__all__') q = q.eq('user_id', personId);
+    var res = await q;
+    if (res.error) { toast('Could not load attendance correction history: ' + res.error.message, true); return []; }
+    return res.data || [];
+  }
+  function correctionChangeText(r) {
+    var oldIn = r.old_punched_in_at ? timeOnly(r.old_punched_in_at) : 'none';
+    var oldOut = r.old_punched_out_at ? timeOnly(r.old_punched_out_at) : 'none';
+    var newIn = timeOnly(r.new_punched_in_at);
+    var newOut = r.new_punched_out_at ? timeOnly(r.new_punched_out_at) : 'open';
+    return 'In ' + oldIn + ' → ' + newIn + ' · Out ' + oldOut + ' → ' + newOut;
+  }
+  function renderAttendanceCorrectionHistory(main, corrections, personId) {
+    if (!corrections.length) return;
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.textContent = 'Correction history'; card.appendChild(h2);
+    var note = el('p', 'desc'); note.textContent = 'Attendance corrections are preserved with the reason and the admin who made the change.'; card.appendChild(note);
+    var table = el('table'); var hd = el('thead'); var trh = el('tr');
+    var heads = ['Date']; if (isAdmin() && personId === '__all__') heads.push('Staff');
+    heads = heads.concat(['Change', 'Reason', 'Corrected by']);
+    heads.forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); }); hd.appendChild(trh); table.appendChild(hd);
+    var tb = el('tbody');
+    corrections.forEach(function (r) {
+      var tr = el('tr');
+      function td(v) { var x = el('td'); x.textContent = v; tr.appendChild(x); }
+      td(fmtDate(r.work_date));
+      if (isAdmin() && personId === '__all__') td(profileName(r.user_id));
+      td(correctionChangeText(r)); td(r.reason || '—'); td(profileName(r.corrected_by));
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb); card.appendChild(table); main.appendChild(card);
   }
   function renderAttendanceMetrics(main, entries) {
     var complete = entries.filter(function (r) { return !!r.punched_out_at; });
@@ -6530,20 +6620,20 @@
     var wrap=el('div');var head=el('div','modal-head');var h2=el('h2');h2.textContent=entry?'Correct Attendance':'Add Missing Attendance';var cancel=el('button','btn btn-outline btn-sm');cancel.type='button';cancel.textContent='Cancel';cancel.addEventListener('click',closeModal);head.appendChild(h2);head.appendChild(cancel);wrap.appendChild(head);
     var person=el('select');state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){person.appendChild(new Option(p.full_name,p.id));});person.value=entry?entry.user_id:(selectedPerson&&selectedPerson!=='__all__'?selectedPerson:state.user.id);wrap.appendChild(field('Staff member',person));
     var date=el('input');date.type='date';date.value=entry?entry.work_date:attendanceTodayDateStr();wrap.appendChild(field('Work date (Gregorian)',date));
-    var pin=el('input');pin.type='datetime-local';pin.value=entry?datetimeLocalValue(entry.punched_in_at):'';wrap.appendChild(field('Punch in',pin));
-    var pout=el('input');pout.type='datetime-local';pout.value=entry?datetimeLocalValue(entry.punched_out_at):'';wrap.appendChild(field('Punch out (optional)',pout));
+    var pin=el('input');pin.type='datetime-local';pin.value=entry?datetimeLocalValue(entry.punched_in_at):'';wrap.appendChild(field('Punch in (Nepal time)',pin));
+    var pout=el('input');pout.type='datetime-local';pout.value=entry?datetimeLocalValue(entry.punched_out_at):'';wrap.appendChild(field('Punch out (Nepal time, optional)',pout));
     var reason=el('textarea');reason.rows=3;reason.placeholder='Required: why is this record being corrected?';wrap.appendChild(field('Correction reason',reason));
-    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Correction';save.addEventListener('click',async function(){if(!person.value||!date.value||!pin.value||reason.value.trim().length<3){toast('Staff, date, punch-in and a correction reason are required.',true);return;}var inIso=new Date(pin.value).toISOString();var outIso=pout.value?new Date(pout.value).toISOString():null;if(outIso&&new Date(outIso)<new Date(inIso)){toast('Punch-out cannot be earlier than punch-in.',true);return;}save.disabled=true;var res=await sb.rpc('attendance_admin_correct',{p_user_id:person.value,p_work_date:date.value,p_punched_in_at:inIso,p_punched_out_at:outIso,p_reason:reason.value.trim()});save.disabled=false;if(res.error){toast('Could not correct attendance: '+res.error.message,true);return;}closeModal();toast('Attendance correction saved with audit history.');if(onSaved)onSaved();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
+    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Correction';save.addEventListener('click',async function(){if(!person.value||!date.value||!pin.value||reason.value.trim().length<3){toast('Staff, date, punch-in and a correction reason are required.',true);return;}var inIso=nepalLocalInputToIso(pin.value);var outIso=pout.value?nepalLocalInputToIso(pout.value):null;if(!inIso||(pout.value&&!outIso)){toast('Enter valid Nepal punch times.',true);return;}if(outIso&&new Date(outIso)<new Date(inIso)){toast('Punch-out cannot be earlier than punch-in.',true);return;}save.disabled=true;var res=await sb.rpc('attendance_admin_correct',{p_user_id:person.value,p_work_date:date.value,p_punched_in_at:inIso,p_punched_out_at:outIso,p_reason:reason.value.trim()});save.disabled=false;if(res.error){toast('Could not correct attendance: '+res.error.message,true);return;}closeModal();toast('Attendance correction saved with audit history.');if(onSaved)onSaved();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
   }
   async function renderAttendancePage(main) {
     var head=el('div','page-head');var h1=el('h1');h1.textContent='Attendance';head.appendChild(h1);main.appendChild(head);var intro=el('p','workspace-intro');intro.textContent=isAdmin()?'Punch in/out for your own day, review team attendance, export monthly CSV, and correct records with an audit reason.':'Punch in/out and review your own monthly attendance. Other employees\' attendance is private to admins.';main.appendChild(intro);
-    var punchCard=el('div','card attendance-punch-card');var pLeft=el('div');var ph=el('h2');ph.textContent='Today · '+fmtDate(attendanceTodayDateStr());pLeft.appendChild(ph);var pd=el('p','desc');pd.textContent='One punch-in and one punch-out per Gregorian work date. No location or IP data is collected.';pLeft.appendChild(pd);var stateLine=el('div','punch-state');pLeft.appendChild(stateLine);punchCard.appendChild(pLeft);var actionWrap=el('div');punchCard.appendChild(actionWrap);main.appendChild(punchCard);
+    var punchCard=el('div','card attendance-punch-card');var pLeft=el('div');var ph=el('h2');ph.textContent='Today · '+fmtDate(attendanceTodayDateStr());pLeft.appendChild(ph);var pd=el('p','desc');pd.textContent='One punch-in and one punch-out per Gregorian work date, using Nepal time (UTC+05:45). No location, IP or device data is collected.';pLeft.appendChild(pd);var stateLine=el('div','punch-state');pLeft.appendChild(stateLine);punchCard.appendChild(pLeft);var actionWrap=el('div');punchCard.appendChild(actionWrap);main.appendChild(punchCard);
     async function refreshPunch(){clear(stateLine);clear(actionWrap);var today=await loadTodayAttendance();if(!today){stateLine.textContent='Not punched in yet.';var b=el('button','btn');b.type='button';b.textContent='Punch In';b.addEventListener('click',async function(){b.disabled=true;var r=await sb.rpc('attendance_punch_in');b.disabled=false;if(r.error){toast('Punch in failed: '+r.error.message,true);return;}toast('Punched in.');render();});actionWrap.appendChild(b);}else if(!today.punched_out_at){stateLine.textContent='Punched in '+timeOnly(today.punched_in_at)+' · currently open';var b2=el('button','btn');b2.type='button';b2.textContent='Punch Out';b2.addEventListener('click',async function(){b2.disabled=true;var r=await sb.rpc('attendance_punch_out');b2.disabled=false;if(r.error){toast('Punch out failed: '+r.error.message,true);return;}toast('Punched out.');render();});actionWrap.appendChild(b2);}else{stateLine.textContent='In '+timeOnly(today.punched_in_at)+' · Out '+timeOnly(today.punched_out_at)+' · '+durationText(attendanceSeconds(today));var done=el('span','attendance-status-pill complete');done.textContent='Completed';actionWrap.appendChild(done);}}
     await refreshPunch();
 
     var controlsCard=el('div','card');var controls=el('div','attendance-controls');var month=el('input');month.type='month';month.value=attendanceTodayDateStr().slice(0,7);controls.appendChild(field('Month',month));var person=null;if(isAdmin()){person=el('select');person.appendChild(new Option('All staff','__all__'));state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){person.appendChild(new Option(p.full_name,p.id));});controls.appendChild(field('Staff view',person));}else{var own=el('input');own.value=state.profile.full_name;own.disabled=true;controls.appendChild(field('Staff',own));}var exportBtn=el('button','btn btn-outline btn-sm');exportBtn.type='button';exportBtn.textContent='Export CSV';controls.appendChild(exportBtn);controlsCard.appendChild(controls);main.appendChild(controlsCard);
     var results=el('div');main.appendChild(results);
-    async function refreshResults(){clear(results);var personId=isAdmin()?person.value:state.user.id;var entries=await loadAttendanceEntries(month.value,personId);renderAttendanceMetrics(results,entries);if(isAdmin()&&personId==='__all__')renderTeamAttendanceSummary(results,entries);else renderAttendanceCalendar(results,entries,month.value);var card=el('div','card');var hh=el('h2');hh.textContent='Attendance records';card.appendChild(hh);if(isAdmin()){var add=el('button','btn btn-outline btn-sm');add.type='button';add.textContent='Add / Correct Missing Record';add.style.marginBottom='14px';add.addEventListener('click',function(){openAttendanceCorrection(null,personId,month.value,refreshResults);});card.appendChild(add);}if(!entries.length){var none=el('div','empty-note');none.textContent='No attendance records for this month.';card.appendChild(none);}else{var table=el('table');var hd=el('thead');var trh=el('tr');var heads=['Date'];if(isAdmin()&&personId==='__all__')heads.push('Staff');heads=heads.concat(['Punch In','Punch Out','Total','Status']);if(isAdmin())heads.push('');heads.forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});hd.appendChild(trh);table.appendChild(hd);var tb=el('tbody');entries.forEach(function(r){var tr=el('tr');function td(v){var x=el('td');x.textContent=v;tr.appendChild(x);}td(fmtDate(r.work_date));if(isAdmin()&&personId==='__all__')td(profileName(r.user_id));td(timeOnly(r.punched_in_at));td(timeOnly(r.punched_out_at));td(r.punched_out_at?durationText(attendanceSeconds(r)):'—');var st=el('td');var pill=el('span','attendance-status-pill '+(r.punched_out_at?'complete':'open'));pill.textContent=r.punched_out_at?'Completed':'Open';st.appendChild(pill);tr.appendChild(st);if(isAdmin()){var act=el('td');var edit=el('button','btn btn-outline btn-sm');edit.type='button';edit.textContent='Correct';edit.addEventListener('click',function(){openAttendanceCorrection(r,personId,month.value,refreshResults);});act.appendChild(edit);tr.appendChild(act);}tb.appendChild(tr);});table.appendChild(tb);card.appendChild(table);}results.appendChild(card);exportBtn.onclick=function(){downloadAttendanceCsv(entries,month.value);};}
+    async function refreshResults(){clear(results);var personId=isAdmin()?person.value:state.user.id;var loaded=await Promise.all([loadAttendanceEntries(month.value,personId),loadAttendanceCorrections(month.value,personId)]);var entries=loaded[0],corrections=loaded[1];renderAttendanceMetrics(results,entries);if(isAdmin()&&personId==='__all__')renderTeamAttendanceSummary(results,entries);else renderAttendanceCalendar(results,entries,month.value);var card=el('div','card');var hh=el('h2');hh.textContent='Attendance records';card.appendChild(hh);if(isAdmin()){var add=el('button','btn btn-outline btn-sm');add.type='button';add.textContent='Add / Correct Missing Record';add.style.marginBottom='14px';add.addEventListener('click',function(){openAttendanceCorrection(null,personId,month.value,refreshResults);});card.appendChild(add);}if(!entries.length){var none=el('div','empty-note');none.textContent='No attendance records for this month.';card.appendChild(none);}else{var table=el('table');var hd=el('thead');var trh=el('tr');var heads=['Date'];if(isAdmin()&&personId==='__all__')heads.push('Staff');heads=heads.concat(['Punch In','Punch Out','Total','Status']);if(isAdmin())heads.push('');heads.forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});hd.appendChild(trh);table.appendChild(hd);var tb=el('tbody');entries.forEach(function(r){var tr=el('tr');function td(v){var x=el('td');x.textContent=v;tr.appendChild(x);}td(fmtDate(r.work_date));if(isAdmin()&&personId==='__all__')td(profileName(r.user_id));td(timeOnly(r.punched_in_at));td(timeOnly(r.punched_out_at));td(r.punched_out_at?durationText(attendanceSeconds(r)):'—');var st=el('td');var pill=el('span','attendance-status-pill '+(r.punched_out_at?'complete':'open'));pill.textContent=r.punched_out_at?'Completed':'Open';st.appendChild(pill);tr.appendChild(st);if(isAdmin()){var act=el('td');var edit=el('button','btn btn-outline btn-sm');edit.type='button';edit.textContent='Correct';edit.addEventListener('click',function(){openAttendanceCorrection(r,personId,month.value,refreshResults);});act.appendChild(edit);tr.appendChild(act);}tb.appendChild(tr);});table.appendChild(tb);card.appendChild(table);}results.appendChild(card);renderAttendanceCorrectionHistory(results,corrections,personId);exportBtn.onclick=function(){downloadAttendanceCsv(entries,month.value);};}
     month.addEventListener('change',refreshResults);if(person)person.addEventListener('change',refreshResults);await refreshResults();
   }
 
