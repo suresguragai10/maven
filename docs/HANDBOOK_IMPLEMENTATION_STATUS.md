@@ -4,15 +4,16 @@ This file tracks the repository implementation against `Maven_Professional_Repla
 
 ## Current verification evidence
 
-- Owner workstation: `npm.cmd install` completed with 0 reported vulnerabilities on 17 Aug 2026.
-- Owner workstation: `npm.cmd run build` completed successfully and generated the public site, Admin and Staff output.
-- This Batch 2 source pass: `npm run test:syntax` => **89 passed / 0 failed**.
-- This Batch 2 dependency-free source pass: `node --test test/batch2-source.test.js test/calc-utils.test.js test/tax-calc.test.js` => **23 passed / 0 failed**.
-- Clean `npm ci`, full `npm test`, Playwright browsers and database/RLS integration still need to be run on the owner workstation/test database before release.
+- Owner workstation, Batch 2B checkpoint: `npm.cmd run test:syntax` => **90 passed / 0 failed**.
+- Owner workstation, Batch 2B checkpoint: `npm.cmd test` => **42 passed / 0 failed**.
+- Owner workstation, Batch 2B checkpoint: `npm.cmd run build` => **PASS**; public site, Admin and Staff output generated.
+- Owner localhost review of Batch 2B public composition: **approved** before commit/push.
+- Batch 2C adds the broader Playwright responsive/interaction gate; it is **NOT VERIFIED** until `npm.cmd run test:ui` actually runs on the owner workstation.
+- Database/RLS integration still requires disposable/local/test infrastructure before release.
 
 ## Current controlled batch
 
-**Batch 2A - Technical Consistency Cleanup is the active source pass.** It sits inside the wider Batch 2 public-quality work and addresses documentation/branch safety, staff-photo/CSP consistency and heading semantics before visual sign-off. See `docs/BATCH2A_TECHNICAL_CONSISTENCY.md`. This does not waive the owner localhost review or the database/browser release gates.
+**Batch 2C - Public Responsive and Interaction Verification Gate is the active pass.** Batch 2B is owner-approved and pushed; 2C deliberately avoids another redesign and instead expands browser evidence across all generated public routes and the agreed responsive widths. See `docs/BATCH2C_VERIFICATION_GATE.md`. Database/security work remains blocked until this public browser gate is reviewed.
 
 ## Task status
 
@@ -24,14 +25,14 @@ This file tracks the repository implementation against `Maven_Professional_Repla
 | 3 | Attendance UX | IMPLEMENTED, DB/UI TEST PENDING | Nepal-time display/correction conversion, Gregorian month/calendar, admin summary, CSV, punch state. Requires migration + role/browser tests. |
 | 4 | Profile + Directory | BATCH 2A CONSISTENCY FIX / REVIEW PENDING | Internal directory and self-profile exist; profile photos remain optional/simple, accept only controlled sources compatible with Staff CSP, and fall back to initials. Database permission regression and final admin UX review still required. |
 | 5 | Work Desk administration boundary | EXISTING PATCH / REVIEW PENDING | Operational admin remains in Work Desk and website CMS is cross-linked only. Needs permission regression. |
-| 6 | Visual system | IMPLEMENTED, VISUAL QA PENDING | Brand palette retained; spacing/radius/motion rules documented in `docs/DESIGN_SYSTEM.md`. |
-| 7 | Nepal-first Home | IMPLEMENTED, VISUAL QA PENDING | International showcase moved below Nepal services/packages/industries; hero CTA reduced to two primary choices. |
-| 8 | Service photography | IMPLEMENTED, VISUAL QA PENDING | Stable local image mapping + semantic editorial `<img>` system; NFRS/IFRS reporting fallback documented. |
+| 6 | Visual system | BATCH 2B OWNER-APPROVED / 2C BROWSER GATE | Brand palette retained; visual localhost review approved; automated responsive gate now broadened. |
+| 7 | Nepal-first Home | BATCH 2B OWNER-APPROVED / 2C BROWSER GATE | Nepal-first order preserved; Batch 2B rhythm/mobile CTA polish approved; 2C rechecks dynamic responsive behavior. |
+| 8 | Service photography | OWNER VISUAL REVIEW PASSED / REGRESSION GATE | Stable local image mapping remains; 2C all-route responsive checks guard against crop/layout spill. |
 | 9 | Industries master/detail | EXISTING PATCH + REGRESSION TEST | Stable selector grid/full-width detail remains; browser test already covers sibling-height bug/deep links. |
 | 10 | Collapsed disclosures | EXISTING PATCH + EXPANDED TEST | FAQ/Documents plus NFRS/International/CFO collapsed state covered. |
-| 11 | Whitespace/composition | BATCH 2 POLISH / VISUAL QA PENDING | About/International composition remains; shared footer rhythm and disclaimer measure were tightened. Owner localhost review required. |
-| 12 | Accessibility + motion | BATCH 2 ENHANCED, UI TEST PENDING | Reveal now fails open if observer setup fails, reduced-motion users skip reveal waiting, accordion ARIA/transition state is synchronized, and header feedback remains restrained. |
-| 13 | Responsive/floating UX | BATCH 2 ENHANCED, UI TEST PENDING | Floating controls respect safe areas and dynamically clear the visible footer; Back-to-Top appears only after meaningful scroll; footer links reflow 4 -> 2 -> 1 columns. |
+| 11 | Whitespace/composition | BATCH 2B OWNER-APPROVED | Public composition/footer rhythm approved on localhost; 2C converts remaining responsive confidence into browser regression evidence. |
+| 12 | Accessibility + motion | BATCH 2 ENHANCED / 2C UI GATE PENDING | Existing heading/reduced-motion/JS-disabled/accordion tests are retained; 2C adds runtime/mobile interaction smoke evidence. |
+| 13 | Responsive/floating UX | BATCH 2C VERIFICATION ACTIVE | All generated public routes now enter the 8-width overflow matrix; dynamic states and floating/footer geometry receive dedicated Playwright coverage. |
 | 14 | Website Content Admin completeness | FUTURE BATCH | Scheduled after Work Desk/database verification in the controlled roadmap. |
 | 15 | Multi-admin publishing | FUTURE BATCH | Scheduled with Website Content Admin; production identity gate remains environment-dependent. |
 | 16 | Nepal-first content/SEO | NOT STARTED IN THIS BATCH | Technical SEO exists; page-intent/conversion pass remains. |
@@ -50,4 +51,8 @@ Do not merge this implementation into production `main` only because the public 
 
 ## Batch 2B public visual composition
 
-Source patch prepared for final public visual rhythm and responsive polish. Scope is limited to public composition/responsive behavior; business rules, finance/legal content, Work Desk permissions, attendance/database logic and admin architecture are unchanged. See `docs/BATCH2B_VISUAL_COMPOSITION.md`.
+Owner workstation syntax/unit/build gates passed and localhost visual review was approved before commit/push. Scope remained limited to public composition/responsive behavior. See `docs/BATCH2B_VISUAL_COMPOSITION.md`.
+
+## Batch 2C public verification gate
+
+Verification-only browser coverage now expands the public overflow matrix to every generated public route and adds dynamic-state, floating-control and runtime/local-asset checks. See `docs/BATCH2C_VERIFICATION_GATE.md`. Do not mark this gate PASS until Playwright actually runs on the owner workstation.

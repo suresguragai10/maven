@@ -50,6 +50,12 @@ no new dependency — hand-rolled rather than pulling in `serve`/
 gets deployed, so a build-time regression (a page missing from `dist/`,
 for instance) would be caught too, not just a runtime one.
 
+### Batch 2C responsive verification gate
+
+Batch 2C turns the public-site responsive review into a broader repeatable gate instead of another visual redesign. `overflow.spec.js` now runs the exact 320/360/390/430/768/1024/1280/1440 matrix against every generated public route, including direct access to hidden/noindex Blog and Testimonials pages. `responsive-gate.spec.js` then exercises dynamic states that a first-paint overflow check cannot prove: open mobile submenu, Industries detail, FAQ panel, Contact validation, expanded EMI schedule, Back-to-Top threshold and floating-control/footer clearance. It also records uncaught page errors and broken same-origin assets on the critical mobile smoke pages.
+
+The owner-workstation gate is `npm.cmd run test:ui` (Chromium) after syntax/unit/build are green. `npm.cmd run test:ui:all` remains the broader cross-browser follow-up when Chromium is clean. A missing browser binary or environment failure is **UNVERIFIED**, not PASS.
+
 ## Layout
 
 ```

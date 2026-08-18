@@ -1,15 +1,38 @@
-// Shared fixtures for the public-site smoke suite: the page set and
-// viewport widths used by the overflow check, plus the desktop nav's
-// expected top-level structure (kept here once so home.spec.js and
-// hidden-links.spec.js don't duplicate it and drift apart).
+// Shared fixtures for the public-site smoke and responsive QA suites.
+// Keep route/viewport coverage centralized so individual specs do not drift.
+
+const PUBLIC_QA_PAGES = [
+  '/',
+  '/about',
+  '/services',
+  '/outsourced-accounting',
+  '/global-outsourcing',
+  '/international-accounting',
+  '/virtual-cfo',
+  '/nfrs-ifrs',
+  '/packages',
+  '/documents-needed',
+  '/industries',
+  '/resources',
+  '/useful-links',
+  '/calculators',
+  '/faq',
+  '/contact',
+  '/team',
+  '/testimonials',
+  '/privacy',
+  '/blog',
+];
 
 module.exports = {
-  // A representative slice of the site, not every page: enough variety
-  // (hero, cards, forms, long content) to catch layout overflow without
-  // multiplying every width by all ~20 pages.
-  OVERFLOW_PAGES: ['/', '/about', '/services', '/global-outsourcing', '/international-accounting', '/virtual-cfo', '/nfrs-ifrs', '/packages', '/documents-needed', '/industries', '/resources', '/calculators', '/faq', '/contact'],
+  // Batch 2C broadens the old representative overflow slice to every
+  // generated public route, including the deliberately hidden/noindex Blog
+  // and Testimonials pages. Hidden pages still need robust responsive layout
+  // when opened directly by an editor or reviewer.
+  PUBLIC_QA_PAGES,
+  OVERFLOW_PAGES: PUBLIC_QA_PAGES,
 
-  // Matches the task's required breakpoint set exactly.
+  // Exact responsive matrix required by the professional handbook / Task 13.
   OVERFLOW_WIDTHS: [320, 360, 390, 430, 768, 1024, 1280, 1440],
 
   // href, label pairs as rendered by layout.js's navStructure -> desktop

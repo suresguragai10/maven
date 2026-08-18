@@ -24,7 +24,7 @@ Batch 1 is not the release gate. Database execution, full browser coverage and f
 
 ## Batch 2 - Footer, restrained motion and public visual polish
 
-**Current sub-batch: 2B Public Visual Composition and Responsive Polish.** Batch 2A is complete. This pass focuses only on final public-page rhythm, narrow-screen composition, CTA behavior and non-clickable card stability before moving into database/security work.
+**Current sub-batch: 2C Public Responsive and Interaction Verification Gate.** Batch 2B has passed the owner workstation syntax/unit/build gates and localhost visual review. This pass is verification-only: it broadens repeatable browser coverage across the agreed responsive matrix before moving into database/security work.
 
 
 **Primary handbook coverage:** Tasks 6-13, especially Tasks 11, 12 and 13.
@@ -41,7 +41,7 @@ Batch 1 is not the release gate. Database execution, full browser coverage and f
 - Add restrained button/card/image/accordion micro-interactions and keep header scroll feedback subtle.
 - Recheck Home, Services, Industries, FAQ, About, International and Contact composition/responsive behavior without adding filler copy or random imagery.
 
-**Acceptance gate:** syntax/tests/build as available, no horizontal overflow regression, disclosure/Industries behavior preserved, footer controls clear the footer, reduced-motion fallback preserved, and owner localhost visual approval before push.
+**Acceptance gate:** syntax/unit/build remain green; Chromium Playwright covers every generated public route at 320/360/390/430/768/1024/1280/1440 with no document overflow; dynamic mobile-nav/Industries/FAQ/Contact/calculator states remain contained; floating controls clear the footer; critical pages emit no uncaught runtime error or broken same-origin asset; owner localhost smoke review remains satisfactory before push.
 
 ## Batch 3 - Attendance/profile database proof and security baseline
 
