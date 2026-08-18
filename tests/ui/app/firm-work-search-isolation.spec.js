@@ -47,7 +47,7 @@ test.describe('Firm Work search + isolation (Handbook Task 23)', () => {
   test('global Search finds an old completed Firm Work item, clearly labeled FIRM, alongside a CLIENT-labeled Client Work result', async ({ page }) => {
     const errors = [];
     page.on('pageerror', (err) => errors.push(err.message));
-    await loginAndGoto(page, 'Search', 'Search');
+    await loginAndGoto(page, 'Search', 'Global Search');
 
     const requests = [];
     page.on('request', (req) => { if (req.url().includes('/rest/v1/work_items')) requests.push(req.url()); });
@@ -66,7 +66,7 @@ test.describe('Firm Work search + isolation (Handbook Task 23)', () => {
   });
 
   test('a pure filter search (no text) stays Client-only — no Firm Work section appears', async ({ page }) => {
-    await loginAndGoto(page, 'Search', 'Search');
+    await loginAndGoto(page, 'Search', 'Global Search');
     const statusSel = page.locator('select').first();
     await statusSel.selectOption({ label: 'In Progress' });
     await page.waitForTimeout(300);
@@ -104,3 +104,4 @@ test.describe('Firm Work search + isolation (Handbook Task 23)', () => {
     await expect(page.getByText('Office Search — shortlist candidate spaces')).toBeVisible();
   });
 });
+

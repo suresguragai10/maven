@@ -69,22 +69,51 @@ test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
 
   test('the exact All/Client/Firm scope filter is offered and filters the list', async ({ page }) => {
     await loginToMyWork(page);
-    const scopeSel = page.locator('select');
-    const optionTexts = await scopeSel.locator('option').allTextContents();
-    expect(optionTexts.some((t) => /^All/.test(t))).toBe(true);
-    expect(optionTexts.some((t) => /^Client/.test(t))).toBe(true);
-    expect(optionTexts.some((t) => /^Firm/.test(t))).toBe(true);
-    expect(optionTexts.length).toBe(3); // "exactly" the simple scope filter -- no extra options
 
-    await scopeSel.selectOption('client');
+    const scopeGroup = page.getByRole('group', {
+      name: 'Filter My Tasks by scope',
+    });
+
+    await expect(scopeGroup).toBeVisible();
+
+    const scopeButtons = scopeGroup.getByRole('button');
+    await expect(scopeButtons).toHaveCount(3);
+
+    const allButton = scopeGroup.getByRole('button', {
+      name: /^All \(\d+\)$/,
+    });
+
+    const clientButton = scopeGroup.getByRole('button', {
+      name: /^Client \(\d+\)$/,
+    });
+
+    const firmButton = scopeGroup.getByRole('button', {
+      name: /^Firm \(\d+\)$/,
+    });
+
+    await expect(allButton).toBeVisible();
+    await expect(clientButton).toBeVisible();
+    await expect(firmButton).toBeVisible();
+
+    await expect(allButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(clientButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(firmButton).toHaveAttribute('aria-pressed', 'false');
+
+    await clientButton.click();
+
+    await expect(clientButton).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('Alpha VAT Return')).toBeVisible();
     await expect(page.getByText('Renew office internet contract')).not.toBeVisible();
 
-    await scopeSel.selectOption('firm');
+    await firmButton.click();
+
+    await expect(firmButton).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('Alpha VAT Return')).not.toBeVisible();
     await expect(page.getByText('Renew office internet contract')).toBeVisible();
 
-    await scopeSel.selectOption('all');
+    await allButton.click();
+
+    await expect(allButton).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('Alpha VAT Return')).toBeVisible();
     await expect(page.getByText('Renew office internet contract')).toBeVisible();
   });
@@ -138,3 +167,4 @@ test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
     await expect(page.getByText('Buy office snacks (private todo)')).toBeVisible();
   });
 });
+
