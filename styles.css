@@ -842,3 +842,67 @@ strong { color: var(--navy-900); }
 .industry-detail-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
 @media (max-width:980px){ .industry-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:640px){ .industry-picker-grid{grid-template-columns:1fr}.industry-card{min-height:auto}.industry-detail-grid{grid-template-columns:1fr}.industry-detail-placeholder,.industry-detail-panel{padding:26px 22px} }
+
+/* ---------- Batch 2B: final public composition + responsive polish ---------- */
+/* Break the homepage out of consecutive grey slabs: the Industries section is
+   intentionally white while the preceding Why/Process section stays mist. */
+.home-industries-section { background: var(--white); }
+
+/* The inquiry form reuses service-card structure but is not a clickable card.
+   Keep it visually grounded instead of making the whole form jump on hover. */
+.contact-form-card { padding: 32px; }
+.contact-form-card:hover { transform: none; box-shadow: var(--shadow-sm); }
+
+@media (max-width: 768px) {
+  .section-head { margin-bottom: 32px; }
+  .section-head--center { max-width: 640px; }
+  .section-sub { font-size: 1rem; }
+
+  .page-hero { padding: 50px 0 42px; }
+  .page-hero-sub { font-size: 1rem; }
+
+  .hero-inner { gap: 34px; }
+  .hero-sub { font-size: 1.04rem; }
+  .trust-bar { margin-top: 34px; padding-top: 18px; gap: 12px 20px; }
+
+  .cta-band-inner { padding: 56px 24px; }
+  .international-showcase { padding: 64px 0 70px; }
+  .international-showcase-grid { gap: 30px; }
+
+  .contact-form-card { padding: 26px; }
+  .contact-map iframe { height: 280px; }
+}
+
+@media (max-width: 640px) {
+  /* The 100+ badge is repeated in the evidence/stat row below the hero. Hiding
+     only this decorative duplicate keeps the phone first fold calm. */
+  .hero-float-badge { display: none; }
+  .hero-art { max-width: min(100%, 300px); margin-inline: auto; }
+  .trust-bar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .trust-item { align-items: flex-start; }
+
+  .stat-row { gap: 22px 0; padding-top: 26px; }
+  .stat-item { padding-right: 12px; }
+
+  .industry-detail-stage { margin-top: 24px; }
+  .industry-detail-heading { align-items: flex-start; }
+  .industry-detail-heading h2 { font-size: 1.45rem; }
+  .industry-detail-actions .btn { flex: 1 1 100%; width: 100%; }
+
+  .cta-band-actions { gap: 10px; }
+  .cta-band-actions .btn { width: 100%; }
+  .contact-form-card { padding: 24px 20px; }
+  .form-actions { align-items: stretch; }
+  .form-actions .btn { width: 100%; }
+}
+
+@media (max-width: 430px) {
+  .container, .container-wide { padding-left: 18px; padding-right: 18px; }
+  .hero-inner { padding-top: 44px; }
+  .hero-actions { gap: 10px; }
+  .hero-actions .btn { flex: 1 1 100%; width: 100%; }
+  .page-hero { padding: 44px 0 38px; }
+  .service-editorial-body { padding: 24px 20px 26px; }
+  .industry-detail-placeholder, .industry-detail-panel { padding: 24px 18px; }
+  .cta-band-inner { padding: 50px 18px; }
+}

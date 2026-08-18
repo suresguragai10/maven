@@ -46,3 +46,8 @@ This file tracks the repository implementation against `Maven_Professional_Repla
 ## Release warning
 
 Do not merge this implementation into production `main` only because the public build succeeds. Attendance/profile SQL must be applied and tested in a disposable/test Supabase environment first, and the public visual changes should be approved via localhost before push/merge.
+
+
+## Batch 2B public visual composition
+
+Source patch prepared for final public visual rhythm and responsive polish. Scope is limited to public composition/responsive behavior; business rules, finance/legal content, Work Desk permissions, attendance/database logic and admin architecture are unchanged. See `docs/BATCH2B_VISUAL_COMPOSITION.md`.

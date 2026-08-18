@@ -264,7 +264,7 @@ function home() {
     </div>
   </section>
 
-  <section class="section-pad bg-mist">
+  <section class="section-pad home-industries-section">
     <div class="container">
       ${sectionHead({ eyebrow: 'Industries We Serve', title: 'Built for the businesses that keep Nepal running' })}
       <div class="grid grid-4">

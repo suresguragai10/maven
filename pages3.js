@@ -147,7 +147,7 @@ function contact() {
       </div>
 
       <div class="reveal">
-        <div class="service-card" style="padding:32px">
+        <div class="service-card contact-form-card">
           <h3 style="margin-bottom:6px">Send an Inquiry</h3>
           <p class="tag-note" style="margin-bottom:22px">We'll confirm exactly what your business needs before you send any documents.</p>
           <div id="formError" class="form-error" role="alert" tabindex="-1" hidden></div>
