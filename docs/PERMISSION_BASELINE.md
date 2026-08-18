@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-15T17:38:01.228Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-18T10:37:29.998Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 32 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 33 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-241 checks run across 32 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+278 checks run across 33 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -400,6 +400,10 @@ Generated 2026-08-15T17:38:01.228Z by `node tests/db/run.js` -- **every row belo
 | EXECUTE grant to 'anon' on _generate_period_work_core(p_period text, p_period_type text, p_period_start date, p_period_end date) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=false (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on add_client_credential(p_client_id uuid, p_label text, p_username text, p_password text, p_notes text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on add_deadline_rule(p_service_template_id uuid, p_financial_year_label text, p_effective_from date, p_effective_to date, p_filing_deadline_day integer, p_source_title text, p_source_url text, p_source_reference text, p_source_page_section text, p_verified_date date) | n/a (catalog check) | DENIED | DENY | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false |
+| EXECUTE grant to 'anon' on attendance_admin_correct(p_user_id uuid, p_work_date date, p_punched_in_at timestamp with time zone, p_punched_out_at timestamp with time zone, p_reason text) | n/a (catalog check) | DENIED | DENY | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false |
+| EXECUTE grant to 'anon' on attendance_nepal_work_date(p_at timestamp with time zone) | n/a (catalog check) | DENIED | DENY | PASS | informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=false |
+| EXECUTE grant to 'anon' on attendance_punch_in() | n/a (catalog check) | DENIED | DENY | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false |
+| EXECUTE grant to 'anon' on attendance_punch_out() | n/a (catalog check) | DENIED | DENY | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false |
 | EXECUTE grant to 'anon' on current_user_active() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on current_user_role() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on delete_client_credential(p_id uuid) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
@@ -414,7 +418,45 @@ Generated 2026-08-15T17:38:01.228Z by `node tests/db/run.js` -- **every row belo
 | EXECUTE grant to 'anon' on set_client_attention(p_client_id uuid, p_level text, p_reason text) | n/a (catalog check) | DENIED | DENY | PASS | privileged-action function; anon_can_execute=false, authenticated_can_execute=true (cross-reference the matching matrix file for what actually happens when called) |
 | EXECUTE grant to 'anon' on set_projects_updated_by() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
 | EXECUTE grant to 'anon' on set_work_item_created_by() | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true |
+| EXECUTE grant to 'anon' on update_my_profile(p_phone text, p_photo_url text) | n/a (catalog check) | DENIED | DENY | PASS | informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false |
 | EXECUTE grant to 'anon' on work_item_status_label(p_status text) | n/a (catalog check) | ALLOWED | ALLOW | PASS | informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=true |
+
+### attendance
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| Punch in for own current Nepal work date | employeeA | ALLOWED | ALLOW | PASS | RPC created own attendance entry |
+| Second punch in on same Nepal work date | employeeB | DENIED | DENY | PASS | You are already punched in for today. |
+| Read own attendance | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) |
+| Read another employee attendance | employeeB | DENIED | DENY | PASS | 0 row(s) - RLS should hide colleague attendance |
+| Reviewer reads employee attendance | reviewerA | DENIED | DENY | PASS | 0 row(s) - reviewer has no all-attendance privilege |
+| Reviewer punches own attendance | reviewerA | ALLOWED | ALLOW | PASS | reviewer created own attendance entry |
+| Admin reads employee attendance | admin | ALLOWED | ALLOW | PASS | 1 row(s) |
+| Read attendance after account deactivation | inactive | DENIED | DENY | PASS | 0 row(s) - inactive sessions must not read attendance |
+| Direct INSERT attendance bypassing punch RPC | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "attendance_entries" |
+| Direct UPDATE attendance bypassing punch RPC | employeeA | DENIED | DENY | PASS | 0 row(s) affected - no UPDATE RLS policy should exist |
+| Direct DELETE attendance bypassing controlled RPCs | employeeA | DENIED | DENY | PASS | 0 row(s) affected - no DELETE RLS policy should exist |
+| Admin direct UPDATE attendance bypassing correction RPC | admin | DENIED | DENY | PASS | 0 row(s) affected - admin corrections must use the audited RPC |
+| Admin direct DELETE attendance | admin | DENIED | DENY | PASS | 0 row(s) affected - attendance history must not be silently deleted |
+| Call admin correction RPC | employeeA | DENIED | DENY | PASS | Only an active admin can correct attendance. |
+| Admin correction without meaningful reason | admin | DENIED | DENY | PASS | A correction reason of at least 3 characters is required. |
+| Correct/add employee attendance with reason | admin | ALLOWED | ALLOW | PASS | admin correction RPC succeeded |
+| Correction creates audit history | admin | ALLOWED | ALLOW | PASS | 1 correction row(s) |
+| Read another employee correction history | employeeA | DENIED | DENY | PASS | 0 row(s) |
+| Reviewer reads another employee correction history | reviewerA | DENIED | DENY | PASS | 0 row(s) |
+| Read own correction history | employeeB | ALLOWED | ALLOW | PASS | 1 row(s) |
+| Admin reads employee correction history | admin | ALLOWED | ALLOW | PASS | 1 row(s) |
+| Admin direct DELETE correction audit history | admin | DENIED | DENY | PASS | 0 row(s) affected - audit history must be immutable through the app role |
+| Nepal midnight work-date boundary | database | ALLOWED | ALLOW | PASS | {"before_midnight":"2026-08-17","at_midnight":"2026-08-18"} |
+| Attendance schema contains no surveillance fields | database | ALLOWED | ALLOW | PASS | no surveillance-style columns found |
+| Anonymous call to punch-in RPC | anon | DENIED | DENY | PASS | permission denied for function attendance_punch_in |
+| Anonymous call to punch-out RPC | anon | DENIED | DENY | PASS | permission denied for function attendance_punch_out |
+| Anonymous call to admin correction RPC | anon | DENIED | DENY | PASS | permission denied for function attendance_admin_correct |
+| Update own permitted profile fields through controlled RPC | employeeA | ALLOWED | ALLOW | PASS | phone/photo updated through update_my_profile() |
+| Self-profile RPC preserves admin-managed fields | employeeA | ALLOWED | ALLOW | PASS | role/active/designation/work_email/join_date unchanged |
+| Update profile after account deactivation | inactive | DENIED | DENY | PASS | Inactive accounts cannot update a profile. |
+| Punch in after account deactivation | inactive | DENIED | DENY | PASS | Inactive accounts cannot punch attendance. |
+| Punch out own open attendance | employeeA | ALLOWED | ALLOW | PASS | own attendance closed |
 
 ## How to re-run
 

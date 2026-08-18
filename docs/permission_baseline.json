@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-15T17:38:01.228Z",
-    "migrationCount": 32
+    "generatedAt": "2026-08-18T10:37:29.998Z",
+    "migrationCount": 33
   },
   "results": [
     {
@@ -2040,6 +2040,42 @@
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on attendance_admin_correct(p_user_id uuid, p_work_date date, p_punched_in_at timestamp with time zone, p_punched_out_at timestamp with time zone, p_reason text)",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on attendance_nepal_work_date(p_at timestamp with time zone)",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=false"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on attendance_punch_in()",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on attendance_punch_out()",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on current_user_active()",
       "identity": "n/a (catalog check)",
       "allowed": true,
@@ -2166,12 +2202,309 @@
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on update_my_profile(p_phone text, p_photo_url text)",
+      "identity": "n/a (catalog check)",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on work_item_status_label(p_status text)",
       "identity": "n/a (catalog check)",
       "allowed": true,
       "expectedSecure": "allow",
       "secure": true,
       "note": "informational only, not scored as a finding either way - not SECURITY DEFINER; anon_can_execute=true"
+    },
+    {
+      "area": "attendance",
+      "action": "Punch in for own current Nepal work date",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "RPC created own attendance entry"
+    },
+    {
+      "area": "attendance",
+      "action": "Second punch in on same Nepal work date",
+      "identity": "employeeB",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "You are already punched in for today."
+    },
+    {
+      "area": "attendance",
+      "action": "Read own attendance",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Read another employee attendance",
+      "identity": "employeeB",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - RLS should hide colleague attendance"
+    },
+    {
+      "area": "attendance",
+      "action": "Reviewer reads employee attendance",
+      "identity": "reviewerA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - reviewer has no all-attendance privilege"
+    },
+    {
+      "area": "attendance",
+      "action": "Reviewer punches own attendance",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "reviewer created own attendance entry"
+    },
+    {
+      "area": "attendance",
+      "action": "Admin reads employee attendance",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Read attendance after account deactivation",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) - inactive sessions must not read attendance"
+    },
+    {
+      "area": "attendance",
+      "action": "Direct INSERT attendance bypassing punch RPC",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "new row violates row-level security policy for table \"attendance_entries\""
+    },
+    {
+      "area": "attendance",
+      "action": "Direct UPDATE attendance bypassing punch RPC",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected - no UPDATE RLS policy should exist"
+    },
+    {
+      "area": "attendance",
+      "action": "Direct DELETE attendance bypassing controlled RPCs",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected - no DELETE RLS policy should exist"
+    },
+    {
+      "area": "attendance",
+      "action": "Admin direct UPDATE attendance bypassing correction RPC",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected - admin corrections must use the audited RPC"
+    },
+    {
+      "area": "attendance",
+      "action": "Admin direct DELETE attendance",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected - attendance history must not be silently deleted"
+    },
+    {
+      "area": "attendance",
+      "action": "Call admin correction RPC",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Only an active admin can correct attendance."
+    },
+    {
+      "area": "attendance",
+      "action": "Admin correction without meaningful reason",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "A correction reason of at least 3 characters is required."
+    },
+    {
+      "area": "attendance",
+      "action": "Correct/add employee attendance with reason",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "admin correction RPC succeeded"
+    },
+    {
+      "area": "attendance",
+      "action": "Correction creates audit history",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 correction row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Read another employee correction history",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Reviewer reads another employee correction history",
+      "identity": "reviewerA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Read own correction history",
+      "identity": "employeeB",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Admin reads employee correction history",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Admin direct DELETE correction audit history",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected - audit history must be immutable through the app role"
+    },
+    {
+      "area": "attendance",
+      "action": "Nepal midnight work-date boundary",
+      "identity": "database",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "{\"before_midnight\":\"2026-08-17\",\"at_midnight\":\"2026-08-18\"}"
+    },
+    {
+      "area": "attendance",
+      "action": "Attendance schema contains no surveillance fields",
+      "identity": "database",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "no surveillance-style columns found"
+    },
+    {
+      "area": "attendance",
+      "action": "Anonymous call to punch-in RPC",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "permission denied for function attendance_punch_in"
+    },
+    {
+      "area": "attendance",
+      "action": "Anonymous call to punch-out RPC",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "permission denied for function attendance_punch_out"
+    },
+    {
+      "area": "attendance",
+      "action": "Anonymous call to admin correction RPC",
+      "identity": "anon",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "permission denied for function attendance_admin_correct"
+    },
+    {
+      "area": "attendance",
+      "action": "Update own permitted profile fields through controlled RPC",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "phone/photo updated through update_my_profile()"
+    },
+    {
+      "area": "attendance",
+      "action": "Self-profile RPC preserves admin-managed fields",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "role/active/designation/work_email/join_date unchanged"
+    },
+    {
+      "area": "attendance",
+      "action": "Update profile after account deactivation",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Inactive accounts cannot update a profile."
+    },
+    {
+      "area": "attendance",
+      "action": "Punch in after account deactivation",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "Inactive accounts cannot punch attendance."
+    },
+    {
+      "area": "attendance",
+      "action": "Punch out own open attendance",
+      "identity": "employeeA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "own attendance closed"
     }
   ]
 }
