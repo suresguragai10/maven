@@ -110,13 +110,45 @@
   var backToTop = document.querySelector('.back-to-top');
   if (backToTop) {
     var onScrollTop = function () {
-      backToTop.classList.toggle('is-visible', window.scrollY > 480);
+      // "Meaningful scroll" scales with the viewport instead of showing the
+      // control almost immediately on a tall desktop screen.
+      var threshold = Math.max(480, Math.round(window.innerHeight * 0.62));
+      backToTop.classList.toggle('is-visible', window.scrollY > threshold);
     };
     window.addEventListener('scroll', onScrollTop, { passive: true });
+    window.addEventListener('resize', onScrollTop);
     backToTop.addEventListener('click', function () {
       window.scrollTo({ top: 0, behavior: motionReduced() ? 'auto' : 'smooth' });
     });
     onScrollTop();
+  }
+
+  // ---- Floating-action / footer collision guard ----
+  // The controls are useful while reading the page, but fixed buttons should
+  // not sit on top of footer links/disclaimer text. As the footer enters the
+  // viewport, increase a CSS bottom-clearance variable by exactly the visible
+  // footer height. This makes both controls stop just above the footer while
+  // preserving iOS/Android safe-area insets from CSS.
+  var siteFooter = document.querySelector('.site-footer');
+  var whatsappFloat = document.querySelector('.whatsapp-float');
+  if (siteFooter && (whatsappFloat || backToTop)) {
+    var floatingClearanceFrame = null;
+    var updateFloatingClearance = function () {
+      floatingClearanceFrame = null;
+      var rect = siteFooter.getBoundingClientRect();
+      var overlapsViewport = rect.top < window.innerHeight && rect.bottom > 0;
+      var visibleFooter = overlapsViewport ? Math.max(0, window.innerHeight - rect.top) : 0;
+      var maxClearance = Math.max(0, window.innerHeight - 96);
+      var clearance = Math.min(visibleFooter, maxClearance);
+      document.documentElement.style.setProperty('--floating-footer-clearance', Math.round(clearance) + 'px');
+    };
+    var queueFloatingClearance = function () {
+      if (floatingClearanceFrame != null) return;
+      floatingClearanceFrame = window.requestAnimationFrame(updateFloatingClearance);
+    };
+    window.addEventListener('scroll', queueFloatingClearance, { passive: true });
+    window.addEventListener('resize', queueFloatingClearance);
+    updateFloatingClearance();
   }
 
   // ---- Accordions (FAQ + Documents Needed + Support Areas + every other
@@ -147,6 +179,7 @@
       var isOpen = item.classList.contains('is-open');
       item.classList.toggle('is-open', !isOpen);
       btn.setAttribute('aria-expanded', String(!isOpen));
+      panel.setAttribute('aria-hidden', String(isOpen));
       if (!isOpen) {
         panel.removeAttribute('inert');
         panel.style.maxHeight = panel.scrollHeight + 'px';
@@ -325,22 +358,36 @@
   // ---- Scroll reveal ----
   var revealEls = document.querySelectorAll('.reveal');
   if (revealEls.length) {
-    if ('IntersectionObserver' in window) {
-      document.documentElement.classList.add('reveal-enabled');
-      var obs = new IntersectionObserver(
-        function (entries) {
-          entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              obs.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
-      );
-      revealEls.forEach(function (el) { obs.observe(el); });
-    } else {
+    var revealImmediately = function () {
+      document.documentElement.classList.remove('reveal-enabled');
       revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+    };
+
+    // Reduced-motion users should not wait for an observer at all: content is
+    // simply present. The same fail-open path is used if observer setup throws.
+    if (motionReduced() || !('IntersectionObserver' in window)) {
+      revealImmediately();
+    } else {
+      try {
+        var obs = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                obs.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.1, rootMargin: '0px 0px -32px 0px' }
+        );
+        // Only enable the hidden-before-entry CSS after observer construction
+        // succeeds. A JS/observer initialization failure can therefore never
+        // leave core content invisible.
+        document.documentElement.classList.add('reveal-enabled');
+        revealEls.forEach(function (el) { obs.observe(el); });
+      } catch (err) {
+        revealImmediately();
+      }
     }
   }
 

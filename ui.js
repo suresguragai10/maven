@@ -236,7 +236,7 @@ function accordionItem({
         ${icon('chevronDown', 'ic-chevron')}
       </button>
     </${Heading}>
-    <div class="accordion-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" style="max-height:${open ? 'none' : '0'}"${open ? '' : ' inert'}>
+    <div class="accordion-panel" id="panel-${id}" role="region" aria-labelledby="trigger-${id}" aria-hidden="${open ? 'false' : 'true'}" style="max-height:${open ? 'none' : '0'}"${open ? '' : ' inert'}>
       <div class="accordion-panel-inner">${bodyHtml}</div>
     </div>
   </div>`;

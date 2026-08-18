@@ -171,17 +171,19 @@ function renderFooter() {
         </div>
         <p>${esc(b.legalName)} A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
         ${socialHtml}
-        <address style="margin-top:18px">
+        <address class="footer-address">
           <span class="footer-addr-item">${icon('mapPin')}<span>${esc(b.addressLine)}</span></span>
           <span class="footer-addr-item">${icon('phone')}<span>${esc(b.mobile)}</span></span>
           <span class="footer-addr-item">${icon('mail')}<span>${esc(b.email)}</span></span>
           <span class="footer-addr-item">${icon('clock')}<span>${esc(b.hours)}</span></span>
         </address>
       </div>
-      ${footerCol('Company', companyLinks)}
-      ${footerCol('Services', servicesLinks)}
-      ${footerCol('International', internationalLinks)}
-      ${footerCol('Resources & Legal', resourceLinks)}
+      <nav class="footer-links" aria-label="Footer">
+        ${footerCol('Company', companyLinks)}
+        ${footerCol('Services', servicesLinks)}
+        ${footerCol('International', internationalLinks)}
+        ${footerCol('Resources & Legal', resourceLinks)}
+      </nav>
     </div>
     <div class="container footer-disclaimer">
       <p>${esc(data.footerDisclaimer)}</p>

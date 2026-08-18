@@ -6,9 +6,13 @@ This file tracks the repository implementation against `Maven_Professional_Repla
 
 - Owner workstation: `npm.cmd install` completed with 0 reported vulnerabilities on 17 Aug 2026.
 - Owner workstation: `npm.cmd run build` completed successfully and generated the public site, Admin and Staff output.
-- This source pass: `node scripts/check-syntax.js` => **88 passed / 0 failed**.
-- This source pass: `node --test test/calc-utils.test.js test/tax-calc.test.js` => **18 passed / 0 failed**.
+- This Batch 2 source pass: `npm run test:syntax` => **89 passed / 0 failed**.
+- This Batch 2 dependency-free source pass: `node --test test/batch2-source.test.js test/calc-utils.test.js test/tax-calc.test.js` => **23 passed / 0 failed**.
 - Clean `npm ci`, full `npm test`, Playwright browsers and database/RLS integration still need to be run on the owner workstation/test database before release.
+
+## Current controlled batch
+
+Batch 2 is the active source pass: shared footer composition, floating-action/footer clearance, restrained progressive motion and public visual polish. See `docs/IMPLEMENTATION_BATCH_ROADMAP.md` for the future batch grouping. This does not waive the owner localhost review or the database/browser release gates.
 
 ## Task status
 
@@ -25,15 +29,15 @@ This file tracks the repository implementation against `Maven_Professional_Repla
 | 8 | Service photography | IMPLEMENTED, VISUAL QA PENDING | Stable local image mapping + semantic editorial `<img>` system; NFRS/IFRS reporting fallback documented. |
 | 9 | Industries master/detail | EXISTING PATCH + REGRESSION TEST | Stable selector grid/full-width detail remains; browser test already covers sibling-height bug/deep links. |
 | 10 | Collapsed disclosures | EXISTING PATCH + EXPANDED TEST | FAQ/Documents plus NFRS/International/CFO collapsed state covered. |
-| 11 | Whitespace/composition | EXISTING PATCH / VISUAL QA PENDING | About proof panel and International proof grid exist; owner localhost review required. |
-| 12 | Accessibility + motion | IMPLEMENTED, UI TEST PENDING | Continuous hero bob removed; JS scrolling now respects reduced motion; all-page heading regression added. |
-| 13 | Responsive/floating UX | IMPLEMENTED, UI TEST PENDING | Floating controls now respect safe-area insets; overflow coverage expanded. |
-| 14 | Website Content Admin completeness | NOT STARTED IN THIS BATCH | Next implementation batch. |
-| 15 | Multi-admin publishing | NOT STARTED IN THIS BATCH | Next implementation batch; production identity gate remains environment-dependent. |
+| 11 | Whitespace/composition | BATCH 2 POLISH / VISUAL QA PENDING | About/International composition remains; shared footer rhythm and disclaimer measure were tightened. Owner localhost review required. |
+| 12 | Accessibility + motion | BATCH 2 ENHANCED, UI TEST PENDING | Reveal now fails open if observer setup fails, reduced-motion users skip reveal waiting, accordion ARIA/transition state is synchronized, and header feedback remains restrained. |
+| 13 | Responsive/floating UX | BATCH 2 ENHANCED, UI TEST PENDING | Floating controls respect safe areas and dynamically clear the visible footer; Back-to-Top appears only after meaningful scroll; footer links reflow 4 -> 2 -> 1 columns. |
+| 14 | Website Content Admin completeness | FUTURE BATCH | Scheduled after Work Desk/database verification in the controlled roadmap. |
+| 15 | Multi-admin publishing | FUTURE BATCH | Scheduled with Website Content Admin; production identity gate remains environment-dependent. |
 | 16 | Nepal-first content/SEO | NOT STARTED IN THIS BATCH | Technical SEO exists; page-intent/conversion pass remains. |
 | 17 | Performance/privacy | NOT STARTED IN THIS BATCH | Requires measured build/browser run. |
 | 18 | Hidden Team/Testimonials/Blog readiness | NOT STARTED IN THIS BATCH | Hidden state already exists; admin draft workflow review remains. |
-| 19 | Work detail/handoff polish | NOT STARTED IN THIS BATCH | Next Work Desk batch. |
+| 19 | Work detail/handoff polish | FUTURE BATCH | Scheduled with the systematic Work Desk UX completion batch. |
 | 20 | Attendance QA/reporting | PARTIAL | DB matrix expanded; browser attendance tests/correction-history UI still required. |
 | 21 | Full RLS/offboarding regression | NOT VERIFIED | Requires local/test database. Do not certify from source inspection. |
 | 22 | PWA regression | NOT STARTED IN THIS BATCH | Requires browser/Application/Cache Storage verification. |

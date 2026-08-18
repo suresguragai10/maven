@@ -61,14 +61,17 @@ Avoid placing every section inside a shadowed card. Use cards only when the cont
 ## Motion
 
 - Native CSS + IntersectionObserver only; no paid animation dependency.
-- Entrance motion is restrained: opacity plus roughly 8-16px translation.
+- Entrance motion is restrained: opacity plus roughly 8-16px translation, currently 12px / 420ms with a calm deceleration curve.
 - No scroll-jacking, cursor-follow effects, or continuously bouncing/floating hero objects.
-- All important content is visible when JavaScript fails.
-- CSS and JavaScript both respect `prefers-reduced-motion`.
+- All important content is visible by default. The reveal CSS is enabled only after observer construction succeeds; initialization failure must fail open.
+- Reduced-motion users skip the reveal wait entirely; CSS and JavaScript both respect `prefers-reduced-motion`.
+- Micro-interactions belong on real controls (buttons, links, disclosure toggles) and remain small enough not to change layout.
 
-## Responsive rules
+## Footer and responsive rules
 
+- The footer keeps one Maven/company area plus four navigation groups. On desktop the company area has deliberately more reading width; navigation reflows to 4, 2 and 1 columns as space reduces.
+- Footer legal/disclaimer wording is not casually rewritten for layout. Constrain readable measure and reduce surrounding dead space instead.
 - No horizontal overflow from 320px through desktop widths.
-- Floating WhatsApp/Back-to-Top controls must respect mobile safe areas and must not cover form actions.
+- Floating WhatsApp/Back-to-Top controls respect mobile safe areas and dynamically clear the visible footer instead of covering footer text/actions.
 - Service editorial rows collapse to image-above-copy on narrow screens.
 - Industry detail renders outside the selector grid so selecting one industry cannot stretch sibling cards.

@@ -51,6 +51,47 @@ test.describe('Professional public-site quality pass', () => {
     await expect(page.locator('.doc-card-stamp')).toHaveCSS('animation-name', 'none');
   });
 
+
+  test('footer keeps four navigation groups and a wider company column', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('footer.site-footer')).toBeVisible();
+    await expect(page.locator('.footer-links .footer-col')).toHaveCount(4);
+
+    const widths = await page.evaluate(() => {
+      const brand = document.querySelector('.footer-brand').getBoundingClientRect().width;
+      const firstLink = document.querySelector('.footer-links .footer-col').getBoundingClientRect().width;
+      return { brand, firstLink };
+    });
+    expect(widths.brand).toBeGreaterThan(widths.firstLink);
+  });
+
+  test('floating actions clear the footer instead of covering footer content', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('footer.site-footer').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(100);
+
+    const geometry = await page.evaluate(() => {
+      const footer = document.querySelector('.site-footer').getBoundingClientRect();
+      const whatsapp = document.querySelector('.whatsapp-float').getBoundingClientRect();
+      const back = document.querySelector('.back-to-top').getBoundingClientRect();
+      const clearance = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--floating-footer-clearance')) || 0;
+      return { footerTop: footer.top, whatsappBottom: whatsapp.bottom, backBottom: back.bottom, clearance };
+    });
+
+    expect(geometry.clearance).toBeGreaterThan(0);
+    expect(geometry.whatsappBottom).toBeLessThanOrEqual(geometry.footerTop + 1);
+    expect(geometry.backBottom).toBeLessThanOrEqual(geometry.footerTop + 1);
+  });
+
+  test('reduced-motion preference leaves reveal content immediately visible', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('.hero .reveal').first()).toBeVisible();
+    const revealEnabled = await page.locator('html').evaluate((el) => el.classList.contains('reveal-enabled'));
+    expect(revealEnabled).toBe(false);
+    await context.close();
+  });
   test('important reveal content remains visible when JavaScript is disabled', async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();

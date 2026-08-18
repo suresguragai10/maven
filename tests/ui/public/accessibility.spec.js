@@ -29,13 +29,14 @@ test.describe('Skip link', () => {
 });
 
 test.describe('Landmarks', () => {
-  test('exactly one main, and the mobile nav is a labeled nav landmark distinct from Primary', async ({ page }) => {
+  test('exactly one main, and Primary/Mobile/Footer nav landmarks are labeled distinctly', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('main#main')).toHaveCount(1);
     const navs = page.locator('nav');
-    await expect(navs).toHaveCount(2);
+    await expect(navs).toHaveCount(3);
     await expect(page.locator('nav.main-nav')).toHaveAttribute('aria-label', 'Primary');
     await expect(page.locator('nav.mobile-nav')).toHaveAttribute('aria-label', 'Mobile');
+    await expect(page.locator('nav.footer-links')).toHaveAttribute('aria-label', 'Footer');
   });
 
   test('header/footer toggle buttons declare type="button"', async ({ page }) => {
