@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^5.3.0",
     "marked": "^18.0.5"
   },
   "devDependencies": {
