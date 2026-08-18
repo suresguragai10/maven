@@ -54,7 +54,7 @@ Do not introduce unrelated accent colors for cosmetic novelty. Semantic status c
 - New Attendance screen with own Punch In/Punch Out, month selector, metrics, Gregorian calendar, records and CSV export.
 - Admin Attendance adds all-staff filtering, monthly summary and correction/add-missing-record UI.
 - New internal Staff Directory and My Profile screens.
-- Staff & Access page now includes profile fields: full name, designation, work email, phone, Gregorian join date and profile photo URL.
+- Staff & Access page includes full name, designation, work email, phone, Gregorian join date and a simple optional profile-photo reference. Batch 2A limits accepted photo sources to local `/images/` paths or Maven's own public Supabase Storage URLs, with initials fallback; no complex media workflow is introduced.
 - Public Team and internal staff are explicitly kept separate.
 - Website Content Admin is cross-linked from the Work Desk admin section.
 

@@ -333,7 +333,7 @@ const staffCsp = [
   "default-src 'self'",
   "script-src 'self' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self'",
+  "img-src 'self' https://moqmgyniwytwmlcdthzy.supabase.co",
   "connect-src 'self' https://moqmgyniwytwmlcdthzy.supabase.co https://cloudflareinsights.com",
   "object-src 'none'",
   "base-uri 'self'",

@@ -11,7 +11,7 @@ That means this repo's code can only ever be *one* layer of the admin panel's se
 ## Token handling (unchanged by Task 30, verified correct)
 
 - The PAT is kept in `sessionStorage` only (`admin.js`'s own comment: "kept in sessionStorage only, so it's gone as soon as the tab/browser closes rather than sitting in the browser's storage indefinitely"). It is never written to `localStorage`.
-- Only `owner`/`repo`/`branch` (non-sensitive) are remembered in `localStorage` across sessions, for convenience — never the token.
+- Only `owner`/`repo` (non-sensitive) are remembered in `localStorage` across sessions. Batch 2A moved the selected `branch` to `sessionStorage` with the token so a previous production `main` selection does not silently carry into a later development session.
 - **Disconnect clears it completely**: the Disconnect button calls `sessionStorage.clear()` then `location.reload()`, which both wipes the token from browser storage and re-runs the whole script from scratch, clearing it from JS memory (`state.token`) too. There is no code path where a token survives a disconnect.
 - **Nothing in `admin.js` logs the token.** There is no `console.log`/`console.error`/`console.warn` anywhere in the file (verified by direct search). `ghApi()`'s error path only ever surfaces GitHub's own JSON error message and HTTP status — never request headers, never the token.
 - The token is sent to exactly one destination: `https://api.github.com`, as an `Authorization: token …` header. The admin CSP's `connect-src` (see below) makes any other destination for that header impossible even if a future code change tried to send it somewhere else.

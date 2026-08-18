@@ -18,6 +18,17 @@ test.describe('Admin CMS — entry screen', () => {
     expect(errors, `console/page errors on /admin/:\n${errors.join('\n')}`).toEqual([]);
   });
 
+  test('requires an explicit branch instead of silently defaulting to main', async ({ page }) => {
+    await page.goto('/admin/');
+    await expect(page.locator('#in-branch')).toHaveValue('');
+    await page.locator('#in-owner').fill('testuser');
+    await page.locator('#in-repo').fill('testrepo');
+    await page.locator('#in-token').fill('ghp_fake');
+    await page.locator('#connectBtn').click();
+    await expect(page.locator('#connectMsg')).toContainText('branch');
+    await expect(page.locator('#connectScreen')).toBeVisible();
+  });
+
   test('no token/secret is persisted to storage merely by opening the page', async ({ page }) => {
     await page.goto('/admin/');
 
@@ -26,12 +37,11 @@ test.describe('Admin CMS — entry screen', () => {
       sessionStorage: { ...window.sessionStorage },
     }));
 
-    // admin.js's own design: owner/repo/branch (non-sensitive) may be
-    // remembered in localStorage from a PRIOR session, but a fresh
-    // browser context here has none saved yet, and the token must never
+    // admin.js's own design: owner/repo (non-sensitive) may be remembered
+    // in localStorage from a PRIOR session. Branch and token are session-only;
+    // a fresh browser context here has none saved yet, and the token must never
     // appear anywhere just from loading the page — it's only written on
-    // an explicit Connect click (see admin.js "Owner/repo/branch are
-    // non-sensitive... kept in sessionStorage only").
+    // an explicit Connect click (see admin.js connect/boot storage notes).
     expect(storageSnapshot.sessionStorage.maven_admin_token).toBeUndefined();
     const allValues = [
       ...Object.values(storageSnapshot.localStorage),

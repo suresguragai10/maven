@@ -1,6 +1,18 @@
-# GitHub Publishing — Maven Repository
+# GitHub Publishing - Maven Repository
 
-## First upload from a local folder
+## Current Maven branch discipline
+
+This repository already exists and has production history. **Do not run the new-repository bootstrap commands for the current Maven project.** During the professional quality pass:
+
+- work/checkpoint on `professional-update`;
+- inspect `git status` and the intended diff before every commit;
+- run the required syntax/tests/build/local preview gates;
+- push accepted checkpoints only to `professional-update`;
+- keep `main` untouched until the final owner-approved release gate.
+
+The commands in the next section are retained only for a genuinely new/empty repository scenario.
+
+## New/empty repository bootstrap only
 
 Create an empty repository in the Maven GitHub account/organization. Do not initialize it with a second README if you are uploading this existing repository history as a new project.
 
@@ -17,7 +29,7 @@ git push -u origin main
 
 If the repository already exists locally with Git history, do not run `git init` again. Add or confirm the remote, commit the reviewed changes, and push the intended branch.
 
-## Before every production push
+## Before any release candidate reaches production
 
 ```bash
 npm ci

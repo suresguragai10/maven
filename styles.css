@@ -542,7 +542,7 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Partner note callout ---------- */
 .partner-note { border: 1.5px dashed var(--navy-700); border-radius: var(--radius); padding: 26px 28px; background: var(--mist); margin-top: 10px; }
-.partner-note h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--navy-800); margin-bottom: 8px; }
+.partner-note-title { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--navy-800); margin-bottom: 8px; }
 .partner-note p { margin: 0; font-size: 0.94rem; }
 
 /* ---------- CTA band ---------- */
@@ -615,7 +615,7 @@ body.nav-open { overflow: hidden; }
 .footer-address { margin-top: 16px; }
 .footer-links { display: grid; grid-template-columns: 0.82fr 1.28fr 1fr 1.05fr; gap: clamp(20px, 2.7vw, 36px); min-width: 0; }
 .footer-col { min-width: 0; }
-.footer-col h4 { color: #fff; font-family: var(--font-body); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.075em; margin-bottom: 11px; }
+.footer-col h2 { color: #fff; font-family: var(--font-body); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.075em; margin-bottom: 11px; }
 .footer-col ul { display: flex; flex-direction: column; gap: 7px; }
 .footer-col a, .footer-brand address, .footer-col address { font-size: 0.88rem; line-height: 1.45; color: rgba(255,255,255,0.7); font-style: normal; }
 .footer-col a { transition: color 0.16s ease; }

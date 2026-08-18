@@ -10,6 +10,7 @@ async function connect(page, mock) {
   await page.goto('/admin/');
   await page.locator('#in-owner').fill(mock.owner);
   await page.locator('#in-repo').fill(mock.repo);
+  await page.locator('#in-branch').fill('professional-update');
   await page.locator('#in-token').fill(mock.token);
   await page.locator('#connectBtn').click();
   await expect(page.locator('#app')).toBeVisible();

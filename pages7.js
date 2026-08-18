@@ -81,7 +81,7 @@ function nfrsIfrs() {
       <p class="reveal">${esc((n.auditPrep || {}).intro)}</p>
       ${bulletList((n.auditPrep || {}).items || [], 'stamp-list stamp-list--pkg')}
       <div class="partner-note reveal" style="margin-top:24px">
-        <h4>Defined Professional Boundaries</h4>
+        <h3 class="partner-note-title">Defined Professional Boundaries</h3>
         <p>${esc((n.auditPrep || {}).note)}</p>
       </div>
     </div>
@@ -202,11 +202,11 @@ function internationalAccounting() {
   <section class="section-pad bg-mist">
     <div class="container" style="max-width:820px">
       <div class="partner-note reveal">
-        <h4>Data Security &amp; Confidentiality</h4>
+        <h2 class="partner-note-title">Data Security &amp; Confidentiality</h2>
         <p>${esc(a.securityNote)}</p>
       </div>
       <div class="partner-note reveal" style="margin-top:24px">
-        <h4>Clear Professional Scope</h4>
+        <h2 class="partner-note-title">Clear Professional Scope</h2>
         <p>${esc(a.scopeBoundary)}</p>
       </div>
     </div>

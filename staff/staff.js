@@ -6415,15 +6415,43 @@
   function initials(name) {
     return (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join('') || '?';
   }
+  function profilePhotoFallback(p, large) {
+    var fallback = el('div', 'profile-photo profile-photo-fallback' + (large ? ' profile-photo-lg' : ''));
+    fallback.setAttribute('aria-hidden', 'true');
+    fallback.textContent = initials(p && p.full_name);
+    return fallback;
+  }
+
+  // Keep staff photos deliberately simple: an optional local /images/ path or
+  // a public object URL from Maven's own Supabase project. Arbitrary remote
+  // image hosts are rejected so the value a user is allowed to save always
+  // agrees with the Work Desk CSP. There is intentionally no upload/crop/media
+  // manager in V1.
+  function allowedStaffPhotoUrl(value) {
+    var v = (value || '').trim();
+    if (!v) return '';
+    if (v.indexOf('/images/') === 0 && v.indexOf('..') === -1) return v;
+    try {
+      var parsed = new URL(v);
+      var supabaseOrigin = new URL(SUPABASE_URL).origin;
+      if (parsed.origin === supabaseOrigin && parsed.pathname.indexOf('/storage/v1/object/public/') === 0) return parsed.href;
+    } catch (err) {
+      return null;
+    }
+    return null;
+  }
+
   function profilePhoto(p, large) {
-    if (p && p.photo_url) {
+    var src = allowedStaffPhotoUrl(p && p.photo_url);
+    if (src) {
       var img = el('img', 'profile-photo' + (large ? ' profile-photo-lg' : ''));
-      img.src = p.photo_url; img.alt = ''; img.loading = 'lazy';
+      img.src = src; img.alt = ''; img.loading = 'lazy';
+      img.addEventListener('error', function () {
+        if (img.parentNode) img.parentNode.replaceChild(profilePhotoFallback(p, large), img);
+      }, { once: true });
       return img;
     }
-    var fallback = el('div', 'profile-photo profile-photo-fallback' + (large ? ' profile-photo-lg' : ''));
-    fallback.setAttribute('aria-hidden', 'true'); fallback.textContent = initials(p && p.full_name);
-    return fallback;
+    return profilePhotoFallback(p, large);
   }
 
   function renderDirectoryPage(main) {
@@ -6455,13 +6483,15 @@
     function readOnly(label, value) { var inp = el('input'); inp.value = value || ''; inp.disabled = true; grid.appendChild(field(label, inp)); }
     readOnly('Full name', p.full_name); readOnly('Designation', p.designation); readOnly('Work email', p.work_email || state.user.email); readOnly('Join date', p.join_date ? fmtDate(p.join_date) : '');
     var phone = el('input'); phone.value = p.phone || ''; grid.appendChild(field('Phone', phone));
-    var photo = el('input'); photo.type = 'url'; photo.placeholder = 'https://...'; photo.value = p.photo_url || ''; grid.appendChild(field('Profile photo URL (optional)', photo));
+    var photo = el('input'); photo.type = 'text'; photo.placeholder = '/images/staff/name.jpg or Maven Supabase Storage URL'; photo.value = p.photo_url || ''; grid.appendChild(field('Profile photo (optional)', photo));
     info.appendChild(grid);
-    var hint = el('p', 'f-hint'); hint.textContent = 'Name, role, designation, work email and join date are managed by an admin. You can update your own phone and profile photo URL.'; info.appendChild(hint);
+    var hint = el('p', 'f-hint'); hint.textContent = 'Name, role, designation, work email and join date are managed by an admin. You can update your phone and optionally use a local /images/ photo or a public Maven Supabase Storage image. If no photo is set, your initials are shown.'; info.appendChild(hint);
     var save = el('button', 'btn btn-sm'); save.type = 'button'; save.textContent = 'Save My Profile';
     save.addEventListener('click', async function () {
+      var photoValue = allowedStaffPhotoUrl(photo.value);
+      if (photoValue === null) { toast('Profile photo must be a local /images/ path or a public Maven Supabase Storage URL.', true); photo.focus(); return; }
       save.disabled = true;
-      var res = await sb.rpc('update_my_profile', { p_phone: phone.value.trim(), p_photo_url: photo.value.trim() });
+      var res = await sb.rpc('update_my_profile', { p_phone: phone.value.trim(), p_photo_url: photoValue });
       save.disabled = false;
       if (res.error) { toast('Could not update profile: ' + res.error.message, true); return; }
       await loadProfiles();
@@ -6647,8 +6677,9 @@
     var email=el('input');email.type='email';email.value=p2.work_email||'';wrap.appendChild(field('Work email',email));
     var phone=el('input');phone.value=p2.phone||'';wrap.appendChild(field('Phone',phone));
     var join=el('input');join.type='date';join.value=p2.join_date||'';wrap.appendChild(field('Join date (Gregorian)',join));
-    var photo=el('input');photo.type='url';photo.value=p2.photo_url||'';photo.placeholder='https://...';wrap.appendChild(field('Profile photo URL',photo));
-    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Profile';save.addEventListener('click',async function(){if(!name.value.trim()){toast('Full name is required.',true);return;}save.disabled=true;var res=await sb.from('profiles').update({full_name:name.value.trim(),designation:designation.value.trim()||null,work_email:email.value.trim()||null,phone:phone.value.trim()||null,join_date:join.value||null,photo_url:photo.value.trim()||null}).eq('id',p2.id);save.disabled=false;if(res.error){toast('Could not update staff profile: '+res.error.message,true);return;}closeModal();await loadProfiles();if(p2.id===state.user.id)state.profile=state.profiles.find(function(x){return x.id===state.user.id;})||state.profile;toast('Staff profile updated.');render();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
+    var photo=el('input');photo.type='text';photo.value=p2.photo_url||'';photo.placeholder='/images/staff/name.jpg or Maven Supabase Storage URL';wrap.appendChild(field('Profile photo (optional)',photo));
+    var photoHint=el('p','f-hint');photoHint.textContent='Use a local /images/ path or a public image from Maven Supabase Storage. Leave blank to show initials.';wrap.appendChild(photoHint);
+    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Profile';save.addEventListener('click',async function(){if(!name.value.trim()){toast('Full name is required.',true);return;}var photoValue=allowedStaffPhotoUrl(photo.value);if(photoValue===null){toast('Profile photo must be a local /images/ path or a public Maven Supabase Storage URL.',true);photo.focus();return;}save.disabled=true;var res=await sb.from('profiles').update({full_name:name.value.trim(),designation:designation.value.trim()||null,work_email:email.value.trim()||null,phone:phone.value.trim()||null,join_date:join.value||null,photo_url:photoValue||null}).eq('id',p2.id);save.disabled=false;if(res.error){toast('Could not update staff profile: '+res.error.message,true);return;}closeModal();await loadProfiles();if(p2.id===state.user.id)state.profile=state.profiles.find(function(x){return x.id===state.user.id;})||state.profile;toast('Staff profile updated.');render();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
   }
 
   function renderStaff(main) {

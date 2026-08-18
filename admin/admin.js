@@ -9,7 +9,7 @@
   // never mutated by the form editors (only state.content is). Used to
   // compute the pre-save "what actually changed" summary (Handbook Task
   // 30) by diffing against the live, edited state.content.
-  var state = { owner: '', repo: '', branch: 'main', token: '', sha: null, content: null, originalContent: null, dirty: false };
+  var state = { owner: '', repo: '', branch: '', token: '', sha: null, content: null, originalContent: null, dirty: false };
 
   function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
@@ -1423,19 +1423,19 @@
   }
 
   // ---------- connect / boot ----------
-  // Owner/repo/branch are non-sensitive, so they're remembered in localStorage
-  // for convenience. The token is a GitHub PAT with repo write access — it's
-  // kept in sessionStorage only, so it's gone as soon as the tab/browser closes
-  // rather than sitting in the browser's storage indefinitely.
+  // Owner/repo are non-sensitive and may be remembered in localStorage. The
+  // selected branch and PAT are session-only: closing the tab/browser forces
+  // the operator to choose the branch again instead of carrying a production
+  // `main` selection into a later development session by accident.
   function saveLocal() {
     localStorage.setItem('maven_admin_owner', state.owner);
     localStorage.setItem('maven_admin_repo', state.repo);
-    localStorage.setItem('maven_admin_branch', state.branch);
+    sessionStorage.setItem('maven_admin_branch', state.branch);
     sessionStorage.setItem('maven_admin_token', state.token);
   }
 
   function connect(owner, repo, branch, token) {
-    state.owner = owner; state.repo = repo; state.branch = branch || 'main'; state.token = token;
+    state.owner = owner; state.repo = repo; state.branch = branch; state.token = token;
     var msg = document.getElementById('connectMsg');
     msg.innerHTML = '';
     document.getElementById('connectBtn').disabled = true;
@@ -1464,10 +1464,10 @@
   document.getElementById('connectBtn').addEventListener('click', function () {
     var owner = document.getElementById('in-owner').value.trim();
     var repo = document.getElementById('in-repo').value.trim();
-    var branch = document.getElementById('in-branch').value.trim() || 'main';
+    var branch = document.getElementById('in-branch').value.trim();
     var token = document.getElementById('in-token').value.trim();
-    if (!owner || !repo || !token) {
-      document.getElementById('connectMsg').innerHTML = '<div class="msg msg-error">Please fill in username, repository, and token.</div>';
+    if (!owner || !repo || !branch || !token) {
+      document.getElementById('connectMsg').innerHTML = '<div class="msg msg-error">Please fill in username, repository, branch, and token. The branch is intentionally not guessed.</div>';
       return;
     }
     connect(owner, repo, branch, token);
@@ -1629,6 +1629,10 @@
 
   // ---------- boot: prefill from storage / auto-detect from URL ----------
   (function boot() {
+    // Clean up the branch key used by older versions. Branch is now
+    // intentionally session-only so production `main` never becomes a sticky
+    // default in a later development session.
+    localStorage.removeItem('maven_admin_branch');
     var host = location.hostname;
     var guessedOwner = host.endsWith('.github.io') ? host.replace('.github.io', '') : '';
     var parts = location.pathname.split('/').filter(Boolean);
@@ -1636,7 +1640,7 @@
 
     var savedOwner = localStorage.getItem('maven_admin_owner') || guessedOwner;
     var savedRepo = localStorage.getItem('maven_admin_repo') || guessedRepo;
-    var savedBranch = localStorage.getItem('maven_admin_branch') || 'main';
+    var savedBranch = sessionStorage.getItem('maven_admin_branch') || '';
     // Token is session-only — only survives if this is the same tab/session
     // that connected (e.g. a page refresh), never a fresh browser session.
     var savedToken = sessionStorage.getItem('maven_admin_token') || '';

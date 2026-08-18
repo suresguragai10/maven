@@ -43,3 +43,45 @@ test('Controlled future batch roadmap is present', () => {
   assert.match(roadmap, /Batch 2 - Footer, restrained motion and public visual polish/);
   assert.match(roadmap, /Batch 8 - Release candidate and final GitHub gate/);
 });
+
+
+test('Batch 2A footer navigation labels use h2 rather than skipped h4 headings', () => {
+  const layout = read('layout.js');
+  const css = read('styles.css');
+  assert.match(layout, /<h2>\$\{esc\(title\)\}<\/h2>/);
+  assert.doesNotMatch(layout, /<h4>\$\{esc\(title\)\}<\/h4>/);
+  assert.match(css, /\.footer-col h2 \{/);
+});
+
+test('Batch 2A removes known public h2-to-h4 skips in partner notes', () => {
+  const pages2 = read('pages2.js');
+  const pages7 = read('pages7.js');
+  const css = read('styles.css');
+  assert.doesNotMatch(pages2 + pages7, /<h4>/);
+  assert.match(pages2, /<h2 class="partner-note-title">Support Through Partners<\/h2>/);
+  assert.match(pages7, /<h3 class="partner-note-title">Defined Professional Boundaries<\/h3>/);
+  assert.match(pages7, /<h2 class="partner-note-title">Data Security &amp; Confidentiality<\/h2>/);
+  assert.match(css, /\.partner-note-title \{/);
+});
+
+test('Batch 2A staff photos accept only controlled sources that match staff CSP', () => {
+  const staff = read('staff/staff.js');
+  const build = read('build.js');
+  assert.match(staff, /function allowedStaffPhotoUrl\(value\)/);
+  assert.match(staff, /\/storage\/v1\/object\/public\//);
+  assert.match(staff, /v\.indexOf\('\/images\/'\) === 0/);
+  assert.match(staff, /replaceChild\(profilePhotoFallback/);
+  assert.match(build, /img-src 'self' https:\/\/moqmgyniwytwmlcdthzy\.supabase\.co/);
+  assert.doesNotMatch(build.slice(build.indexOf('const staffCsp'), build.indexOf('const headers')), /img-src 'self' data: https:/);
+});
+
+test('Batch 2A admin branch is explicit and never silently defaults to main', () => {
+  const html = read('admin/index.html');
+  const admin = read('admin/admin.js');
+  assert.doesNotMatch(html, /id="in-branch"[^>]*value="main"/);
+  assert.match(html, /professional-update/);
+  assert.doesNotMatch(admin, /branch \|\| 'main'/);
+  assert.match(admin, /Please fill in username, repository, branch, and token/);
+  assert.match(admin, /sessionStorage\.setItem\('maven_admin_branch'/);
+  assert.doesNotMatch(admin, /localStorage\.setItem\('maven_admin_branch'/);
+});

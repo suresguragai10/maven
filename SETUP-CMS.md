@@ -4,9 +4,11 @@
 > superseded.** The CMS/admin panel and GitHub Actions deploy pipeline
 > described here are long since set up and live; nothing in this
 > project currently needs these steps repeated. Kept for historical
-> record only (per `docs/CURRENT_BASELINE.md` §8, "safe to archive" —
+> record only (per `docs/CURRENT_BASELINE.md` section 8, "safe to archive" -
 > not deleted here since it may still have value if the deploy pipeline
-> is ever rebuilt from scratch).
+> is ever rebuilt from scratch). **Do not follow the Git/branch steps below for
+> the current project. Current development checkpoints go to
+> `professional-update`; `main` stays untouched until the release gate.**
 
 This turns your site into: **edit `content/site.yaml` on GitHub → site rebuilds and
 goes live automatically.** No Netlify, no separate CMS login — everything stays on GitHub.
@@ -49,7 +51,7 @@ the Actions build below.
 1. In the repo, open `content/site.yaml`.
 2. Click the pencil (✏️) icon to edit.
 3. Change any text between quotes — phone number, FAQs, packages, whatever.
-4. Scroll down, commit directly to `main`.
+4. Historical behavior only: this guide originally committed directly to `main`. For the current project, follow `docs/GITHUB_PUBLISHING.md` and use `professional-update` until the release gate.
 5. Check the **Actions** tab: green check = live in ~1 minute. Red X = the site
    did **not** update (your previous version stays live), so it's safe to try
    things — just open the failed run to see what line caused the error.

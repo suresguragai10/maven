@@ -1,53 +1,38 @@
-# Your Custom Admin Panel
+# Maven Website Content Admin
 
-`admin/index.html` is a self-contained, custom-built content editor for your
-site — no third-party CMS, no separate account. It runs entirely in your
-browser and talks directly to GitHub using a token only you hold.
+**Current operating guide.** The Website Content Admin at `/admin/` edits public website content stored in `content/site.yaml` and selected Blog files through the GitHub Contents API. It is separate from the Supabase-backed Maven Work Desk administration for staff, roles and attendance.
 
-## How it works
+## Current safe workflow
 
-- You open `https://<yourusername>.github.io/<repo>/admin/`
-- Paste in a GitHub token (one-time setup, instructions are on the page itself)
-- It loads `content/site.yaml`, shows it as normal text boxes with **Add** /
-  **Remove** buttons for lists (FAQs, packages, services, etc.)
-- You edit, click **Save Changes** — it commits straight to your repo
-- Your existing GitHub Action rebuilds and republishes automatically
+1. Open `https://mavennepal.com.np/admin/` through the production identity gate when it is configured.
+2. Enter the GitHub owner, repository, **branch**, and your own fine-grained GitHub token.
+3. During the current professional update, use `professional-update`. Do not use `main` for unfinished development or testing.
+4. Review/edit content, use the built-in validation, then review the pre-save change summary.
+5. Save only to the branch you intentionally selected. A GitHub save is a commit; it does **not** prove deployment succeeded.
+6. Use the Actions link to inspect deployment separately. Merge/publish to `main` only after the project release gate and owner approval.
 
-## Adding it to your repo
+The branch field intentionally has no automatic `main` default. This prevents a development/admin test from silently targeting production.
 
-Same as before — either drag the unzipped folder into "Upload files" (make
-sure the `admin` folder comes along with it), or use "Create new file" and
-type `admin/index.html` as the path, then paste in the file's contents.
+## Token setup
 
-## Getting a token (do this once)
+Use a separate token for each human admin:
 
-Full steps are inside the page under "How do I get a token?" — short version:
+1. GitHub -> Settings -> Developer settings.
+2. Personal access tokens -> Fine-grained tokens -> Generate new token.
+3. Repository access -> Only select repositories -> Maven repository only.
+4. Repository permissions -> Contents: Read and write. Leave unrelated permissions disabled.
+5. Set an expiration and generate the token.
 
-1. GitHub → your profile photo → **Settings → Developer settings**
-2. **Personal access tokens → Fine-grained tokens → Generate new token**
-3. Repository access → **only your site's repo**
-4. Permissions → **Contents: Read and write** (nothing else)
-5. Set an expiry (e.g. 90 days), generate, copy the token
+The token is kept in `sessionStorage` only for the current browser session. It is not stored in `localStorage`; Disconnect clears the session token. Owner/repository may be remembered locally for convenience. The selected branch is session-only with the token, so a previous production `main` choice does not silently carry into a later browser session.
 
-## On security
+## Security boundary
 
-- The token goes **only** from your browser straight to GitHub's API — never
-  through any third-party server, and never through me.
-- Scoping it to one repo with only "Contents: Read and write" means even if
-  it leaked, it can't touch your other repos, account settings, or billing.
-- The admin page itself is publicly reachable by URL like any other page, but
-  it's useless without a valid token, so a random visitor can't do anything
-  with it.
-- Every save is a normal git commit — fully visible and reversible in your
-  repo's history if anything ever looks wrong.
-- One trade-off: saving through this panel rewrites `content/site.yaml`
-  cleanly, which means the explanatory `#` comments I originally added to
-  that file will be replaced (the form itself now guides you instead, so this
-  shouldn't matter — but it's normal to see if you peek at the raw file).
+`/admin/` is a static browser application. A valid GitHub token authorizes GitHub writes; it is **not** an identity gate for loading the page. Production should protect `/admin/*` with Cloudflare Access or an equivalent identity-aware edge gate. `noindex` is SEO hygiene, not authentication.
 
-## Note on "Remember token on this device"
+The Admin and Work Desk remain deliberately separate:
 
-- Checked → token is saved in this browser's `localStorage` so you won't have
-  to paste it in again next time. Convenient, but stays on that device.
-- Unchecked → nothing is saved; you re-enter it each visit. More cautious,
-  especially on a shared or public computer.
+- Website Content Admin: public pages, services, industries, international content, public Team, FAQs/resources, SEO, Blog/Testimonials visibility/content.
+- Work Desk Admin: staff/access, attendance, templates and operational settings.
+- Public Team content never auto-syncs from internal Staff Directory/Profile records.
+
+See `docs/ADMIN_SECURITY.md` for the detailed security model and `docs/GITHUB_PUBLISHING.md` for branch/release discipline.

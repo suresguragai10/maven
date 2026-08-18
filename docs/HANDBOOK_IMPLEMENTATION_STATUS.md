@@ -12,7 +12,7 @@ This file tracks the repository implementation against `Maven_Professional_Repla
 
 ## Current controlled batch
 
-Batch 2 is the active source pass: shared footer composition, floating-action/footer clearance, restrained progressive motion and public visual polish. See `docs/IMPLEMENTATION_BATCH_ROADMAP.md` for the future batch grouping. This does not waive the owner localhost review or the database/browser release gates.
+**Batch 2A - Technical Consistency Cleanup is the active source pass.** It sits inside the wider Batch 2 public-quality work and addresses documentation/branch safety, staff-photo/CSP consistency and heading semantics before visual sign-off. See `docs/BATCH2A_TECHNICAL_CONSISTENCY.md`. This does not waive the owner localhost review or the database/browser release gates.
 
 ## Task status
 
@@ -22,7 +22,7 @@ Batch 2 is the active source pass: shared footer composition, floating-action/fo
 | 1 | Attendance/profile DB | IMPLEMENTED, TEST PENDING | Migration hardened with deterministic Nepal work-date helper and `public, pg_temp` search path; DB matrix expanded. Must run against disposable/test Postgres/Supabase. |
 | 2 | My Tasks | IMPLEMENTED, UI TEST PENDING | My Tasks title, explicit Client/Firm creation actions, All/Client/Firm segmented scope control and scope explanation added. |
 | 3 | Attendance UX | IMPLEMENTED, DB/UI TEST PENDING | Nepal-time display/correction conversion, Gregorian month/calendar, admin summary, CSV, punch state. Requires migration + role/browser tests. |
-| 4 | Profile + Directory | EXISTING PATCH / REVIEW PENDING | Internal directory and self-profile exist; database permission regression and final admin UX review still required. |
+| 4 | Profile + Directory | BATCH 2A CONSISTENCY FIX / REVIEW PENDING | Internal directory and self-profile exist; profile photos remain optional/simple, accept only controlled sources compatible with Staff CSP, and fall back to initials. Database permission regression and final admin UX review still required. |
 | 5 | Work Desk administration boundary | EXISTING PATCH / REVIEW PENDING | Operational admin remains in Work Desk and website CMS is cross-linked only. Needs permission regression. |
 | 6 | Visual system | IMPLEMENTED, VISUAL QA PENDING | Brand palette retained; spacing/radius/motion rules documented in `docs/DESIGN_SYSTEM.md`. |
 | 7 | Nepal-first Home | IMPLEMENTED, VISUAL QA PENDING | International showcase moved below Nepal services/packages/industries; hero CTA reduced to two primary choices. |

@@ -8,6 +8,10 @@
 > `docs/PRODUCT_BOUNDARIES.md`, `docs/ROLE_CAPABILITIES.md`, and
 > `docs/WORKFLOW_MODEL.md` (Handbook Task 4).
 
+> **Historical deployment notes below are not current branch instructions.**
+> During the professional quality pass, use `professional-update` for reviewed
+> checkpoints and leave `main` untouched until the final release gate.
+
 > **Implementation status (2026-07-03):** All requirements in this document have
 > now been implemented in the codebase, plus three requested extras (Privacy
 > Policy page, contact-form honeypot spam guard, canonical + Open Graph SEO tags).
@@ -274,7 +278,7 @@ Default testimonial is hidden so placeholder content does not appear publicly.
 The correct deployment flow is:
 
 ```text
-GitHub push to main -> GitHub Actions -> npm ci -> npm run build -> Cloudflare deploy from dist/
+Historical production-release flow after approval: merge/push the reviewed release to main -> GitHub Actions -> npm ci -> npm run build -> Cloudflare deploy from dist/. Current development checkpoints remain on professional-update.
 ```
 
 This is correct for Cloudflare Workers Static Assets.

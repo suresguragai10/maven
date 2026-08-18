@@ -11,6 +11,11 @@
 > `docs/ROLE_CAPABILITIES.md`, and `docs/WORKFLOW_MODEL.md`, the current
 > authoritative sources as of Handbook Task 4.
 
+> **Do not use this July handover for current Git/branch/deployment steps.**
+> Current work is checkpointed only to `professional-update`; keep `main`
+> untouched until owner-approved release. See `docs/GITHUB_PUBLISHING.md` and
+> `docs/HANDBOOK_IMPLEMENTATION_STATUS.md`.
+
 **Document prepared:** July 2026
 **Live site:** https://mavennepal.com.np (custom domain, via Cloudflare)
 **GitHub repo:** https://github.com/suresguragai10/maven
@@ -163,7 +168,7 @@ package.json, package-lock.json, deploy.yml
 2. Click `content/site.yaml`
 3. Click the pencil (✏️) Edit icon
 4. Edit any text **between the quotes** only
-5. Commit directly to main
+5. Historical release step: commit/merge to main only after the current release gate and owner approval
 6. Check Actions tab for green ✓
 
 **YAML safety rules:**
@@ -512,7 +517,7 @@ the browser. The dist/ folder is git-ignored and rebuilt on every deploy.
 - The admin panel is copied into dist/admin/index.html during build (see build.js)
 
 ### Deploy pipeline
-Every commit to main:
+Historical production behavior after an approved release reaches main:
 1. npm install
 2. node build.js (reads content/site.yaml → generates dist/*.html + dist/admin/index.html)
 3. npx wrangler deploy (uploads dist/ to Cloudflare Workers)

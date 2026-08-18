@@ -22,7 +22,10 @@ Delivered foundations include the Maven design system, Nepal-first public compos
 
 Batch 1 is not the release gate. Database execution, full browser coverage and final visual approval remain separate requirements.
 
-## Batch 2 - Footer, restrained motion and public visual polish (CURRENT)
+## Batch 2 - Footer, restrained motion and public visual polish
+
+**Current sub-batch: 2A Technical Consistency Cleanup.** Before the remaining visual sign-off work, reconcile active/historical branch guidance, align the simple Staff photo input with Staff CSP, strengthen full-document heading semantics/tests, and require explicit Website Admin branch selection. This is a narrow consistency pass, not a redesign.
+
 
 **Primary handbook coverage:** Tasks 6-13, especially Tasks 11, 12 and 13.
 

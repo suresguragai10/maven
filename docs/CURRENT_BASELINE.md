@@ -1,6 +1,8 @@
-# Maven Repository — Current Baseline
+# Maven Repository - Task 0 Baseline Snapshot
 
-**Established:** 2026-08-16 (Handbook Task 0). Supersedes nothing — this is the
+> **Dated snapshot, not the current implementation status.** This file records what was proven on 2026-08-16 before later professional-update batches added syntax tooling, browser tests, Attendance/Profile work and Batch 2 changes. For current status use `docs/HANDBOOK_IMPLEMENTATION_STATUS.md`, `docs/BATCH2_HANDOFF.md` and `docs/BATCH2A_TECHNICAL_CONSISTENCY.md`. Do not use old counts or the old "no test:syntax" statement below as current truth.
+
+**Established:** 2026-08-16 (Handbook Task 0). At that time this was the
 first document in this repo that describes what is *actually proven by
 automation* today, as opposed to what earlier handover documents *claim*.
 Re-run the commands in this file to reproduce it; do not treat prose

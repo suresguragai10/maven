@@ -111,7 +111,7 @@ function renderHeader(activeKey) {
 // Blog until each has real content) are left out via data.isVisible().
 function footerCol(title, links) {
   return `<div class="footer-col">
-    <h4>${esc(title)}</h4>
+    <h2>${esc(title)}</h2>
     <ul>${links.map((l) => `<li><a href="${internalHref(l.href)}">${esc(l.label)}</a></li>`).join('')}</ul>
   </div>`;
 }

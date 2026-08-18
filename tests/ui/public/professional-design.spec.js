@@ -113,9 +113,10 @@ test.describe('Professional public-site quality pass', () => {
   }
 
   for (const path of INDEXABLE_PAGES) {
-    test(`${path} has no forward heading-level skip`, async ({ page }) => {
+    test(`${path} has one H1 and no forward heading-level skip`, async ({ page }) => {
       await page.goto(path);
-      const levels = await page.locator('#main h1, #main h2, #main h3, #main h4, #main h5, #main h6').evaluateAll(
+      await expect(page.locator('body h1')).toHaveCount(1);
+      const levels = await page.locator('body h1, body h2, body h3, body h4, body h5, body h6').evaluateAll(
         (els) => els.map((el) => Number(el.tagName.slice(1)))
       );
       expect(levels[0], `first heading level on ${path}`).toBe(1);
