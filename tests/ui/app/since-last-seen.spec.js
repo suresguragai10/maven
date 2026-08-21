@@ -160,5 +160,27 @@ test.describe('Since Last Seen (Handbook Task 22)', () => {
     // RPC call itself fired and the page didn't error out re-rendering.
     await expect(page.getByRole('heading', { name: 'Firm Work Catch-Up' })).toBeVisible();
   });
+
+  // Real bug found during a manual audit: this page's own clear(main) call
+  // (needed since it also re-renders itself in place after "Mark
+  // Reviewed", not just on first navigation) was wiping out the Work/
+  // Catch-Up subtabs bar that render() had already appended just before
+  // calling it -- so a visitor landing here had no way to click back to
+  // "Work" without using the sidebar again. Confirmed both paths that
+  // could trigger it.
+  test('the Work/Catch-Up subtabs bar stays visible, both on first navigation and after "Mark Reviewed" re-renders the page', async ({ page }) => {
+    await loginToFeed(page, ADMIN, { work_items: [] });
+    const tabs = page.getByRole('tablist', { name: 'Firm Work sections' });
+    await expect(tabs).toBeVisible();
+    await expect(tabs.getByRole('tab', { name: 'Work' })).toBeVisible();
+    await expect(tabs.getByRole('tab', { name: 'Catch-Up' })).toBeVisible();
+
+    const rpcCalls = [];
+    page.on('request', (req) => { if (req.url().includes('/rest/v1/rpc/mark_feed_seen')) rpcCalls.push(req.url()); });
+    await page.getByRole('button', { name: 'Mark Reviewed' }).click();
+    await expect.poll(() => rpcCalls.length).toBeGreaterThan(0);
+    await expect(page.getByRole('tablist', { name: 'Firm Work sections' })).toBeVisible();
+    await expect(page.getByRole('tablist', { name: 'Firm Work sections' }).getByRole('tab', { name: 'Work' })).toBeVisible();
+  });
 });
 

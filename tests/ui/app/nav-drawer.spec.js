@@ -115,4 +115,50 @@ test.describe('Work Desk navigation (Task 22)', () => {
     await expect(page.getByRole('button', { name: 'Open menu' })).not.toBeVisible();
     await expect(page.locator('#sidebar')).toBeVisible();
   });
+
+  // Real bug found during a manual audit: navigating straight into a work
+  // item's own detail page (via gotoWork/gotoClient/gotoFirmWork -- the
+  // same thing clicking a row from Today, Search, Team, or anywhere else
+  // does) never called renderSidebar(), so the sidebar kept showing
+  // whichever section had been active BEFORE, not the one the item
+  // actually belongs to -- e.g. landing on a Firm Work item while the
+  // sidebar still said "Today" was active.
+  test('the sidebar\'s active section updates correctly when landing directly on a work/client/Firm Work detail page', async ({ page }) => {
+    const CLIENT_A = { id: 'c1', name: 'Alpha Trading Pvt. Ltd.', is_active: true };
+    const WORK1 = {
+      id: 'w1', title: 'Alpha VAT Return', work_scope: 'client', client_id: CLIENT_A.id, service_template_id: null,
+      assignee_id: ADMIN.id, reviewer_id: null, status: 'in_progress', priority: 'normal',
+      internal_due_date: '2026-09-01', external_due_date: null, period: null, submission_required: false, review_required: true,
+      created_by: ADMIN.id, created_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-01T00:00:00Z',
+    };
+    const FIRM1 = {
+      id: 'w2', title: 'Renew office internet', work_scope: 'firm', firm_category: 'Administration',
+      assignee_id: ADMIN.id, status: 'in_progress', priority: 'normal', internal_due_date: '2026-09-01',
+      description: null, project_id: null, next_action: null, blocker_reason: null,
+      client_id: null, created_by: ADMIN.id, created_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-01T00:00:00Z',
+    };
+    await installSupabaseMock(page, {
+      user: ADMIN,
+      tables: {
+        profiles: [ADMIN], clients: [CLIENT_A], service_templates: [], deadline_rules: [], app_settings: [], projects: [],
+        work_comments: [], work_checklist_items: [], work_activity: [], notifications: [], personal_todos: [],
+        work_items: [WORK1, FIRM1],
+      },
+    });
+    await page.goto('/staff/');
+    await page.locator('input[type="email"], input[name="email"]').fill(ADMIN.email);
+    await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
+    await page.getByRole('button', { name: /sign in/i }).click();
+    await expect(page.locator('#app')).not.toHaveClass(/hidden/);
+
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await page.evaluate((id) => { location.hash = 'firmwork/' + id; }, FIRM1.id);
+    await expect(page.getByRole('heading', { name: 'Renew office internet', level: 1 })).toBeVisible();
+    await expect(page.locator('#sidebar button.is-active')).toHaveText('Firm Work');
+
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await page.evaluate((id) => { location.hash = 'client/' + id; }, CLIENT_A.id);
+    await expect(page.getByRole('heading', { name: CLIENT_A.name, level: 1 })).toBeVisible();
+    await expect(page.locator('#sidebar button.is-active')).toHaveText('Client Work');
+  });
 });

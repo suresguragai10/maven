@@ -100,7 +100,7 @@ test.describe('Professional public-site quality pass', () => {
     const context = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await context.newPage();
     await page.goto('/');
-    await expect(page.locator('.hero .reveal').first()).toBeVisible();
+    await expect(page.locator('.hero .reveal-stagger').first()).toBeVisible();
     const revealEnabled = await page.locator('html').evaluate((el) => el.classList.contains('reveal-enabled'));
     expect(revealEnabled).toBe(false);
     await context.close();
@@ -109,7 +109,7 @@ test.describe('Professional public-site quality pass', () => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto('/');
-    await expect(page.locator('.hero .reveal').first()).toBeVisible();
+    await expect(page.locator('.hero .reveal-stagger').first()).toBeVisible();
     await expect(page.locator('.home-about-section .reveal').first()).toBeVisible();
     await context.close();
   });

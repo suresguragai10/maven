@@ -122,9 +122,9 @@
   var WORKFLOW_SETTING_HELP = {
     default_internal_offset_days: 'Pre-fills a new template’s internal-offset field. Existing templates and already-generated work are never changed by this.',
     waiting_followup_default_days: 'Pre-fills the follow-up date when marking work Waiting for Client. Always editable per item.',
-    waiting_stale_days: 'How long something can sit Waiting for Client before Manager Dashboard flags it as stale.',
-    review_attention_days: 'How long something can sit in Ready for Review before Manager Dashboard flags it as taking too long.',
-    upcoming_deadline_warning_days: 'How many days ahead Manager Dashboard’s "Due Within N Days" exception looks.',
+    waiting_stale_days: 'How long something can sit Waiting for Client before Operations Overview flags it as stale.',
+    review_attention_days: 'How long something can sit in Ready for Review before Operations Overview flags it as taking too long.',
+    upcoming_deadline_warning_days: 'How many days ahead Operations Overview’s "Due Within N Days" exception looks.',
   };
 
   var state = {
@@ -994,15 +994,25 @@
   window.addEventListener('hashchange', routeFromHash);
   function routeFromHash() {
     var hash = location.hash.replace(/^#/, '');
+    // Real bug found during a manual audit: these three detail-page
+    // branches call their own render function directly instead of going
+    // through render() (which starts with renderSidebar()) -- landing on
+    // a work/client/Firm Work item via a real link (gotoWork/gotoClient/
+    // gotoFirmWork, used from Today, Search, Team, and elsewhere) left the
+    // sidebar showing whichever section was active BEFORE, not the one
+    // the item actually belongs to. renderSidebar() here matches what
+    // render() already does for every other destination.
     if (hash.indexOf('work/') === 0) {
       state.view = 'work-detail';
       state.workId = hash.slice(5);
+      renderSidebar();
       renderWorkDetail(state.workId).then(focusMainHeading);
       return;
     }
     if (hash.indexOf('client/') === 0) {
       state.view = 'client-detail';
       state.clientDetailId = hash.slice(7);
+      renderSidebar();
       renderClientDetail(state.clientDetailId).then(focusMainHeading);
       return;
     }
@@ -1012,6 +1022,7 @@
     if (hash.indexOf('firmwork/') === 0) {
       state.view = 'firmwork-detail';
       state.workId = hash.slice(9);
+      renderSidebar();
       renderFirmWorkDetail(state.workId).then(focusMainHeading);
       return;
     }
@@ -1947,6 +1958,13 @@
   // ============================================================
   async function renderSinceLastSeenPage(main) {
     clear(main); // this function re-renders itself in place after "Mark Reviewed", not just on first navigation
+    // The clear() above wipes out the Firm Work subtabs bar (Work/Catch-Up)
+    // that render() already appended into main before calling this function
+    // on a normal navigation -- restore it here so both the initial
+    // navigation AND the post-"Mark Reviewed" self-refresh leave the tabs
+    // in place, instead of only the initial one.
+    var ownGroupKey = VIEW_TO_GROUP[state.view];
+    if (ownGroupKey) renderGroupTabs(main, ownGroupKey);
     var head = el('div', 'page-head');
     // Task 28: renamed from "Since Last Seen" -- on its own that phrase
     // reads like it tracks when a PERSON was last online (exactly the

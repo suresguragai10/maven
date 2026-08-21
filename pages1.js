@@ -142,7 +142,7 @@ function home() {
   return `
   <section class="hero">
     <div class="container hero-inner">
-      <div class="reveal">
+      <div class="reveal-stagger">
         <p class="eyebrow eyebrow--on-dark">Business Consultancy · Kathmandu, Nepal</p>
         <h1>Reliable Accounting, Tax, Compliance &amp; Financial Management Support for Businesses in Nepal</h1>
         <p class="hero-sub">Maven Consultancy Services Pvt. Ltd. helps startups, SMEs, traders, service companies, and growing businesses maintain accurate records, manage cash flow, meet compliance requirements, and understand financial performance through practical consultancy and outsourced accounting support.</p>
