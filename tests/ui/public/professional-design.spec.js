@@ -148,6 +148,20 @@ test.describe('Professional public-site quality pass', () => {
     await context.close();
   });
 
+  // Real duplication found during a full public-site audit: Home and
+  // About both rendered data.aboutText verbatim in an identical
+  // proof-panel layout -- a visitor clicking Home -> About saw the same
+  // paragraph and fact list twice, back to back. Fixed by giving About
+  // its own already-existing, already-approved copy (data.aboutClosing)
+  // instead of reusing Home's.
+  test('Home and About proof-panel intro copy is genuinely distinct, not duplicated', async ({ page }) => {
+    await page.goto('/');
+    const homeCopy = await page.locator('.about-snapshot-copy p').first().textContent();
+    await page.goto('/about');
+    const aboutCopy = await page.locator('.about-snapshot-copy p').first().textContent();
+    expect(homeCopy.trim()).not.toBe(aboutCopy.trim());
+  });
+
   for (const path of ['/international-accounting', '/virtual-cfo', '/nfrs-ifrs']) {
     test(`${path} informational disclosures start collapsed`, async ({ page }) => {
       await page.goto(path);

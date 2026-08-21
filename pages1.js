@@ -344,8 +344,7 @@ function about() {
     <div class="container about-snapshot">
       <div class="about-snapshot-copy reveal">
         ${sectionHead({ eyebrow: 'Who We Are', title: 'Practical support, organized records, clear communication', align: 'left' })}
-        <p>${esc(data.aboutText)}</p>
-        <p style="margin-top:16px">${esc(data.aboutClosing)}</p>
+        <p>${esc(data.aboutClosing)}</p>
         <div style="margin-top:22px">${button('Meet Our Team', 'team.html', 'outline')}</div>
       </div>
       <aside class="proof-panel reveal" aria-label="Maven facts">

@@ -125,6 +125,36 @@ test.describe('Client Work Detail (Task 26)', () => {
     await expect(waitChip).toHaveClass(/chip-amber/);
   });
 
+  // Real bug found during a Work Desk audit: Mark Documents Received
+  // discarded the result of its FIRST update (work_waiting_items) and
+  // only checked the second (work_items) before showing success -- a
+  // failure marking items received would silently report success while
+  // the waiting items stayed unreceived.
+  test('Mark Documents Received: a failure marking items received shows an error and never reports false success', async ({ page }) => {
+    await loginAndOpenDetail(page, ADMIN, clientItem({ status: 'waiting_for_client', waiting_since: '2026-08-15' }), {
+      work_waiting_items: [
+        { id: 'wi1', work_item_id: 'w1', title: 'Bank statement', is_received: false, sort_order: 0, requested_date: '2026-08-15', follow_up_date: null },
+      ],
+    });
+    let workItemsPatchCalled = false;
+    await page.route('**/rest/v1/work_waiting_items*', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'simulated database error' }) });
+      } else {
+        await route.continue();
+      }
+    });
+    await page.route('**/rest/v1/work_items*', async (route) => {
+      if (route.request().method() === 'PATCH') workItemsPatchCalled = true;
+      await route.continue();
+    });
+
+    await page.getByRole('button', { name: 'Mark Documents Received' }).click();
+    await expect(page.locator('#toast')).toContainText('Could not mark items received');
+    await expect(page.locator('#toast')).not.toContainText('back in progress');
+    expect(workItemsPatchCalled).toBe(false);
+  });
+
   test('Activity stays a separate tab and Comments stay visible on Overview -- audit history is never removed, just kept out of the primary view', async ({ page }) => {
     await loginAndOpenDetail(page, ADMIN, clientItem(), {
       work_comments: [{ id: 'cm1', work_item_id: 'w1', author_id: ADMIN.id, body: 'Please double-check the input VAT figure.', created_at: '2026-08-05T00:00:00Z' }],

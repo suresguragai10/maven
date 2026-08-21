@@ -197,4 +197,35 @@ test.describe('Settings (Task 34)', () => {
     await expect(page.locator('#toast')).toContainText('whole number, 0 or greater');
     expect(requests.some((u) => u.includes('/rest/v1/app_settings'))).toBe(false);
   });
+
+  // Real bug found during a Work Desk audit: Create Template never
+  // disabled itself during the save, unlike every sibling create/save
+  // flow in the app (including this exact modal's own Edit Template
+  // counterpart) -- a fast double-click could create two duplicate
+  // templates, each with its own copy of the checklist.
+  test('New Template: Create Template disables itself during save, so a double-click can never create two templates', async ({ page }) => {
+    await loginAndOpenTemplates(page, { service_templates: [] });
+    await page.getByRole('button', { name: 'New Template' }).click();
+    await expect(page.getByRole('heading', { name: 'New Template' })).toBeVisible();
+    await page.locator('.f').filter({ hasText: 'Title' }).locator('input').fill('Bookkeeping Monthly');
+
+    let insertCount = 0;
+    await page.route('**/rest/v1/service_templates*', async (route) => {
+      if (route.request().method() === 'POST') {
+        insertCount++;
+        await new Promise((resolve) => setTimeout(resolve, 300)); // simulate a slow save
+        await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 'new-t1', title: 'Bookkeeping Monthly' }) });
+      } else {
+        await route.continue();
+      }
+    });
+
+    const createBtn = page.getByRole('button', { name: 'Create Template' });
+    await createBtn.click();
+    await expect(createBtn).toBeDisabled();
+    // A second click while the first save is still in flight must be a no-op.
+    await createBtn.click({ force: true });
+    await expect(page.getByText('Template created.')).toBeVisible();
+    expect(insertCount).toBe(1);
+  });
 });

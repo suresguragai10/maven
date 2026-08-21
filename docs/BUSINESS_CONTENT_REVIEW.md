@@ -70,7 +70,7 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
 | Subtitle said "six core areas," page renders seven categories. | **P1** | Fixed this task (`content/site.yaml`: "six" → "seven"). | none — objective count correction, already implemented |
-| No CTA/link exists directly on any individual service card (cards are static on this page, unlike Home's clickable version). A visitor reading the "Payroll & Salary Support" card, say, has no direct "ask about this" path except scrolling to the bottom CTA band. | P2 | Consider a per-card link/anchor, matching the pattern already used on Industries cards ("Ask About This Industry"). This is a real, defensible UX improvement but changes page structure — proposing for owner approval, not implementing (borderline "small fix" but touches every one of 7 cards' markup and is closer to a design decision than a copy correction). | Owner approval to add per-card CTAs (no new claims involved, just an interaction-design change) |
+| **[RESOLVED — corrected 2026-08-21]** ~~No CTA/link exists directly on any individual service card.~~ Every `serviceEntry()` card (`ui.js:74-89`) now renders its own "Discuss This Service" button (or a deep-link CTA for Outsourced Accounting/NFRS-IFRS via `SERVICE_DEEP_LINKS`, `pages2.js:13-16`) — confirmed live in `services.html`. Shipped as part of the same rearchitecture that added `capabilityChapter()`/`serviceEntry()`; this review item was never marked done. | — (closed) | Already implemented, no further action. | none |
 
 ---
 

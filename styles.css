@@ -356,8 +356,8 @@ body.nav-open { overflow: hidden; }
 .doc-card-panel.is-active { display: flex; }
 .doc-card-panel li { display: flex; gap: 9px; align-items: flex-start; font-size: 0.86rem; color: var(--ink); }
 @media (prefers-reduced-motion: no-preference) {
-  .doc-card-tab { transition: background-color 0.3s ease, color 0.3s ease; }
-  .doc-card-panel.is-active { animation: doc-panel-in 0.3s ease; }
+  .doc-card-tab { transition: background-color 0.18s ease, color 0.18s ease; }
+  .doc-card-panel.is-active { animation: doc-panel-in 0.22s ease; }
 }
 @keyframes doc-panel-in {
   from { opacity: 0; transform: translateY(4px); }
@@ -508,7 +508,7 @@ body.nav-open { overflow: hidden; }
 .accordion-item.is-open .accordion-trigger { color: var(--navy-950); }
 .accordion-trigger .ic-chevron { width: 20px; height: 20px; color: var(--gold-700); flex-shrink: 0; transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
 .accordion-item.is-open .ic-chevron { transform: rotate(180deg); }
-.accordion-panel { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease; }
+.accordion-panel { max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease; }
 .accordion-item.is-open .accordion-panel { opacity: 1; }
 .accordion-panel-inner { padding: 0 20px 18px; }
 .accordion-panel-inner p { margin: 0; font-size: 0.96rem; }

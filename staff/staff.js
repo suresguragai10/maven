@@ -189,12 +189,6 @@
     return svg;
   }
 
-  function initials(name) {
-    var parts = (name || '').trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return '?';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
   function avatar(name, cls) {
     var a = el('span', 'avatar' + (cls ? ' ' + cls : ''));
     a.textContent = initials(name);
@@ -2258,6 +2252,8 @@
     row.appendChild(avatarFor(w.assignee_id));
     var dot = el('span', 'priority-dot priority-dot-' + w.priority);
     dot.title = w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority';
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority');
     row.appendChild(dot);
     var title = el('div', 'title');
     var tmpl = templateById(w.service_template_id);
@@ -2312,6 +2308,8 @@
     row.appendChild(avatarFor(w.assignee_id));
     var dot = el('span', 'priority-dot priority-dot-' + w.priority);
     dot.title = w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority';
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority');
     row.appendChild(dot);
     var title = el('div', 'title');
     var project = w.project_id ? projectById(w.project_id) : null;
@@ -4121,8 +4119,9 @@
       var allReceivedText = el('span'); allReceivedText.style.cssText = 'color:var(--green);font-weight:700;font-size:.88rem;'; allReceivedText.textContent = 'All requirements received.';
       var returnBtn = el('button', 'btn btn-sm'); returnBtn.type = 'button'; returnBtn.textContent = 'Return to In Progress';
       returnBtn.addEventListener('click', async function () {
+        returnBtn.disabled = true;
         var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+        if (res.error) { returnBtn.disabled = false; toast('Could not update: ' + res.error.message, true); return; }
         // Status change (waiting_for_client -> in_progress) is logged automatically by guard_work_item_update() (Handbook Task 7).
         toast('Back in progress.');
         renderWorkDetail(id);
@@ -4132,7 +4131,8 @@
       var receivedBtn = el('button', 'btn btn-outline btn-sm'); receivedBtn.type = 'button'; receivedBtn.style.marginTop = '12px';
       receivedBtn.appendChild(icon('check')); receivedBtn.appendChild(document.createTextNode('Mark Documents Received'));
       receivedBtn.addEventListener('click', async function () {
-        await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
+        var itemsRes = await sb.from('work_waiting_items').update({ is_received: true }).eq('work_item_id', work.id);
+        if (itemsRes.error) { toast('Could not mark items received: ' + itemsRes.error.message, true); return; }
         var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
         // Status change (waiting_for_client -> in_progress) is logged automatically by guard_work_item_update() (Handbook Task 7).
@@ -4165,6 +4165,7 @@
         var addWaitBtn = el('button', 'btn btn-outline btn-sm'); addWaitBtn.type = 'button'; addWaitBtn.textContent = 'Add';
         addWaitBtn.addEventListener('click', async function () {
           if (!newWaitInput.value.trim()) return;
+          addWaitBtn.disabled = true;
           var res = await sb.from('work_waiting_items').insert({
             work_item_id: work.id,
             title: newWaitInput.value.trim(),
@@ -4172,7 +4173,7 @@
             requested_date: localDateStr(),
             requested_by: state.user.id,
           });
-          if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
+          if (res.error) { addWaitBtn.disabled = false; toast('Could not add item: ' + res.error.message, true); return; }
           renderWorkDetail(id);
         });
         addWaitRow.appendChild(newWaitInput); addWaitRow.appendChild(addWaitBtn);
@@ -4220,8 +4221,9 @@
     commentBtn.style.marginTop = '8px';
     commentBtn.addEventListener('click', async function () {
       if (!commentInput.value.trim()) return;
+      commentBtn.disabled = true;
       var res = await sb.from('work_comments').insert({ work_item_id: work.id, author_id: state.user.id, body: commentInput.value.trim() });
-      if (res.error) { toast('Could not post comment: ' + res.error.message, true); return; }
+      if (res.error) { commentBtn.disabled = false; toast('Could not post comment: ' + res.error.message, true); return; }
       commentInput.value = '';
       renderWorkDetail(id);
     });
@@ -4252,9 +4254,10 @@
       var addItemBtn = el('button', 'btn btn-outline btn-sm'); addItemBtn.type = 'button'; addItemBtn.textContent = 'Add';
       addItemBtn.addEventListener('click', async function () {
         if (!newItemInput.value.trim()) return;
+        addItemBtn.disabled = true;
         var stageCount = checklist.filter(function (i) { return i.stage === stageSel.value; }).length;
         var res = await sb.from('work_checklist_items').insert({ work_item_id: work.id, stage: stageSel.value, title: newItemInput.value.trim(), sort_order: stageCount });
-        if (res.error) { toast('Could not add item: ' + res.error.message, true); return; }
+        if (res.error) { addItemBtn.disabled = false; toast('Could not add item: ' + res.error.message, true); return; }
         newItemInput.value = '';
         renderWorkDetail(id);
       });
@@ -5777,9 +5780,9 @@
         var reqLabel = el('label'); reqLabel.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:.8rem;white-space:nowrap;width:auto;margin:0;';
         var reqCb = el('input'); reqCb.type = 'checkbox'; reqCb.checked = isRequired !== false; reqCb.style.width = 'auto';
         reqLabel.appendChild(reqCb); reqLabel.appendChild(document.createTextNode('Required'));
-        var upBtn = el('button', 'btn btn-outline btn-sm'); upBtn.type = 'button'; upBtn.textContent = '↑'; upBtn.title = 'Move up';
-        var downBtn = el('button', 'btn btn-outline btn-sm'); downBtn.type = 'button'; downBtn.textContent = '↓'; downBtn.title = 'Move down';
-        var delBtn = el('button', 'btn btn-outline btn-sm'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Remove';
+        var upBtn = el('button', 'btn btn-outline btn-sm'); upBtn.type = 'button'; upBtn.textContent = '↑'; upBtn.title = 'Move up'; upBtn.setAttribute('aria-label', 'Move up');
+        var downBtn = el('button', 'btn btn-outline btn-sm'); downBtn.type = 'button'; downBtn.textContent = '↓'; downBtn.title = 'Move down'; downBtn.setAttribute('aria-label', 'Move down');
+        var delBtn = el('button', 'btn btn-outline btn-sm'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Remove'; delBtn.setAttribute('aria-label', 'Remove');
         upBtn.addEventListener('click', function () {
           var prev = row.previousElementSibling;
           if (prev) list.insertBefore(row, prev);
@@ -5920,6 +5923,7 @@
     var createBtn = el('button', 'btn'); createBtn.type = 'button'; createBtn.textContent = 'Create Template';
     createBtn.addEventListener('click', async function () {
       if (!titleInput.value.trim()) { toast('Give the template a title.', true); return; }
+      createBtn.disabled = true;
       var res = await sb.from('service_templates').insert({
         title: titleInput.value.trim(),
         category: catSel.value,
@@ -5932,7 +5936,7 @@
         requires_external_deadline: requiresExternalDeadlineCb.checked,
         internal_offset_days: internalOffsetInput.value.trim() ? parseInt(internalOffsetInput.value, 10) : null,
       }).select().single();
-      if (res.error) { toast('Could not create template: ' + res.error.message, true); return; }
+      if (res.error) { createBtn.disabled = false; toast('Could not create template: ' + res.error.message, true); return; }
       var rows = checklistEditor.getRows().map(function (r) {
         return { template_id: res.data.id, stage: r.stage, title: r.title, sort_order: r.sort_order, is_required: r.is_required };
       });
@@ -7169,7 +7173,7 @@
           row.classList.toggle('done', cb.checked);
         });
         var span = el('span'); span.textContent = t.text;
-        var delBtn = el('button', 'todo-del'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Delete';
+        var delBtn = el('button', 'todo-del'); delBtn.type = 'button'; delBtn.textContent = '×'; delBtn.title = 'Delete'; delBtn.setAttribute('aria-label', 'Delete');
         delBtn.addEventListener('click', async function (e) {
           e.preventDefault();
           var r = await sb.from('personal_todos').delete().eq('id', t.id);

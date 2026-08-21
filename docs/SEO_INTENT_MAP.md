@@ -63,7 +63,7 @@ Their actual on-page content was never identical — the hub (`/global-outsourci
 
 ## 4. KPO terminology guidance
 
-"KPO" (Knowledge Process Outsourcing) is **not currently used anywhere on the site** (confirmed by a full-repo search of `content/site.yaml` and every `pages*.js`/`layout.js`/`data.js` file). This section is guidance for whether it *could* be used truthfully in later SEO copy work — it does not add the term anywhere now.
+**[STALE — corrected 2026-08-21]** ~~"KPO" is not currently used anywhere on the site.~~ It now appears in `pages2.js:173` (`/global-outsourcing` body copy: "...Virtual CFO support builds on that foundation with higher-skill, knowledge-process (KPO) work..."). This isn't a policy problem — it's exactly the scoped, Virtual-CFO-only usage this section's own guidance below says would be truthful and defensible — but the factual "not used anywhere" claim is now wrong. This section remains useful guidance for whether it could be used elsewhere; it does not currently add the term anywhere beyond that one already-scoped instance.
 
 `/global-outsourcing`'s own existing copy (`data.internationalHub.intro`) already states Maven works with "businesses **and accounting firms**" needing additional finance capacity — serving other accounting firms as a white-label/offshore capacity partner is exactly the Finance & Accounting KPO business model, not an aspirational claim. On that basis, "KPO" or "F&A KPO/outsourcing" would be a **truthful, defensible category label** for `/global-outsourcing`, `/international-accounting`, and `/virtual-cfo` specifically (the three pages whose real, already-stated scope matches it).
 
