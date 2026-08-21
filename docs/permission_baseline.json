@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-21T18:08:36.982Z",
-    "migrationCount": 35
+    "generatedAt": "2026-08-21T19:05:43.032Z",
+    "migrationCount": 36
   },
   "results": [
     {
@@ -66,6 +66,15 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "1 row(s) affected"
+    },
+    {
+      "area": "profiles",
+      "action": "UPDATE own is_active to false (admin self-lockout)",
+      "identity": "admin",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "You cannot change your own active status -- ask another admin."
     },
     {
       "area": "profiles",
@@ -2130,15 +2139,6 @@
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
-      "action": "EXECUTE grant to 'anon' on guard_profile_update()",
-      "identity": "n/a (catalog check)",
-      "allowed": true,
-      "expectedSecure": "allow",
-      "secure": true,
-      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true"
-    },
-    {
-      "area": "SECURITY DEFINER function grants (catalog inspection)",
       "action": "EXECUTE grant to 'anon' on guard_work_item_update()",
       "identity": "n/a (catalog check)",
       "allowed": true,
@@ -2181,6 +2181,15 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=false"
+    },
+    {
+      "area": "SECURITY DEFINER function grants (catalog inspection)",
+      "action": "EXECUTE grant to 'anon' on prevent_self_role_escalation()",
+      "identity": "n/a (catalog check)",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "informational only, not scored as a finding either way - trigger/helper function; anon_can_execute=true"
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",

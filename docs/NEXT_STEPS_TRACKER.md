@@ -16,16 +16,16 @@ A single consolidated list, built from the 12 audit/planning docs already sittin
 - [x] **FIXED.** `STAFF_ONBOARDING.md` rewritten to document Create New Staff as the primary path (Dashboard kept as fallback), with a clear revision note explaining what changed and why.
 - [x] Sidebar label vs. page heading mismatches — checked current state (the audit predates some earlier fixes this session): "Operations Overview" and "Catch-Up"/"Firm Work Catch-Up" are already consistent. "Team Work"→"Team" and "My To-Do"→"My To-Do List" remain, but on reflection these are just normal shortened sidebar labels (same pattern as the already-fine Catch-Up one), not genuinely confusing — left as-is.
 - [x] **FIXED.** Resources page now has a full admin-panel editor (intro + all 4 tiles' title/text/CTA, matching the same locked-link pattern used elsewhere for fixed-page tiles). Covered by 2 new admin-cms tests; also had to extend the shared test fixture (`mock-github.js`) which didn't carry `resourcesHub` data at all.
-- [ ] Deadlines/overdue-bucketing logic is independently reimplemented across 5 different screens (only low-level date helpers are actually shared) — a drift risk if one is ever edited without the others, worth a shared-helper extraction.
+- [ ] Deadlines/overdue-bucketing logic is independently reimplemented across 5 different screens (only low-level date helpers are actually shared) — a drift risk if one is ever edited without the others, worth a shared-helper extraction. **Looked at this closely**: Deadlines' own bucketing has a real wrinkle the others don't (a "statutory deadlines only" toggle that switches which date field drives the buckets), making a clean shared extraction more involved than it first looked. Deferred rather than rushed — the audit itself called this low-urgency with no evidence of current inconsistency, so this is a real future task, not something skipped by accident.
 
 ## Group 3 — Owner decisions needed (confirm or change, not urgent)
 
-- [ ] Firm Work: any active teammate can edit/reassign/status any Firm Work item, no ownership/role gate — reconfirm this still fits (fully audited, currently recommended to keep as-is).
-- [ ] `profiles_read_authenticated`: every authenticated user can read every other profile's full contact info — reconfirm this is fine for a firm this size.
-- [ ] Projects: any active user (not just admin) can create/rename/archive any project — reconfirm.
-- [ ] Reviewer rescope power: a reviewer can reassign Client Work items outside their own queue — reconfirm.
-- [ ] Admin self-deactivation has no DB-level guard (only UI-disabled) — pure lockout risk, not a security hole; decide if worth closing.
-- [ ] NFRS/IFRS page: confirm Maven's actual capacity covers "expected credit loss calculations" and "consolidation/group reporting" specifically, and that the "foreign-invested/group companies" line doesn't overstate scope.
+- [x] **Confirmed by owner (2026-08-21): keep as-is.** Firm Work: any active teammate can edit/reassign/status any Firm Work item, no ownership/role gate.
+- [x] **Confirmed by owner (2026-08-21): fine as-is.** `profiles_read_authenticated`: every authenticated user can read every other profile's full contact info.
+- [x] **Confirmed by owner (2026-08-21): keep as-is.** Projects: any active user (not just admin) can create/rename/archive any project.
+- [x] **Confirmed by owner (2026-08-21): keep as-is.** Reviewer rescope power: a reviewer can reassign Client Work items outside their own queue.
+- [x] **FIXED.** Admin self-deactivation guard added at the DB level. Along the way, found and fixed a related, deeper drift: the real live guard trigger is named `prevent_self_role_escalation` (not `guard_profile_update` as this repo's own migration had reconstructed it, which never actually ran live) — also discovered `created_at`/`updated_at` columns exist live but were undocumented in any migration. All reconciled in one migration; covered by a new regression check.
+- [x] **Confirmed by owner (2026-08-21): accurate as published.** NFRS/IFRS page's capacity claims (expected credit loss calculations, consolidation/group reporting, foreign-invested/group company scope) all genuinely reflect Maven's current capability — no change needed.
 
 ## Group 4 — Content/legal verification (the owner's or a professional's call, not code)
 

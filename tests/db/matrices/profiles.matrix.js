@@ -48,6 +48,19 @@ module.exports = async function profilesMatrix({ asRole, asSuperuser, IDENTITIES
     record({ area, action: 'UPDATE deactivate a colleague', identity: 'admin', allowed: r.ok && r.rowCount > 0, expectedSecure: 'allow', note: r.error || `${r.rowCount} row(s) affected` });
   });
 
+  // Regression coverage for a real gap found live (2026-08-21, see
+  // 20260905090000_profiles_trigger_reconciliation_and_self_lockout_guard.sql):
+  // the real live guard trigger (prevent_self_role_escalation, discovered
+  // to be named differently than this repo's own reconstruction) placed
+  // no restriction at all on an admin changing role/is_active -- an admin
+  // could lock themselves out with no recovery path short of the
+  // Supabase Dashboard. Owner-confirmed fix: an admin can deactivate
+  // anyone EXCEPT themselves.
+  await asRole(IDENTITIES.admin, async (c) => {
+    const r = await tryQuery(c, `update public.profiles set is_active = false where id = $1`, [IDENTITIES.admin.id]);
+    record({ area, action: 'UPDATE own is_active to false (admin self-lockout)', identity: 'admin', allowed: r.ok && r.rowCount > 0, expectedSecure: 'deny', note: r.error || `${r.rowCount} row(s) affected` });
+  });
+
   await asRole(IDENTITIES.admin, async (c) => {
     const r = await tryQuery(c, `insert into public.profiles (id, full_name, role) values (gen_random_uuid(), 'Direct insert test', 'employee')`, []);
     record({ area, action: 'INSERT a profile directly (bypassing auth.users trigger)', identity: 'admin', allowed: r.ok, expectedSecure: 'deny', note: r.error || 'inserted - no insert policy should exist for anyone, profiles are only created via handle_new_user()' });
