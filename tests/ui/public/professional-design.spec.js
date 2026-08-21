@@ -114,6 +114,40 @@ test.describe('Professional public-site quality pass', () => {
     await context.close();
   });
 
+  test('home stat numbers count up once when scrolled into view, then settle on the exact real value', async ({ page }) => {
+    await page.goto('/');
+    const firstStat = page.locator('.stat-value').first();
+    // Off-screen until scrolled to -- the real, server-rendered final value
+    // is already correct without JS (progressive enhancement), so this
+    // only proves the animation itself runs and lands correctly, not that
+    // the value is present at all.
+    await firstStat.scrollIntoViewIfNeeded();
+    const finalText = await firstStat.getAttribute('data-count-final');
+    expect(finalText).toBeTruthy();
+    // Sampled mid-animation: expect at least one intermediate frame that
+    // isn't already the final text -- proves this is a real count-up, not
+    // just the value appearing instantly.
+    let sawIntermediate = false;
+    for (let i = 0; i < 15; i++) {
+      const current = await firstStat.textContent();
+      if (current !== finalText) { sawIntermediate = true; break; }
+      await page.waitForTimeout(20);
+    }
+    expect(sawIntermediate, 'expected to observe a mid-animation frame before the number reached its final value').toBe(true);
+    await expect(firstStat).toHaveText(finalText, { timeout: 2000 });
+  });
+
+  test('reduced-motion: home stat numbers show their final value immediately, no count-up', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await page.goto('/');
+    const firstStat = page.locator('.stat-value').first();
+    const finalText = await firstStat.getAttribute('data-count-final');
+    await firstStat.scrollIntoViewIfNeeded();
+    await expect(firstStat).toHaveText(finalText);
+    await context.close();
+  });
+
   for (const path of ['/international-accounting', '/virtual-cfo', '/nfrs-ifrs']) {
     test(`${path} informational disclosures start collapsed`, async ({ page }) => {
       await page.goto(path);

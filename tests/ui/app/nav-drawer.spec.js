@@ -71,6 +71,14 @@ test.describe('Work Desk navigation (Task 22)', () => {
     await expect(page.getByRole('heading', { name: 'Search' })).toBeVisible();
   });
 
+  test('clicking the topbar logo returns to Today from anywhere, no page reload needed', async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Firm Work', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Firm Work', level: 1 })).toBeVisible();
+    await page.locator('#brandHomeBtn').click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
+  });
+
   test('mobile: sidebar is an off-canvas drawer, opened by a hamburger toggle, closed by Escape with focus returned', async ({ page }) => {
     await login(page);
     await page.setViewportSize({ width: 390, height: 844 });

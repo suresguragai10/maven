@@ -1,0 +1,19 @@
+{
+  "name": "Maven Work Desk",
+  "short_name": "Work Desk",
+  "description": "Maven Consultancy's internal Work Desk — Client Work, Firm Work, Attendance and staff tools.",
+  "start_url": "/staff/",
+  "scope": "/staff/",
+  "id": "/staff/",
+  "display": "standalone",
+  "background_color": "#0A1F3A",
+  "theme_color": "#0A1F3A",
+  "icons": [
+    {
+      "src": "/images/logo-icon.png",
+      "sizes": "160x160",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

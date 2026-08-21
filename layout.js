@@ -158,6 +158,7 @@ function renderFooter() {
   ];
   const internationalLinks = [
     { href: 'global-outsourcing.html', label: 'International Services' },
+    { href: 'international-accounting.html', label: 'International Accounting' },
     { href: 'virtual-cfo.html', label: 'Virtual CFO / Management Reporting' },
   ];
   const resourceLinks = [

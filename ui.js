@@ -238,9 +238,15 @@ function processStep(p, isLast) {
 // by the caller from the real data arrays (not hand-typed) so they can't
 // drift out of sync if one gets added or removed later.
 function statRow(stats) {
+  // data-count-final keeps the exact original string ("100+", "2022") as
+  // the source of truth; client.js's reveal observer animates the numeric
+  // prefix up from 0 once when this row scrolls into view, then restores
+  // this exact text -- the rendered value here is already correct without
+  // JS (progressive enhancement, same fail-open principle as .reveal
+  // itself), the animation is purely additive polish on top of it.
   return `<div class="stat-row reveal">
     ${stats.map((s) => `<div class="stat-item">
-      <span class="stat-value">${esc(s.value)}</span>
+      <span class="stat-value" data-count-final="${esc(s.value)}">${esc(s.value)}</span>
       <span class="stat-label">${esc(s.label)}</span>
     </div>`).join('')}
   </div>`;

@@ -370,8 +370,8 @@ body.nav-open { overflow: hidden; }
 .stamp-list { display: flex; flex-direction: column; gap: 11px; }
 .stamp-list li { display: flex; gap: 11px; align-items: flex-start; font-size: 0.96rem; color: var(--ink); }
 .stamp-list--pkg { margin: 18px 0 6px; }
-.why-mark, .value-mark { display: inline-flex; }
-.why-mark .stamp { width: 34px; height: 34px; }
+.why-mark, .value-mark { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 14px; background: var(--gold-100); margin-bottom: 6px; }
+.why-mark .stamp { width: 26px; height: 26px; }
 
 /* ---------- Page hero (sub-pages) ---------- */
 .page-hero { background: var(--navy-950); color: #fff; padding: 64px 0 52px; text-align: center; }

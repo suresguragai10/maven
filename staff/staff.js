@@ -8,6 +8,23 @@
   var SUPABASE_ANON_KEY = 'sb_publishable_I_UocrZmQBSKmsDhivOs0g_nxc5j5Gi';
   var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // PWA V1 (see docs/PRODUCT_BOUNDARIES.md "PWA V1 scope"): install-first
+  // and online-first only. sw.js caches nothing -- it exists purely to
+  // satisfy the browser's installability requirement (a registered
+  // service worker with a fetch handler), never to serve offline/cached
+  // app or API data. Registered here rather than an inline <script> in
+  // index.html because this app's CSP has no 'unsafe-inline' for
+  // script-src.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/staff/sw.js').catch(function () {
+        // Installability is a progressive enhancement, not a requirement
+        // for the app to function -- a failed registration (e.g. an
+        // unsupported browser edge case) should never block sign-in.
+      });
+    });
+  }
+
   var STATUS_LABELS = {
     to_do: 'To Do',
     in_progress: 'In Progress',
@@ -481,6 +498,13 @@
     });
   });
   qs('#logoutBtn').addEventListener('click', handleLogout);
+
+  // The topbar logo previously did nothing when clicked -- the only way
+  // back to a known-good screen was a full browser refresh. Every other
+  // app-shell nav button already routes through goto(), which just sets
+  // location.hash (no page reload) -- this is the same one-line fix, just
+  // on the one clickable-looking element that had never been wired up.
+  qs('#brandHomeBtn').addEventListener('click', function () { goto('today'); });
 
   qs('#notifBellIconSlot').appendChild(icon('bell'));
   qs('#notifBellBtn').addEventListener('click', function (e) {
@@ -7206,7 +7230,21 @@
   // UI merely chose to disable them.
   function renderProfilePage(main) {
     var p = state.profile;
-    var hero = el('div', 'card profile-hero'); hero.appendChild(profilePhoto(p, true));
+    var hero = el('div', 'card profile-hero');
+    var photoWrap = el('div', 'profile-hero-photo-wrap');
+    photoWrap.appendChild(profilePhoto(p, true));
+    // The photo itself is display-only (no upload/crop tool, by design --
+    // see allowedStaffPhotoUrl's own comment); this button is the one
+    // actually clickable thing here, and it's honest about what clicking
+    // it does: jump straight to the real edit field below, not open some
+    // photo-picker that doesn't exist.
+    var editPhotoBtn = el('button', 'profile-hero-edit-btn'); editPhotoBtn.type = 'button'; editPhotoBtn.textContent = 'Edit photo';
+    editPhotoBtn.addEventListener('click', function () {
+      photo.scrollIntoView({ block: 'center' });
+      photo.focus();
+    });
+    photoWrap.appendChild(editPhotoBtn);
+    hero.appendChild(photoWrap);
     var text = el('div'); var h1 = el('h1'); h1.textContent = p.full_name || 'My Profile'; text.appendChild(h1);
     var meta = el('div', 'profile-meta'); meta.textContent = (p.designation || 'Maven team member') + ' · ' + (p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : ''); text.appendChild(meta);
     hero.appendChild(text); main.appendChild(hero);

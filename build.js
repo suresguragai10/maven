@@ -493,10 +493,12 @@ const staffDest = path.join(__dirname, 'dist', 'staff');
 fs.mkdirSync(staffDest, { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'staff', 'index.html'), path.join(staffDest, 'index.html'));
 fs.copyFileSync(path.join(__dirname, 'staff', 'staff.js'), path.join(staffDest, 'staff.js'));
+fs.copyFileSync(path.join(__dirname, 'staff', 'manifest.webmanifest'), path.join(staffDest, 'manifest.webmanifest'));
+fs.copyFileSync(path.join(__dirname, 'staff', 'sw.js'), path.join(staffDest, 'sw.js'));
 fs.copyFileSync(
   path.join(__dirname, 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js'),
   path.join(staffDest, 'supabase.js'),
 );
-console.log('Copied staff portal (index.html, staff.js, supabase.js) to dist/staff/');
+console.log('Copied staff portal (index.html, staff.js, manifest.webmanifest, sw.js, supabase.js) to dist/staff/');
 
 console.log('\nDone. Files written to', outDirs.join(' and '));

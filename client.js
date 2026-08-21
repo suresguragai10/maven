@@ -362,6 +362,33 @@
   // and CSS nth-child transition-delay does the actual staggering of its
   // direct children. No separate JS path, so the same fail-open/reduced-
   // motion handling below covers both without any special-casing.
+  // Animates a stat-row's numbers counting up from 0 the one time it
+  // scrolls into view (called only from the IntersectionObserver branch
+  // below -- reduced-motion and no-JS/no-observer users never reach this,
+  // and already see the correct final numbers with no animation at all,
+  // per the same fail-open principle as the reveal system itself).
+  var animateStatValues = function (root) {
+    var els = root.querySelectorAll ? root.querySelectorAll('[data-count-final]') : [];
+    els.forEach(function (el) {
+      var final = el.getAttribute('data-count-final') || '';
+      var match = /^(\d+)/.exec(final);
+      if (!match) return; // no leading digits (shouldn't happen for this site's stats) -- leave as-is
+      var target = parseInt(match[1], 10);
+      var duration = 900;
+      var start = null;
+      var step = function (ts) {
+        if (start === null) start = ts;
+        var progress = Math.min((ts - start) / duration, 1);
+        var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        var current = Math.round(target * eased);
+        el.textContent = final.replace(/^\d+/, String(current));
+        if (progress < 1) requestAnimationFrame(step);
+        else el.textContent = final; // exact original string, no rounding drift
+      };
+      requestAnimationFrame(step);
+    });
+  };
+
   var revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
   if (revealEls.length) {
     var revealImmediately = function () {
@@ -380,6 +407,7 @@
             entries.forEach(function (entry) {
               if (entry.isIntersecting) {
                 entry.target.classList.add('is-visible');
+                animateStatValues(entry.target);
                 obs.unobserve(entry.target);
               }
             });

@@ -6,6 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Maven Work Desk</title>
 <link rel="icon" type="image/png" href="/images/logo-icon.png">
+<link rel="manifest" href="/staff/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/images/logo-icon.png">
+<meta name="theme-color" content="#0A1F3A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Work Desk">
 <style>
   :root{
     --navy-950:#0A1F3A;--navy-900:#102A4C;--navy-800:#163A63;--navy-700:#1D4A7A;
@@ -70,8 +76,16 @@
 
   /* ---- App shell ---- */
   #topbar{position:sticky;top:0;z-index:20;background:var(--navy-950);color:#fff;display:flex;align-items:center;gap:16px;padding:12px 20px;flex-wrap:wrap;}
-  #topbar .brand{display:flex;align-items:center;gap:9px;font-weight:700;flex-shrink:0;}
+  #topbar .brand{display:flex;align-items:center;gap:9px;font-weight:700;flex-shrink:0;background:none;border:none;padding:4px;margin:-4px;border-radius:8px;color:#fff;cursor:pointer;transition:background .12s ease;}
+  #topbar .brand:hover{background:rgba(255,255,255,.1);}
   #topbar .brand img{width:28px;height:28px;}
+  /* .btn-outline's default colors (dark navy text/border on transparent)
+     are meant for the light card backgrounds it's used on everywhere else
+     in the app -- inside the topbar itself (also dark navy), that made
+     the Global Search, Notifications and Sign Out buttons nearly
+     invisible: dark text/icon on a dark background. */
+  #topbar .btn-outline{border-color:rgba(255,255,255,.35);color:#fff;}
+  #topbar .btn-outline:hover{background:rgba(255,255,255,.12);}
   #topbar .spacer{flex:1;}
   #topbar .who{font-size:.84rem;color:rgba(255,255,255,.75);text-align:right;line-height:1.3;}
   #topbar .who strong{color:#fff;display:block;}
@@ -421,6 +435,9 @@
   .profile-hero{display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#fff,var(--gold-100));}
   .profile-hero h1{font-size:1.5rem;}
   .profile-hero .profile-meta{font-size:.86rem;color:var(--ink-soft);margin-top:5px;}
+  .profile-hero-photo-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;}
+  .profile-hero-edit-btn{background:none;border:none;padding:0;font-size:.72rem;font-weight:700;color:var(--gold-700);cursor:pointer;text-decoration:underline;}
+  .profile-hero-edit-btn:hover{color:var(--gold-600);}
   .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;}
   .attendance-status-pill{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-size:.72rem;font-weight:700;background:var(--mist-dark);color:var(--navy-800);}
   .attendance-status-pill.complete{background:var(--green-soft);color:var(--green);}
@@ -471,7 +488,7 @@
     <button class="btn btn-outline btn-sm drawer-toggle" id="navToggleBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
       <span id="menuIconSlot"></span>
     </button>
-    <div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Work Desk</span></div>
+    <button class="brand" id="brandHomeBtn" type="button"><img src="/images/logo-icon.png" alt=""><span>Maven Work Desk</span></button>
     <div class="spacer"></div>
     <button class="btn btn-outline btn-sm" id="globalSearchBtn" type="button" title="Global Search" aria-label="Global Search">
       <span id="searchIconSlot"></span>
