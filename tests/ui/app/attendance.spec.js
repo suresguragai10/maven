@@ -214,6 +214,42 @@ test.describe('Attendance (Task 30)', () => {
     await expect(dayCell).toContainText('2 sessions');
   });
 
+  // Owner-requested follow-up (2026-08-21): the CSV export must show each
+  // session as its own row (already automatic once multiple sessions per
+  // day are allowed) PLUS a daily Total row summing them, so the exported
+  // file doesn't require the reader to do that arithmetic by hand. A day
+  // with only one session gets no Total row -- that row already IS the
+  // total.
+  test('CSV export: a day with two sessions gets both rows plus one Total row with the summed hours', async ({ page }) => {
+    await loginAndOpenAttendance(page, EMPLOYEE_A, {
+      attendance_entries: [
+        { id: 'ae1', user_id: EMPLOYEE_A.id, work_date: '2026-08-10', punched_in_at: '2026-08-10T03:15:00.000Z', punched_out_at: '2026-08-10T06:15:00.000Z' },
+        { id: 'ae2', user_id: EMPLOYEE_A.id, work_date: '2026-08-10', punched_in_at: '2026-08-10T07:15:00.000Z', punched_out_at: '2026-08-10T11:15:00.000Z' },
+        { id: 'ae3', user_id: EMPLOYEE_A.id, work_date: '2026-08-11', punched_in_at: '2026-08-11T03:15:00.000Z', punched_out_at: '2026-08-11T11:15:00.000Z' },
+      ],
+    }, '2026-08-11T12:00:00.000Z');
+    await page.locator('input[type="month"]').fill('2026-08');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Export CSV' }).click(),
+    ]);
+    const stream = await download.createReadStream();
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    const csv = Buffer.concat(chunks).toString('utf-8');
+    const lines = csv.trim().split('\r\n');
+
+    // Header + 2 session rows + 1 Total row for the 10th + 1 single-session row for the 11th (no Total row).
+    expect(lines.length).toBe(5);
+    expect(lines[0]).toBe('"Work Date","Staff","Punch In (Nepal)","Punch Out (Nepal)","Total Hours","Status"');
+    expect(lines[1]).toContain('2026-08-10');
+    expect(lines[2]).toContain('2026-08-10');
+    expect(lines[3]).toBe('"2026-08-10","Employee A","—","—","7.00","Total"');
+    expect(lines[4]).toContain('2026-08-11');
+    expect(lines[4]).not.toContain('Total');
+  });
+
   // Regression coverage for the same 2026-08-21 change: adding a brand
   // new session (not correcting one) must send a null entry id, so the
   // RPC inserts rather than accidentally updating whatever the admin last

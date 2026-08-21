@@ -7425,10 +7425,29 @@
     var p = nepalDateTimeParts(d);
     return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute;
   }
+  // Groups by (work_date, user_id) rather than just work_date, so an
+  // admin's "All staff" export never merges two different people's
+  // sessions on the same date into one total. A day with just one
+  // session gets no Total row -- that row already IS the total,
+  // repeating it would be redundant clutter.
   function downloadAttendanceCsv(entries, monthKey) {
-    var rows = [['Work Date','Staff','Punch In (Nepal)','Punch Out (Nepal)','Total Hours','Status']];
+    var groups = {};
+    var order = [];
     entries.forEach(function (r) {
-      rows.push([r.work_date, profileName(r.user_id), nepalCsvDateTime(r.punched_in_at), nepalCsvDateTime(r.punched_out_at), (attendanceSeconds(r) / 3600).toFixed(2), r.punched_out_at ? 'Completed' : 'Open']);
+      var key = r.work_date + '|' + r.user_id;
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(r);
+    });
+    var rows = [['Work Date','Staff','Punch In (Nepal)','Punch Out (Nepal)','Total Hours','Status']];
+    order.forEach(function (key) {
+      var group = groups[key];
+      group.forEach(function (r) {
+        rows.push([r.work_date, profileName(r.user_id), nepalCsvDateTime(r.punched_in_at), nepalCsvDateTime(r.punched_out_at), (attendanceSeconds(r) / 3600).toFixed(2), r.punched_out_at ? 'Completed' : 'Open']);
+      });
+      if (group.length > 1) {
+        var daySeconds = group.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
+        rows.push([group[0].work_date, profileName(group[0].user_id), '—', '—', (daySeconds / 3600).toFixed(2), 'Total']);
+      }
     });
     var csv = rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); var url = URL.createObjectURL(blob);
