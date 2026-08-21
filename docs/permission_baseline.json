@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-21T19:05:43.032Z",
-    "migrationCount": 36
+    "generatedAt": "2026-08-21T19:32:30.611Z",
+    "migrationCount": 37
   },
   "results": [
     {
@@ -2067,7 +2067,7 @@
     },
     {
       "area": "SECURITY DEFINER function grants (catalog inspection)",
-      "action": "EXECUTE grant to 'anon' on attendance_admin_correct(p_user_id uuid, p_work_date date, p_punched_in_at timestamp with time zone, p_punched_out_at timestamp with time zone, p_reason text)",
+      "action": "EXECUTE grant to 'anon' on attendance_admin_correct(p_attendance_entry_id uuid, p_user_id uuid, p_work_date date, p_punched_in_at timestamp with time zone, p_punched_out_at timestamp with time zone, p_reason text)",
       "identity": "n/a (catalog check)",
       "allowed": false,
       "expectedSecure": "deny",
@@ -2256,12 +2256,21 @@
     },
     {
       "area": "attendance",
-      "action": "Second punch in on same Nepal work date",
+      "action": "Second punch in while already punched in (no punch-out yet)",
       "identity": "employeeB",
       "allowed": false,
       "expectedSecure": "deny",
       "secure": true,
       "note": "You are already punched in for today."
+    },
+    {
+      "area": "attendance",
+      "action": "Punch in again for a second session, same day, after closing the first",
+      "identity": "reviewerA",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "two distinct session rows created for the same work date"
     },
     {
       "area": "attendance",
@@ -2382,7 +2391,7 @@
     },
     {
       "area": "attendance",
-      "action": "Correct/add employee attendance with reason",
+      "action": "Add a new (missing) attendance record with reason",
       "identity": "admin",
       "allowed": true,
       "expectedSecure": "allow",
@@ -2397,6 +2406,24 @@
       "expectedSecure": "allow",
       "secure": true,
       "note": "1 correction row(s)"
+    },
+    {
+      "area": "attendance",
+      "action": "Correct one specific session by id, on a day with two sessions",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "correction updated the targeted row only"
+    },
+    {
+      "area": "attendance",
+      "action": "The OTHER session on that day is untouched by the correction",
+      "identity": "admin",
+      "allowed": true,
+      "expectedSecure": "allow",
+      "secure": true,
+      "note": "1 row(s) still present, unaffected"
     },
     {
       "area": "attendance",

@@ -22,7 +22,19 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
     const second = first.ok
       ? await tryQuery(c, 'select (public.attendance_punch_in()).id as id', [])
       : { ok: false, rows: [], error: `first punch failed: ${first.error}` };
-    record({ area, action: 'Second punch in on same Nepal work date', identity: 'employeeB', allowed: second.ok && second.rows.length > 0, expectedSecure: 'deny', note: second.error || 'unexpectedly accepted a second punch-in' });
+    record({ area, action: 'Second punch in while already punched in (no punch-out yet)', identity: 'employeeB', allowed: second.ok && second.rows.length > 0, expectedSecure: 'deny', note: second.error || 'unexpectedly accepted a second punch-in while one was still open' });
+  });
+
+  // The actual feature (2026-08-21): multiple sessions per day are
+  // allowed, as long as the previous one was closed first. Own
+  // transaction since the sequence needs a real punch-out in between,
+  // and an earlier error in the same transaction would abort it.
+  await asRole(IDENTITIES.reviewerA, async (c) => {
+    const in1 = await tryQuery(c, 'select (public.attendance_punch_in()).id as id', []);
+    const out1 = in1.ok ? await tryQuery(c, 'select (public.attendance_punch_out()).id as id', []) : { ok: false, rows: [] };
+    const in2 = out1.ok ? await tryQuery(c, 'select (public.attendance_punch_in()).id as id', []) : { ok: false, rows: [] };
+    const bothSessionsExist = in2.ok && in1.rows[0] && in2.rows[0] && in1.rows[0].id !== in2.rows[0].id;
+    record({ area, action: 'Punch in again for a second session, same day, after closing the first', identity: 'reviewerA', allowed: bothSessionsExist, expectedSecure: 'allow', note: in2.error || (bothSessionsExist ? 'two distinct session rows created for the same work date' : 'second session was unexpectedly rejected or reused the first row') });
   });
 
   // Persistent fixture for independent SELECT/RLS checks. This is setup data,
@@ -115,7 +127,7 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
 
   await asRole(IDENTITIES.employeeA, async (c) => {
     const correction = await tryQuery(c,
-      `select (public.attendance_admin_correct($1, ((now() at time zone 'Asia/Kathmandu')::date - 5), now() - interval '8 hours', now(), 'employee bypass attempt')).id`,
+      `select (public.attendance_admin_correct(null, $1, ((now() at time zone 'Asia/Kathmandu')::date - 5), now() - interval '8 hours', now(), 'employee bypass attempt')).id`,
       [IDENTITIES.employeeA.id]
     );
     record({ area, action: 'Call admin correction RPC', identity: 'employeeA', allowed: correction.ok && correction.rows.length > 0, expectedSecure: 'deny', note: correction.error || 'unexpectedly corrected attendance' });
@@ -126,7 +138,7 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
   // following valid admin correction would make the valid check meaningless.
   await asRole(IDENTITIES.admin, async (c) => {
     const missingReason = await tryQuery(c,
-      `select (public.attendance_admin_correct($1, ((now() at time zone 'Asia/Kathmandu')::date - 6), now() - interval '8 hours', now(), ' ')).id as id`,
+      `select (public.attendance_admin_correct(null, $1, ((now() at time zone 'Asia/Kathmandu')::date - 6), now() - interval '8 hours', now(), ' ')).id as id`,
       [IDENTITIES.employeeB.id]
     );
     record({ area, action: 'Admin correction without meaningful reason', identity: 'admin', allowed: missingReason.ok && missingReason.rows.length > 0, expectedSecure: 'deny', note: missingReason.error || 'unexpectedly accepted blank correction reason' });
@@ -134,10 +146,10 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
 
   await asRole(IDENTITIES.admin, async (c) => {
     const correction = await tryQuery(c,
-      `select (public.attendance_admin_correct($1, ((now() at time zone 'Asia/Kathmandu')::date - 5), now() - interval '8 hours', now(), 'approved missing punch correction')).id as id`,
+      `select (public.attendance_admin_correct(null, $1, ((now() at time zone 'Asia/Kathmandu')::date - 5), now() - interval '8 hours', now(), 'approved missing punch correction')).id as id`,
       [IDENTITIES.employeeB.id]
     );
-    record({ area, action: 'Correct/add employee attendance with reason', identity: 'admin', allowed: correction.ok && correction.rows.length > 0, expectedSecure: 'allow', note: correction.error || 'admin correction RPC succeeded' });
+    record({ area, action: 'Add a new (missing) attendance record with reason', identity: 'admin', allowed: correction.ok && correction.rows.length > 0, expectedSecure: 'allow', note: correction.error || 'admin correction RPC succeeded' });
 
     if (correction.ok) {
       const audit = await tryQuery(c,
@@ -147,6 +159,27 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
       record({ area, action: 'Correction creates audit history', identity: 'admin', allowed: audit.rowCount > 0, expectedSecure: 'allow', note: audit.error || `${audit.rowCount} correction row(s)` });
     } else {
       record({ area, action: 'Correction creates audit history', identity: 'admin', allowed: false, expectedSecure: 'allow', note: `correction RPC failed first: ${correction.error}` });
+    }
+  });
+
+  // The other half of the 2026-08-21 change: correcting a SPECIFIC
+  // existing session by id, on a day that already has more than one
+  // session -- proves a correction can never land on the wrong row just
+  // because two sessions share a work_date.
+  await asRole(IDENTITIES.admin, async (c) => {
+    const seedDate = `((now() at time zone 'Asia/Kathmandu')::date - 8)`;
+    const seed1 = await tryQuery(c, `select (public.attendance_admin_correct(null, $1, ${seedDate}, now() - interval '10 hours', now() - interval '8 hours', 'seed session 1')).id as id`, [IDENTITIES.employeeA.id]);
+    const seed2 = await tryQuery(c, `select (public.attendance_admin_correct(null, $1, ${seedDate}, now() - interval '6 hours', now() - interval '4 hours', 'seed session 2')).id as id`, [IDENTITIES.employeeA.id]);
+    if (!seed1.ok || !seed2.ok) {
+      record({ area, action: 'Correct one specific session by id, on a day with two sessions', identity: 'admin', allowed: false, expectedSecure: 'allow', note: `could not seed two sessions: ${seed1.error || seed2.error}` });
+    } else {
+      const seed1Id = seed1.rows[0].id;
+      const seed2Id = seed2.rows[0].id;
+      const corrected = await tryQuery(c, `select (public.attendance_admin_correct($1, $2, ${seedDate}, now() - interval '10 hours', now() - interval '7 hours', 'extended session 1 by an hour')).id as id`, [seed1Id, IDENTITIES.employeeA.id]);
+      const untouched = await tryQuery(c, 'select punched_out_at from public.attendance_entries where id = $1', [seed2Id]);
+      const targetedCorrectly = corrected.ok && corrected.rows[0] && corrected.rows[0].id === seed1Id;
+      record({ area, action: 'Correct one specific session by id, on a day with two sessions', identity: 'admin', allowed: targetedCorrectly, expectedSecure: 'allow', note: corrected.error || (targetedCorrectly ? 'correction updated the targeted row only' : 'correction did not return the same row id it was given') });
+      record({ area, action: 'The OTHER session on that day is untouched by the correction', identity: 'admin', allowed: untouched.ok && untouched.rowCount > 0, expectedSecure: 'allow', note: untouched.error || `${untouched.rowCount} row(s) still present, unaffected` });
     }
   });
 
@@ -243,7 +276,7 @@ module.exports = async function attendanceMatrix({ asRole, asSuperuser, IDENTITI
 
   await asRole(ANON, async (c) => {
     const correction = await tryQuery(c,
-      `select (public.attendance_admin_correct($1, ((now() at time zone 'Asia/Kathmandu')::date - 5), now() - interval '8 hours', now(), 'anonymous bypass attempt')).id`,
+      `select (public.attendance_admin_correct(null, $1, ((now() at time zone 'Asia/Kathmandu')::date - 5), now() - interval '8 hours', now(), 'anonymous bypass attempt')).id`,
       [IDENTITIES.employeeA.id]
     );
     record({ area, action: 'Anonymous call to admin correction RPC', identity: 'anon', allowed: correction.ok && correction.rows.length > 0, expectedSecure: 'deny', note: correction.error || 'unexpectedly corrected attendance anonymously' });

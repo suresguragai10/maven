@@ -1314,24 +1314,13 @@
       clear(bar);
       bar.appendChild(icon('clock'));
       var stateText = el('span', 'state-text');
-      var today = await loadTodayAttendance();
-      if (!today) {
-        stateText.textContent = 'Not punched in yet';
-        bar.appendChild(stateText);
-        var inBtn = el('button', 'btn btn-sm'); inBtn.type = 'button'; inBtn.textContent = 'Punch In';
-        inBtn.addEventListener('click', async function () {
-          inBtn.disabled = true;
-          var r = await sb.rpc('attendance_punch_in');
-          inBtn.disabled = false;
-          if (r.error) { toast('Punch in failed: ' + r.error.message, true); return; }
-          toast('Punched in.');
-          refresh();
-        });
-        bar.appendChild(inBtn);
-      } else if (!today.punched_out_at) {
+      var entries = await loadTodayAttendance();
+      var summary = todaySessionsSummary(entries);
+      if (summary.openEntry) {
         stateText.appendChild(document.createTextNode('Punched in '));
-        var strongIn = el('strong'); strongIn.textContent = timeOnly(today.punched_in_at); stateText.appendChild(strongIn);
+        var strongIn = el('strong'); strongIn.textContent = timeOnly(summary.openEntry.punched_in_at); stateText.appendChild(strongIn);
         stateText.appendChild(document.createTextNode(' · currently open'));
+        if (summary.completed.length) stateText.appendChild(document.createTextNode(' · ' + durationText(summary.totalSeconds) + ' so far today'));
         bar.appendChild(stateText);
         var outBtn = el('button', 'btn btn-outline btn-sm'); outBtn.type = 'button'; outBtn.textContent = 'Punch Out';
         outBtn.addEventListener('click', async function () {
@@ -1344,10 +1333,25 @@
         });
         bar.appendChild(outBtn);
       } else {
-        stateText.textContent = 'In ' + timeOnly(today.punched_in_at) + ' · Out ' + timeOnly(today.punched_out_at) + ' · ' + durationText(attendanceSeconds(today));
+        // Not currently punched in -- either nothing yet today, or
+        // between sessions (multiple punch-in/punch-out cycles per day
+        // are allowed; hours accumulate across all of them).
+        if (summary.completed.length) {
+          stateText.textContent = durationText(summary.totalSeconds) + ' today across ' + summary.completed.length + (summary.completed.length === 1 ? ' session' : ' sessions');
+        } else {
+          stateText.textContent = 'Not punched in yet';
+        }
         bar.appendChild(stateText);
-        var done = el('span', 'attendance-status-pill complete'); done.textContent = 'Completed';
-        bar.appendChild(done);
+        var inBtn = el('button', 'btn btn-sm'); inBtn.type = 'button'; inBtn.textContent = 'Punch In';
+        inBtn.addEventListener('click', async function () {
+          inBtn.disabled = true;
+          var r = await sb.rpc('attendance_punch_in');
+          inBtn.disabled = false;
+          if (r.error) { toast('Punch in failed: ' + r.error.message, true); return; }
+          toast('Punched in.');
+          refresh();
+        });
+        bar.appendChild(inBtn);
       }
     }
     await refresh();
@@ -7437,9 +7441,19 @@
     else if (personId && personId !== '__all__') q = q.eq('user_id', personId);
     var res = await q; if (res.error) { toast('Could not load attendance: ' + res.error.message, true); return []; } return res.data || [];
   }
+  // Returns every one of today's sessions (not just one) -- multiple
+  // punch-in/punch-out cycles per day are allowed; callers derive the
+  // current open session (if any) and the cumulative total from this
+  // array themselves.
   async function loadTodayAttendance() {
-    var res = await sb.from('attendance_entries').select('*').eq('user_id', state.user.id).eq('work_date', attendanceTodayDateStr()).maybeSingle();
-    if (res.error) return null; return res.data || null;
+    var res = await sb.from('attendance_entries').select('*').eq('user_id', state.user.id).eq('work_date', attendanceTodayDateStr()).order('punched_in_at', { ascending: true });
+    if (res.error) return []; return res.data || [];
+  }
+  function todaySessionsSummary(entries) {
+    var openEntry = entries.filter(function (e) { return !e.punched_out_at; })[0] || null;
+    var completed = entries.filter(function (e) { return e.punched_out_at; });
+    var totalSeconds = completed.reduce(function (sum, e) { return sum + attendanceSeconds(e); }, 0);
+    return { openEntry: openEntry, completed: completed, totalSeconds: totalSeconds };
   }
   async function loadAttendanceCorrections(monthKey, personId) {
     var b = attendanceMonthBounds(monthKey);
@@ -7495,13 +7509,24 @@
   // Task 30: priority position 3 ("own monthly history") -- a compact
   // numeric summary of the selected person's selected month, ahead of
   // both the day-by-day records table and the calendar.
+  // Multiple sessions (rows) can share the same work_date -- grouped here
+  // once and reused everywhere a metric means "days," not "rows."
+  function groupAttendanceByDate(entries) {
+    var byDate = {};
+    entries.forEach(function (r) { (byDate[r.work_date] = byDate[r.work_date] || []).push(r); });
+    return byDate;
+  }
   function renderAttendanceMetrics(main, entries) {
-    var complete = entries.filter(function (r) { return !!r.punched_out_at; });
-    var total = complete.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
+    var byDate = groupAttendanceByDate(entries);
+    var dates = Object.keys(byDate);
+    var openDates = dates.filter(function (d) { return byDate[d].some(function (r) { return !r.punched_out_at; }); });
+    var completedDates = dates.filter(function (d) { return byDate[d].every(function (r) { return !!r.punched_out_at; }); });
+    var total = entries.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
     var vals = [
-      ['Punch days', entries.length],
-      ['Completed days', complete.length],
-      ['Open / incomplete', entries.length - complete.length],
+      ['Punch days', dates.length],
+      ['Completed days', completedDates.length],
+      ['Open / incomplete', openDates.length],
+      ['Total sessions', entries.length],
       ['Total time', durationText(total)],
     ];
     var grid = el('div', 'metric-grid');
@@ -7524,8 +7549,7 @@
     var b = attendanceMonthBounds(monthKey);
     var card = el('div', 'card');
     var h2 = el('h2'); h2.textContent = 'Monthly calendar'; card.appendChild(h2);
-    var byDate = {};
-    entries.forEach(function (r) { byDate[r.work_date] = r; });
+    var byDate = groupAttendanceByDate(entries);
     var cal = el('div', 'attendance-calendar');
     ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(function (d) {
       var x = el('div', 'cal-head'); x.textContent = d; cal.appendChild(x);
@@ -7535,11 +7559,17 @@
     for (var blank = 0; blank < first.getDay(); blank++) cal.appendChild(el('div', 'cal-day is-empty'));
     for (var day = 1; day <= days; day++) {
       var ds = b.year + '-' + String(b.month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-      var r = byDate[ds];
-      var cell = el('div', 'cal-day' + (r ? ' has-record ' + (r.punched_out_at ? 'is-complete' : 'is-open') : ''));
+      var dayEntries = byDate[ds] || [];
+      var hasOpen = dayEntries.some(function (r) { return !r.punched_out_at; });
+      var daySeconds = dayEntries.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
+      var cell = el('div', 'cal-day' + (dayEntries.length ? ' has-record ' + (hasOpen ? 'is-open' : 'is-complete') : ''));
       var n = el('div', 'day-num'); n.textContent = String(day); cell.appendChild(n);
       var st = el('div', 'day-status');
-      st.textContent = r ? (r.punched_out_at ? durationText(attendanceSeconds(r)) : 'Punched in') : 'No record';
+      if (!dayEntries.length) st.textContent = 'No record';
+      else {
+        st.textContent = (daySeconds ? durationText(daySeconds) : (hasOpen ? 'Punched in' : 'No record'))
+          + (dayEntries.length > 1 ? ' · ' + dayEntries.length + ' sessions' : '');
+      }
       cell.appendChild(st);
       cal.appendChild(cell);
     }
@@ -7572,10 +7602,13 @@
     var tb = el('tbody');
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) {
       var arr = by[p.id] || [];
-      var comp = arr.filter(function (r) { return r.punched_out_at; });
-      var sec = comp.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
+      var byDate = groupAttendanceByDate(arr);
+      var dates = Object.keys(byDate);
+      var completedDates = dates.filter(function (d) { return byDate[d].every(function (r) { return !!r.punched_out_at; }); });
+      var openDates = dates.filter(function (d) { return byDate[d].some(function (r) { return !r.punched_out_at; }); });
+      var sec = arr.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
       var tr = el('tr');
-      [p.full_name, arr.length, comp.length, arr.length - comp.length, durationText(sec)].forEach(function (v) {
+      [p.full_name, dates.length, completedDates.length, openDates.length, durationText(sec)].forEach(function (v) {
         var td = el('td'); td.textContent = String(v); tr.appendChild(td);
       });
       tb.appendChild(tr);
@@ -7588,12 +7621,13 @@
   function openAttendanceCorrection(entry, selectedPerson, monthKey, onSaved) {
     if (!isAdmin()) return;
     var wrap=el('div');var head=el('div','modal-head');var h2=el('h2');h2.textContent=entry?'Correct Attendance':'Add Missing Attendance';var cancel=el('button','btn btn-outline btn-sm');cancel.type='button';cancel.textContent='Cancel';cancel.addEventListener('click',closeModal);head.appendChild(h2);head.appendChild(cancel);wrap.appendChild(head);
+    if(!entry){var addHint=el('p','f-hint');addHint.textContent='This always adds a NEW session for the date below -- if the person already has one or more sessions that day, use Correct on the specific row instead to edit it.';wrap.appendChild(addHint);}
     var person=el('select');state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){person.appendChild(new Option(p.full_name,p.id));});person.value=entry?entry.user_id:(selectedPerson&&selectedPerson!=='__all__'?selectedPerson:state.user.id);wrap.appendChild(field('Staff member',person));
     var date=el('input');date.type='date';date.value=entry?entry.work_date:attendanceTodayDateStr();wrap.appendChild(field('Work date (Gregorian)',date));
     var pin=el('input');pin.type='datetime-local';pin.value=entry?datetimeLocalValue(entry.punched_in_at):'';wrap.appendChild(field('Punch in (Nepal time)',pin));
     var pout=el('input');pout.type='datetime-local';pout.value=entry?datetimeLocalValue(entry.punched_out_at):'';wrap.appendChild(field('Punch out (Nepal time, optional)',pout));
     var reason=el('textarea');reason.rows=3;reason.placeholder='Required: why is this record being corrected?';wrap.appendChild(field('Correction reason',reason));
-    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Correction';save.addEventListener('click',async function(){if(!person.value||!date.value||!pin.value||reason.value.trim().length<3){toast('Staff, date, punch-in and a correction reason are required.',true);return;}var inIso=nepalLocalInputToIso(pin.value);var outIso=pout.value?nepalLocalInputToIso(pout.value):null;if(!inIso||(pout.value&&!outIso)){toast('Enter valid Nepal punch times.',true);return;}if(outIso&&new Date(outIso)<new Date(inIso)){toast('Punch-out cannot be earlier than punch-in.',true);return;}save.disabled=true;var res=await sb.rpc('attendance_admin_correct',{p_user_id:person.value,p_work_date:date.value,p_punched_in_at:inIso,p_punched_out_at:outIso,p_reason:reason.value.trim()});save.disabled=false;if(res.error){toast('Could not correct attendance: '+res.error.message,true);return;}closeModal();toast('Attendance correction saved with audit history.');if(onSaved)onSaved();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
+    var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Correction';save.addEventListener('click',async function(){if(!person.value||!date.value||!pin.value||reason.value.trim().length<3){toast('Staff, date, punch-in and a correction reason are required.',true);return;}var inIso=nepalLocalInputToIso(pin.value);var outIso=pout.value?nepalLocalInputToIso(pout.value):null;if(!inIso||(pout.value&&!outIso)){toast('Enter valid Nepal punch times.',true);return;}if(outIso&&new Date(outIso)<new Date(inIso)){toast('Punch-out cannot be earlier than punch-in.',true);return;}save.disabled=true;var res=await sb.rpc('attendance_admin_correct',{p_attendance_entry_id:entry?entry.id:null,p_user_id:person.value,p_work_date:date.value,p_punched_in_at:inIso,p_punched_out_at:outIso,p_reason:reason.value.trim()});save.disabled=false;if(res.error){toast('Could not correct attendance: '+res.error.message,true);return;}closeModal();toast('Attendance correction saved with audit history.');if(onSaved)onSaved();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
   }
   // Task 30: priority position 3 ("own monthly history") -- the actual
   // day-by-day record, ahead of the calendar. Admin-only Correct/Add
@@ -7674,7 +7708,7 @@
     nepalNowLine.textContent = 'Nepal time now: ' + timeOnly(new Date().toISOString());
     pLeft.appendChild(nepalNowLine);
     var pd = el('p', 'desc');
-    pd.textContent = 'One punch-in and one punch-out per Gregorian work date, using Nepal time (UTC+05:45). No location, IP or device data is collected.';
+    pd.textContent = 'Multiple punch-in/punch-out sessions per Gregorian work date are supported (e.g. a break) -- hours add up across all of a day\'s sessions. Nepal time (UTC+05:45). No location, IP or device data is collected.';
     pLeft.appendChild(pd);
     var stateLine = el('div', 'punch-state'); pLeft.appendChild(stateLine);
     punchCard.appendChild(pLeft);
@@ -7683,21 +7717,11 @@
 
     async function refreshPunch() {
       clear(stateLine); clear(actionWrap);
-      var today = await loadTodayAttendance();
-      if (!today) {
-        stateLine.textContent = 'Not punched in yet.';
-        var b = el('button', 'btn'); b.type = 'button'; b.textContent = 'Punch In';
-        b.addEventListener('click', async function () {
-          b.disabled = true;
-          var r = await sb.rpc('attendance_punch_in');
-          b.disabled = false;
-          if (r.error) { toast('Punch in failed: ' + r.error.message, true); return; }
-          toast('Punched in.');
-          render();
-        });
-        actionWrap.appendChild(b);
-      } else if (!today.punched_out_at) {
-        stateLine.textContent = 'Punched in ' + timeOnly(today.punched_in_at) + ' · currently open';
+      var entries = await loadTodayAttendance();
+      var summary = todaySessionsSummary(entries);
+      if (summary.openEntry) {
+        stateLine.textContent = 'Punched in ' + timeOnly(summary.openEntry.punched_in_at) + ' · currently open'
+          + (summary.completed.length ? ' · ' + durationText(summary.totalSeconds) + ' so far today' : '');
         var b2 = el('button', 'btn'); b2.type = 'button'; b2.textContent = 'Punch Out';
         b2.addEventListener('click', async function () {
           b2.disabled = true;
@@ -7709,9 +7733,19 @@
         });
         actionWrap.appendChild(b2);
       } else {
-        stateLine.textContent = 'In ' + timeOnly(today.punched_in_at) + ' · Out ' + timeOnly(today.punched_out_at) + ' · ' + durationText(attendanceSeconds(today));
-        var done = el('span', 'attendance-status-pill complete'); done.textContent = 'Completed';
-        actionWrap.appendChild(done);
+        stateLine.textContent = summary.completed.length
+          ? durationText(summary.totalSeconds) + ' today across ' + summary.completed.length + (summary.completed.length === 1 ? ' session.' : ' sessions.')
+          : 'Not punched in yet.';
+        var b = el('button', 'btn'); b.type = 'button'; b.textContent = 'Punch In';
+        b.addEventListener('click', async function () {
+          b.disabled = true;
+          var r = await sb.rpc('attendance_punch_in');
+          b.disabled = false;
+          if (r.error) { toast('Punch in failed: ' + r.error.message, true); return; }
+          toast('Punched in.');
+          render();
+        });
+        actionWrap.appendChild(b);
       }
     }
     await refreshPunch();

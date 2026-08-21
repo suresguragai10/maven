@@ -115,7 +115,11 @@ test.describe('Today dashboard (Task 23)', () => {
     await expect(bar.getByRole('button', { name: 'Punch Out' })).toBeVisible();
   });
 
-  test('attendance bar: a completed day shows a Completed pill, no punch button', async ({ page }) => {
+  // Multiple punch-in/punch-out sessions per day are allowed (2026-08-21)
+  // -- finishing one session is never a dead end. The bar shows the
+  // cumulative total for the day so far and still offers Punch In, to
+  // start another session.
+  test('attendance bar: after one completed session, shows the cumulative total and still offers Punch In', async ({ page }) => {
     const today = nepalTodayStr();
     const inAt = new Date(Date.now() - 3600 * 1000).toISOString();
     const outAt = new Date().toISOString();
@@ -123,8 +127,31 @@ test.describe('Today dashboard (Task 23)', () => {
       attendance_entries: [{ id: 'a1', user_id: EMPLOYEE_A.id, work_date: today, punched_in_at: inAt, punched_out_at: outAt }],
     });
     const bar = page.locator('.today-attendance-bar');
-    await expect(bar.locator('.attendance-status-pill.complete')).toHaveText('Completed');
-    await expect(bar.getByRole('button')).toHaveCount(0);
+    await expect(bar).toContainText('1h 00m today across 1 session');
+    const punchInBtn = bar.getByRole('button', { name: 'Punch In' });
+    await expect(punchInBtn).toBeVisible();
+
+    const rpcReq = page.waitForRequest((req) => req.url().includes('/rest/v1/rpc/attendance_punch_in') && req.method() === 'POST');
+    await punchInBtn.click();
+    await rpcReq;
+    await expect(page.getByText('Punched in.')).toBeVisible();
+  });
+
+  test('attendance bar: a currently-open session after an earlier completed one shows the running total', async ({ page }) => {
+    const today = nepalTodayStr();
+    const earlierIn = new Date(Date.now() - 4 * 3600 * 1000).toISOString();
+    const earlierOut = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+    const openIn = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await loginToToday(page, {
+      attendance_entries: [
+        { id: 'a1', user_id: EMPLOYEE_A.id, work_date: today, punched_in_at: earlierIn, punched_out_at: earlierOut },
+        { id: 'a2', user_id: EMPLOYEE_A.id, work_date: today, punched_in_at: openIn, punched_out_at: null },
+      ],
+    });
+    const bar = page.locator('.today-attendance-bar');
+    await expect(bar).toContainText('currently open');
+    await expect(bar).toContainText('1h 00m so far today');
+    await expect(bar.getByRole('button', { name: 'Punch Out' })).toBeVisible();
   });
 
   test('the empty-state message only shows when Client and Firm sections are both empty', async ({ page }) => {

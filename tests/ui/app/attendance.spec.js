@@ -179,6 +179,63 @@ test.describe('Attendance (Task 30)', () => {
     expect(rpcCalls[0].p_punched_in_at).toBe('2026-08-10T03:15:00.000Z');
     expect(rpcCalls[0].p_punched_out_at).toBe('2026-08-10T11:45:00.000Z');
     expect(rpcCalls[0].p_reason).toBe('Employee confirmed leaving later than logged.');
+    // Multiple sessions per day are allowed (2026-08-21) -- correcting an
+    // existing row must target it by id, never by user/date alone, or a
+    // correction could silently land on the wrong session on a day with
+    // more than one.
+    expect(rpcCalls[0].p_attendance_entry_id).toBe('ae1');
+  });
+
+  // The actual feature: multiple punch-in/punch-out sessions on the same
+  // Gregorian work_date, hours cumulative across them (2026-08-21).
+  test('two sessions on the same day: both rows show in Attendance records, metrics count 1 day / 2 sessions, calendar shows the combined total', async ({ page }) => {
+    await loginAndOpenAttendance(page, EMPLOYEE_A, {
+      attendance_entries: [
+        // 2026-08-10, 09:00-12:00 and 13:00-17:00 Nepal time (UTC+05:45) -- 7h total.
+        { id: 'ae1', user_id: EMPLOYEE_A.id, work_date: '2026-08-10', punched_in_at: '2026-08-10T03:15:00.000Z', punched_out_at: '2026-08-10T06:15:00.000Z' },
+        { id: 'ae2', user_id: EMPLOYEE_A.id, work_date: '2026-08-10', punched_in_at: '2026-08-10T07:15:00.000Z', punched_out_at: '2026-08-10T11:15:00.000Z' },
+      ],
+    }, '2026-08-10T12:00:00.000Z');
+    await page.locator('input[type="month"]').fill('2026-08');
+
+    // Both sessions get their own row in the records table.
+    const recordRows = page.locator('table').filter({ hasText: 'Punch In' }).locator('tbody tr');
+    await expect(recordRows).toHaveCount(2);
+
+    // Metrics: still 1 punch DAY, but 2 sessions, hours summed correctly.
+    const metrics = page.locator('.metric-grid');
+    await expect(metrics.locator('.metric-card').filter({ hasText: 'Punch days' }).locator('.metric-value')).toHaveText('1');
+    await expect(metrics.locator('.metric-card').filter({ hasText: 'Total sessions' }).locator('.metric-value')).toHaveText('2');
+    await expect(metrics.locator('.metric-card').filter({ hasText: 'Total time' }).locator('.metric-value')).toHaveText('7h 00m');
+
+    // Calendar cell for the 10th shows the combined duration and the session count.
+    const dayCell = page.locator('.cal-day').filter({ has: page.locator('.day-num', { hasText: /^10$/ }) });
+    await expect(dayCell).toContainText('7h 00m');
+    await expect(dayCell).toContainText('2 sessions');
+  });
+
+  // Regression coverage for the same 2026-08-21 change: adding a brand
+  // new session (not correcting one) must send a null entry id, so the
+  // RPC inserts rather than accidentally updating whatever the admin last
+  // had open.
+  test('adding a new (missing) record sends a null entry id, an existing session on the same day is untouched', async ({ page }) => {
+    await loginAndOpenAttendance(page, ADMIN, {
+      attendance_entries: [{ id: 'ae1', user_id: EMPLOYEE_A.id, work_date: '2026-08-10', punched_in_at: '2026-08-10T03:15:00.000Z', punched_out_at: '2026-08-10T05:15:00.000Z' }],
+    });
+    await page.getByRole('button', { name: 'Add / Correct Missing Record' }).click();
+    const modal = page.locator('#modalCard');
+    await expect(modal.getByRole('heading', { name: 'Add Missing Attendance' })).toBeVisible();
+    await modal.locator('.f').filter({ hasText: 'Staff member' }).locator('select').selectOption(EMPLOYEE_A.id);
+    await modal.locator('.f').filter({ hasText: 'Work date' }).locator('input').fill('2026-08-10');
+    await modal.locator('.f').filter({ hasText: 'Punch in' }).locator('input').fill('2026-08-10T13:00');
+    await modal.locator('.f').filter({ hasText: 'Correction reason' }).locator('textarea').fill('Second session that day, forgot to punch in.');
+
+    const rpcCalls = [];
+    page.on('request', (req) => { if (req.url().includes('/rest/v1/rpc/attendance_admin_correct')) rpcCalls.push(req.postDataJSON()); });
+    await page.getByRole('button', { name: 'Save Correction' }).click();
+    await expect.poll(() => rpcCalls.length).toBeGreaterThan(0);
+    expect(rpcCalls[0].p_attendance_entry_id).toBeNull();
+    expect(rpcCalls[0].p_user_id).toBe(EMPLOYEE_A.id);
   });
 
   // Task 36: today.spec.js already covers the Today dashboard's own
