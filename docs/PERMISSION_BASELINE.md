@@ -1,17 +1,17 @@
 # Permission Baseline (Handbook Task 3)
 
-Generated 2026-08-21T09:57:09.651Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
+Generated 2026-08-21T17:31:46.803Z by `node tests/db/run.js` -- **every row below reflects an actual query run against a real, disposable local Postgres instance**, not a reading of the policy text. Regenerate this file any time by running the harness again; do not hand-edit it, edits will be overwritten.
 
 ## Environment
 
 - Local, disposable Postgres 18 via the `embedded-postgres` npm package (devDependency) -- see `tests/db/support/pg-instance.js` for why (the system-wide PostgreSQL install on this machine is missing its `share/` directory and cannot run `initdb`; touching its existing, password-protected data directory was ruled out with the owner's input). A fresh instance is created and destroyed for every run; nothing persists between runs and nothing here ever touched production.
-- Schema: all 33 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
+- Schema: all 34 files in `supabase/migrations/` applied VERBATIM, in filename order, with exactly one documented exception (the `create extension if not exists pg_cron;` line is skipped -- pg_cron needs shared_preload_libraries and isn't bundled with the embedded package; nothing in this task's matrices depends on it). `pgcrypto` runs for real -- confirmed working before relying on it.
 - `auth.users`/`auth.uid()`/`auth.role()` are reproduced by a minimal stub (`tests/db/support/auth-stub.sql`) that sets the same `request.jwt.claims` GUC PostgREST sets from a verified JWT -- this is the same technique used by hand in the Supabase SQL editor during the V2 Permission Audit (Task 19), automated here instead of typed once.
 - **This harness tests the repository's migrations, not the live database.** Where Handbook Task 1 found live drift (e.g. the anon-execute grant mitigation applied by hand, never committed as a migration), this harness reproduces the ORIGINAL, pre-mitigation, as-committed state -- see the `client_credentials` and `recurring generation functions` sections below. That is intentional: it proves the gap lives in the repository itself, not only in whatever the live database happened to have before a manual fix.
 
 ## Summary
 
-278 checks run across 33 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
+283 checks run across 34 areas. **0 show current behavior that does not match the intended permission model** (listed first, below) -- per this task's own instruction, none of these were fixed here; this document only establishes evidence. "Secure" below means "matches this document's own stated intent," not a claim that the intent itself is optimal.
 
 ## Full evidence table, by area
 
@@ -457,6 +457,16 @@ Generated 2026-08-21T09:57:09.651Z by `node tests/db/run.js` -- **every row belo
 | Update profile after account deactivation | inactive | DENIED | DENY | PASS | Inactive accounts cannot update a profile. |
 | Punch in after account deactivation | inactive | DENIED | DENY | PASS | Inactive accounts cannot punch attendance. |
 | Punch out own open attendance | employeeA | ALLOWED | ALLOW | PASS | own attendance closed |
+
+### staff_photo_upload
+
+| Action | Identity | Observed | Expected | Result | Note |
+|---|---|---|---|---|---|
+| INSERT (with RETURNING) a photo into own folder | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) - needs both the INSERT and SELECT policies to pass |
+| INSERT a photo into a colleague's folder | employeeA | DENIED | DENY | PASS | new row violates row-level security policy for table "objects" |
+| INSERT a photo into a colleague's folder (admin uploading on someone else's behalf) | admin | DENIED | DENY | PASS | new row violates row-level security policy for table "objects" |
+| INSERT a photo with no session at all | anon | DENIED | DENY | PASS | new row violates row-level security policy for table "objects" |
+| SELECT a staff-photos object | employeeA | ALLOWED | ALLOW | PASS | 1 row(s) - this is the SELECT policy the earlier bug was missing |
 
 ## How to re-run
 

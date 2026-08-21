@@ -42,6 +42,7 @@ const MATRIX_FILES = [
   'firm_work_search_isolation',
   'security_definer_grants',
   'attendance',
+  'staff_photo_upload',
 ];
 
 function renderMarkdown(results, meta) {

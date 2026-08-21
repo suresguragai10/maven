@@ -201,6 +201,25 @@
     a.title = name || '';
     return a;
   }
+  // Real profile photo everywhere a person's small avatar bubble already
+  // shows up (Team, work list rows, Work Details meta grid, etc.) --
+  // previously every one of these only ever rendered initials, since they
+  // called avatar(name) with just a string and no way to reach photo_url.
+  // Falls back to the same initials bubble whenever there's no id, no
+  // matching profile, no photo set, or the image fails to load.
+  function avatarFor(id, cls) {
+    var p = id ? state.profiles.find(function (x) { return x.id === id; }) : null;
+    if (!p) return avatar(id ? profileName(id) : '', cls);
+    var src = allowedStaffPhotoUrl(p.photo_url);
+    if (!src) return avatar(p.full_name, cls);
+    var img = el('img', 'avatar' + (cls ? ' ' + cls : ''));
+    img.src = src; img.alt = ''; img.loading = 'lazy';
+    img.title = p.full_name || '';
+    img.addEventListener('error', function () {
+      if (img.parentNode) img.parentNode.replaceChild(avatar(p.full_name, cls), img);
+    }, { once: true });
+    return img;
+  }
 
   // A human-set client flag, never algorithmically derived (see the
   // set_client_attention() migration note) — Normal renders nothing at
@@ -1877,7 +1896,7 @@
       people.forEach(function (p) {
         var card = el('div', 'card'); card.style.marginBottom = '16px';
         var personHead = el('div'); personHead.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:14px;';
-        personHead.appendChild(avatar(p.full_name));
+        personHead.appendChild(avatarFor(p.id));
         var nameEl = el('div'); nameEl.style.cssText = 'font-weight:700;font-size:1.02rem;color:var(--navy-950);'; nameEl.textContent = p.full_name;
         personHead.appendChild(nameEl);
         card.appendChild(personHead);
@@ -2091,7 +2110,7 @@
     rows.forEach(function (r) {
       var chip = el('div');
       chip.style.cssText = 'display:flex;align-items:center;gap:9px;background:var(--mist);border:1px solid var(--border);border-radius:10px;padding:9px 14px;';
-      if (r.id !== 'unassigned') chip.appendChild(avatar(r.name, 'avatar-sm'));
+      if (r.id !== 'unassigned') chip.appendChild(avatarFor(r.id, 'avatar-sm'));
       var text = el('div');
       var nameEl = el('div'); nameEl.style.cssText = 'font-size:.85rem;font-weight:700;color:var(--navy-950);'; nameEl.textContent = r.name;
       var countEl = el('div'); countEl.style.cssText = 'font-size:.78rem;color:var(--ink-soft);';
@@ -2230,7 +2249,7 @@
   function workRow(w, showScopeTag) {
     var row = el('div', 'task-row');
     row.addEventListener('click', function () { gotoWork(w.id); });
-    row.appendChild(avatar(profileName(w.assignee_id)));
+    row.appendChild(avatarFor(w.assignee_id));
     var dot = el('span', 'priority-dot priority-dot-' + w.priority);
     dot.title = w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority';
     row.appendChild(dot);
@@ -2284,7 +2303,7 @@
   function firmWorkRow(w, latestUpdateText) {
     var row = el('div', 'task-row');
     row.addEventListener('click', function () { gotoFirmWork(w.id); });
-    row.appendChild(avatar(profileName(w.assignee_id)));
+    row.appendChild(avatarFor(w.assignee_id));
     var dot = el('span', 'priority-dot priority-dot-' + w.priority);
     dot.title = w.priority.charAt(0).toUpperCase() + w.priority.slice(1) + ' priority';
     row.appendChild(dot);
@@ -3865,8 +3884,8 @@
     metaGrid.appendChild(metaItem('Service', template ? template.title : 'Ad-hoc', 'idcard'));
     metaGrid.appendChild(metaItem('Period', work.period || '—', 'calendar'));
     metaGrid.appendChild(metaItem('Status', STATUS_LABELS[work.status] || work.status, 'check'));
-    metaGrid.appendChild(metaItem('Assignee', profileName(work.assignee_id), 'user', true));
-    metaGrid.appendChild(metaItem('Reviewer', work.reviewer_id ? profileName(work.reviewer_id) : '—', 'user', !!work.reviewer_id));
+    metaGrid.appendChild(metaItem('Assignee', profileName(work.assignee_id), 'user', work.assignee_id));
+    metaGrid.appendChild(metaItem('Reviewer', work.reviewer_id ? profileName(work.reviewer_id) : '—', 'user', work.reviewer_id));
     // Task 26: "make Internal vs External/Statutory deadline visually
     // unmistakable" — a plain "Internal Target" / "External / Filing
     // Deadline" label pair (unchanged text, for continuity) now also
@@ -4609,13 +4628,13 @@
   // the value. Used to make Internal vs External/Statutory deadlines
   // visually unmistakable on Work Details (see renderWorkDetail's own
   // metaGrid), not just distinguished by label text as before.
-  function metaItem(label, value, iconName, showAvatar, tag) {
+  function metaItem(label, value, iconName, avatarId, tag) {
     var wrap = el('div', 'meta-item');
     wrap.appendChild(icon(iconName, 'ic-lg'));
     var body = el('div');
     var l = el('label'); l.textContent = label;
     var v = el('div', 'value');
-    if (showAvatar && value !== '—') v.appendChild(avatar(value, 'avatar-sm'));
+    if (avatarId && value !== '—') v.appendChild(avatarFor(avatarId, 'avatar-sm'));
     v.appendChild(document.createTextNode(value));
     if (tag) { var t = el('span', 'badge ' + tag.cls); t.textContent = tag.text; v.appendChild(t); }
     body.appendChild(l); body.appendChild(v);
@@ -6644,7 +6663,7 @@
       projectValueEl.addEventListener('click', function () { openProjectDetailModal(project, function () { renderFirmWorkDetail(id); }); });
     }
     metaGrid.appendChild(projectMeta);
-    metaGrid.appendChild(metaItem('Owner', profileName(work.assignee_id), 'user', true));
+    metaGrid.appendChild(metaItem('Owner', profileName(work.assignee_id), 'user', work.assignee_id));
     // Task 27: Status alongside the rest of the at-a-glance fields, not
     // just the corner badge -- matches Client Work Detail's own metaGrid
     // treatment (Task 26) so the two detail pages read consistently.
@@ -7185,10 +7204,10 @@
   }
 
   // Keep staff photos deliberately simple: an optional local /images/ path or
-  // a public object URL from Maven's own Supabase project. Arbitrary remote
-  // image hosts are rejected so the value a user is allowed to save always
-  // agrees with the Work Desk CSP. There is intentionally no upload/crop/media
-  // manager in V1.
+  // a public object URL from Maven's own Supabase project (the
+  // "staff-photos" bucket the upload button below writes to). Arbitrary
+  // remote image hosts are rejected so the value a user is allowed to save
+  // always agrees with the Work Desk CSP.
   function allowedStaffPhotoUrl(value) {
     var v = (value || '').trim();
     if (!v) return '';
@@ -7201,6 +7220,28 @@
       return null;
     }
     return null;
+  }
+
+  // Uploads to the "staff-photos" bucket (see
+  // 20260903090000_staff_photo_upload.sql) under "{ownerId}/..." --
+  // self-upload only, for every role including admin (the RLS policy only
+  // allows writing into your own folder, by owner's explicit instruction).
+  // Only ever called with the caller's own id in practice, but takes
+  // ownerId as a param rather than reading state.user.id directly so the
+  // one caller site stays explicit about whose folder it's writing to.
+  // Returns the public URL allowedStaffPhotoUrl() above already knows how
+  // to validate, or an error string.
+  var STAFF_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+  var STAFF_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+  async function uploadStaffPhotoFile(file, ownerId) {
+    var ext = STAFF_PHOTO_TYPES[file.type];
+    if (!ext) return { error: 'Photo must be a JPG, PNG or WEBP image.' };
+    if (file.size > STAFF_PHOTO_MAX_BYTES) return { error: 'Photo must be 2MB or smaller.' };
+    var path = ownerId + '/' + Date.now() + '.' + ext;
+    var up = await sb.storage.from('staff-photos').upload(path, file, { upsert: true, contentType: file.type });
+    if (up.error) return { error: up.error.message };
+    var pub = sb.storage.from('staff-photos').getPublicUrl(path);
+    return { url: pub.data.publicUrl };
   }
 
   function profilePhoto(p, large) {
@@ -7251,15 +7292,13 @@
     var hero = el('div', 'card profile-hero');
     var photoWrap = el('div', 'profile-hero-photo-wrap');
     photoWrap.appendChild(profilePhoto(p, true));
-    // The photo itself is display-only (no upload/crop tool, by design --
-    // see allowedStaffPhotoUrl's own comment); this button is the one
-    // actually clickable thing here, and it's honest about what clicking
-    // it does: jump straight to the real edit field below, not open some
-    // photo-picker that doesn't exist.
+    // Jumps straight to the real upload control below rather than opening
+    // a picker inline here -- the hero stays a display element, the actual
+    // upload/edit fields live in the "You Can Edit" card.
     var editPhotoBtn = el('button', 'profile-hero-edit-btn'); editPhotoBtn.type = 'button'; editPhotoBtn.textContent = 'Edit photo';
     editPhotoBtn.addEventListener('click', function () {
-      photo.scrollIntoView({ block: 'center' });
-      photo.focus();
+      photoFile.scrollIntoView({ block: 'center' });
+      photoFile.focus();
     });
     photoWrap.appendChild(editPhotoBtn);
     hero.appendChild(photoWrap);
@@ -7285,8 +7324,22 @@
     var editGrid = el('div', 'profile-grid');
     var phone = el('input'); phone.value = p.phone || ''; editGrid.appendChild(field('Phone', phone));
     var photo = el('input'); photo.type = 'text'; photo.placeholder = '/images/staff/name.jpg or Maven Supabase Storage URL'; photo.value = p.photo_url || ''; editGrid.appendChild(field('Profile photo (optional)', photo));
+    var photoFile = el('input'); photoFile.type = 'file'; photoFile.accept = 'image/png,image/jpeg,image/webp';
+    var photoFileField = field('Or upload a photo', photoFile); editGrid.appendChild(photoFileField);
+    var photoStatus = el('p', 'f-hint'); photoStatus.style.margin = '2px 0 0'; photoFileField.appendChild(photoStatus);
+    photoFile.addEventListener('change', async function () {
+      var file = photoFile.files && photoFile.files[0];
+      if (!file) return;
+      photoStatus.textContent = 'Uploading…';
+      photoFile.disabled = true;
+      var res = await uploadStaffPhotoFile(file, state.user.id);
+      photoFile.disabled = false;
+      if (res.error) { photoStatus.textContent = res.error; toast(res.error, true); return; }
+      photo.value = res.url;
+      photoStatus.textContent = 'Uploaded — click Save My Profile below to keep it.';
+    });
     editCard.appendChild(editGrid);
-    var hint = el('p', 'f-hint'); hint.textContent = 'A local /images/ path or a public Maven Supabase Storage image only — no upload tool, no cropping. Leave blank and your initials are shown instead.'; editCard.appendChild(hint);
+    var hint = el('p', 'f-hint'); hint.textContent = 'Upload a JPG, PNG or WEBP (2MB max), or paste a local /images/ path or a public Maven Supabase Storage URL directly. Leave blank and your initials are shown instead.'; editCard.appendChild(hint);
     var save = el('button', 'btn btn-sm'); save.type = 'button'; save.textContent = 'Save My Profile';
     save.addEventListener('click', async function () {
       var photoValue = allowedStaffPhotoUrl(photo.value);
@@ -7731,7 +7784,7 @@
     var phone=el('input');phone.value=p2.phone||'';wrap.appendChild(field('Phone',phone));
     var join=el('input');join.type='date';join.value=p2.join_date||'';wrap.appendChild(field('Join date (Gregorian)',join));
     var photo=el('input');photo.type='text';photo.value=p2.photo_url||'';photo.placeholder='/images/staff/name.jpg or Maven Supabase Storage URL';wrap.appendChild(field('Profile photo (optional)',photo));
-    var photoHint=el('p','f-hint');photoHint.textContent='Use a local /images/ path or a public image from Maven Supabase Storage. Leave blank to show initials.';wrap.appendChild(photoHint);
+    var photoHint=el('p','f-hint');photoHint.textContent='A local /images/ path or a public Maven Supabase Storage URL. Photo file upload is self-service only -- each person uploads their own from My Profile; an admin can only paste an already-hosted URL here, never upload a file for someone else. Leave blank to show initials.';wrap.appendChild(photoHint);
     var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Profile';save.addEventListener('click',async function(){if(!name.value.trim()){toast('Full name is required.',true);return;}var photoValue=allowedStaffPhotoUrl(photo.value);if(photoValue===null){toast('Profile photo must be a local /images/ path or a public Maven Supabase Storage URL.',true);photo.focus();return;}save.disabled=true;var res=await sb.from('profiles').update({full_name:name.value.trim(),designation:designation.value.trim()||null,work_email:email.value.trim()||null,phone:phone.value.trim()||null,join_date:join.value||null,photo_url:photoValue||null}).eq('id',p2.id);save.disabled=false;if(res.error){toast('Could not update staff profile: '+res.error.message,true);return;}closeModal();await loadProfiles();if(p2.id===state.user.id)state.profile=state.profiles.find(function(x){return x.id===state.user.id;})||state.profile;toast('Staff profile updated.');render();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
   }
 
@@ -7806,6 +7859,62 @@
     toast(p2.full_name + ' is now ' + newRole + '.');
   }
 
+  // Calls the "create-staff-account" Edge Function (see
+  // supabase/functions/create-staff-account/index.ts) — the only place in
+  // this project allowed to call the Auth Admin API, since that requires
+  // the service-role key, which must never reach browser code. The
+  // function does its own admin+active check server-side too (defense in
+  // depth), so this modal being reachable only from an admin-only page is
+  // not the real security boundary here, same as everywhere else in
+  // Work Desk.
+  function openCreateStaffModal() {
+    var wrap = el('div');
+    var head = el('div', 'modal-head'); var h2 = el('h2'); h2.textContent = 'Create New Staff';
+    var cancel = el('button', 'btn btn-outline btn-sm'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.addEventListener('click', closeModal);
+    head.appendChild(h2); head.appendChild(cancel); wrap.appendChild(head);
+
+    var note = el('p', 'f-hint'); note.textContent = 'Sends a real Supabase sign-in invite by email — the new hire sets their own password by clicking the link. No password is ever typed or stored here.'; wrap.appendChild(note);
+
+    var email = el('input'); email.type = 'email'; wrap.appendChild(field('Work email', email));
+    var name = el('input'); wrap.appendChild(field('Full name', name));
+    var designation = el('input'); wrap.appendChild(field('Designation (optional)', designation));
+    var roleSel = el('select');
+    ['employee', 'reviewer', 'admin'].forEach(function (r) { roleSel.appendChild(new Option(r.charAt(0).toUpperCase() + r.slice(1), r)); });
+    wrap.appendChild(field('Role', roleSel));
+
+    var actions = el('div', 'modal-actions');
+    var send = el('button', 'btn'); send.type = 'button'; send.textContent = 'Send Invite';
+    send.addEventListener('click', async function () {
+      var emailValue = email.value.trim();
+      if (!emailValue || !name.value.trim()) { toast('Work email and full name are required.', true); return; }
+      send.disabled = true;
+      var res, body;
+      try {
+        var sessionRes = await sb.auth.getSession();
+        var token = sessionRes.data && sessionRes.data.session && sessionRes.data.session.access_token;
+        if (!token) { toast('Your session has expired — please sign in again.', true); send.disabled = false; return; }
+        res = await fetch(SUPABASE_URL + '/functions/v1/create-staff-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ email: emailValue, full_name: name.value.trim(), designation: designation.value.trim() || null, role: roleSel.value }),
+        });
+        body = await res.json().catch(function () { return {}; });
+      } catch (err) {
+        toast('Could not reach the invite service: ' + err.message, true);
+        send.disabled = false;
+        return;
+      }
+      send.disabled = false;
+      if (!res.ok) { toast('Could not send invite: ' + (body.error || res.statusText), true); return; }
+      closeModal();
+      await loadProfiles();
+      render();
+      toast(body.warning || ('Invite sent to ' + emailValue + '.'), !!body.warning);
+    });
+    actions.appendChild(send); wrap.appendChild(actions);
+    openModal(wrap);
+  }
+
   function renderStaff(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Staff & Access'; head.appendChild(h1);
@@ -7813,11 +7922,15 @@
 
     var intro = el('div', 'card');
     var p = el('p', 'desc'); p.style.margin = '0 0 8px';
-    p.textContent = 'Create the person\'s login in the Supabase Dashboard first (Authentication → Users → Add User) — Work Desk never asks for or stores a Supabase service-role key, so a new sign-in can only be created there, not from this page. Once that account exists, a matching profile row is created automatically; manage their internal profile, role and active access here. Public website Team profiles remain separate.';
+    p.textContent = 'Create New Staff sends a real sign-in invite by email — the new hire clicks the link and sets their own password. Work Desk never asks for or stores a Supabase service-role key: the invite is sent by a small server-side function, not by this page directly, so it only works once that function has been deployed once (see the setup note this page\'s owner was given). Until then, create the login directly in the Supabase Dashboard instead (Authentication → Users → Add User). Once an account exists, a matching profile row is created automatically; manage their internal profile, role and active access here. Public website Team profiles remain separate.';
     intro.appendChild(p);
     var roleLegend = el('p', 'f-hint');
     roleLegend.textContent = 'Employee: own work only. Reviewer: + can review/approve work where they\'re the assigned reviewer. Admin: full access, including Staff & Access itself.';
     intro.appendChild(roleLegend);
+    var createBtn = el('button', 'btn btn-sm'); createBtn.type = 'button'; createBtn.textContent = 'Create New Staff';
+    createBtn.style.marginTop = '8px';
+    createBtn.addEventListener('click', openCreateStaffModal);
+    intro.appendChild(createBtn);
     main.appendChild(intro);
 
     var card = el('div', 'card');
@@ -7833,7 +7946,11 @@
       var isSelf = p2.id === state.user.id;
       var tr = el('tr', p2.is_active ? '' : 'inactive-row');
 
-      var tdName = el('td'); tdName.textContent = p2.full_name + (isSelf ? ' (you)' : ''); tr.appendChild(tdName);
+      var tdName = el('td');
+      var tdNameWrap = el('div'); tdNameWrap.style.cssText = 'display:flex;align-items:center;gap:9px;';
+      tdNameWrap.appendChild(avatarFor(p2.id, 'avatar-sm'));
+      var tdNameText = el('span'); tdNameText.textContent = p2.full_name + (isSelf ? ' (you)' : ''); tdNameWrap.appendChild(tdNameText);
+      tdName.appendChild(tdNameWrap); tr.appendChild(tdName);
       var tdDes = el('td'); tdDes.textContent = p2.designation || '—'; tr.appendChild(tdDes);
 
       var tdRole = el('td');

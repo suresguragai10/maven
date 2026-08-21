@@ -2,8 +2,9 @@
 // My Profile pages -- active-only directory listing with clickable work
 // contact links, initials fallback, explicit separation from the public
 // Team page; My Profile's clear "Managed by Admin" vs "You Can Edit"
-// split; and confirmation that photo handling stays a plain URL field
-// (no upload/crop/file-picker of any kind).
+// split; and photo handling, which accepts either a plain URL or a real
+// file upload to Supabase Storage (see 20260903090000_staff_photo_upload.sql),
+// still with no crop/editor UI.
 const { test, expect } = require('@playwright/test');
 const { installSupabaseMock } = require('../support/mock-supabase');
 
@@ -123,16 +124,49 @@ test.describe('My Profile (Task 31)', () => {
     expect(rpcCalls).toEqual([]);
   });
 
-  test('DO NOT: photo handling is a plain URL field -- no file upload input, no crop/editor UI', async ({ page }) => {
+  // A real file-upload button was added deliberately (uploads to the
+  // "staff-photos" Supabase Storage bucket) -- this DO-NOT now only
+  // covers what's still genuinely out of scope: no crop/editor tool, no
+  // social-import integration.
+  test('DO NOT: no crop/editor UI or social-import integration, even though a real photo upload button now exists', async ({ page }) => {
     await loginAndOpen(page, EMPLOYEE_A, 'My Profile');
-    await expect(page.locator('input[type="file"]')).toHaveCount(0);
-    // Note: the page's own hint text legitimately says "no upload tool,
-    // no cropping" -- so this checks for actual crop/upload/social-import
-    // FEATURES (a tool, a button, an integration), not the bare words,
-    // which would false-positive on that correct, DO-NOT-affirming copy.
+    await expect(page.locator('input[type="file"]')).toHaveCount(1);
     const bodyText = (await page.locator('#main').innerText()).toLowerCase();
-    ['crop tool', 'upload photo', 'upload image', 'facial', 'face id', 'connect instagram', 'connect facebook', 'import from'].forEach((term) => {
+    ['crop tool', 'facial', 'face id', 'connect instagram', 'connect facebook', 'import from'].forEach((term) => {
       expect(bodyText, `found forbidden term "${term}" on My Profile`).not.toContain(term);
     });
+  });
+
+  test('uploading a photo file goes to Supabase Storage and fills the URL field, ready to save', async ({ page }) => {
+    await loginAndOpen(page, EMPLOYEE_A, 'My Profile');
+    const editCard = page.locator('.card').filter({ hasText: 'You Can Edit' });
+    const fileInput = editCard.locator('input[type="file"]');
+
+    let uploadedPath = null;
+    await page.route('**/storage/v1/object/staff-photos/**', async (route) => {
+      uploadedPath = new URL(route.request().url()).pathname.split('/staff-photos/')[1];
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ Key: 'staff-photos/' + uploadedPath }) });
+    });
+
+    await fileInput.setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: Buffer.from([137, 80, 78, 71]) });
+    const uploadField = editCard.locator('.f').filter({ hasText: 'Or upload a photo' });
+    await expect(uploadField).toContainText('Uploaded', { timeout: 5000 });
+
+    const photoInput = editCard.locator('.f').filter({ hasText: 'Profile photo' }).locator('input[type="text"]');
+    await expect(photoInput).toHaveValue(new RegExp('/storage/v1/object/public/staff-photos/' + EMPLOYEE_A.id));
+    expect(uploadedPath.startsWith(EMPLOYEE_A.id + '/')).toBe(true);
+  });
+
+  test('an oversized or wrong-type photo file is rejected client-side before any upload request', async ({ page }) => {
+    await loginAndOpen(page, EMPLOYEE_A, 'My Profile');
+    const editCard = page.locator('.card').filter({ hasText: 'You Can Edit' });
+    const fileInput = editCard.locator('input[type="file"]');
+
+    let uploadRequested = false;
+    await page.route('**/storage/v1/object/staff-photos/**', async (route) => { uploadRequested = true; await route.abort(); });
+
+    await fileInput.setInputFiles({ name: 'me.gif', mimeType: 'image/gif', buffer: Buffer.from([1, 2, 3]) });
+    await expect(page.locator('#toast')).toContainText('JPG, PNG or WEBP');
+    expect(uploadRequested).toBe(false);
   });
 });

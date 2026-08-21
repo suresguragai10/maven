@@ -2,9 +2,12 @@
 // explicit Active/Inactive status pills, self-action guards, Edit
 // Profile, the existing open-work reassignment warning on deactivation,
 // and the new reviewer-reassignment warning on a Reviewer/Admin ->
-// Employee role downgrade. Also confirms the page documents the
-// Supabase-Dashboard account-creation workflow inline rather than
-// building any browser-side Auth administration.
+// Employee role downgrade. Also confirms account creation never touches
+// the Auth Admin API from the browser directly -- Create New Staff calls
+// the server-side create-staff-account Edge Function instead (see
+// supabase/functions/create-staff-account/index.ts), and the page still
+// documents the Supabase Dashboard as a fallback if that function isn't
+// deployed yet.
 const { test, expect } = require('@playwright/test');
 const { installSupabaseMock } = require('../support/mock-supabase');
 
@@ -153,5 +156,58 @@ test.describe('Staff & Access (Task 32)', () => {
     await page.waitForTimeout(100);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `Staff & Access overflows horizontally at 375px by ${overflow}px`).toBeLessThanOrEqual(1);
+  });
+
+  // Create New Staff calls the server-side create-staff-account Edge
+  // Function (see supabase/functions/create-staff-account/index.ts) --
+  // never the Auth Admin API directly, since that needs the service-role
+  // key, which this page (like all of Work Desk) never holds.
+  test.describe('Create New Staff', () => {
+    test('sends the invite request to the create-staff-account function with the caller\'s bearer token, then refreshes the roster', async ({ page }) => {
+      await loginAndOpenStaff(page);
+      let requestBody = null;
+      let authHeader = null;
+      await page.route('**/functions/v1/create-staff-account', async (route) => {
+        requestBody = route.request().postDataJSON();
+        authHeader = route.request().headers()['authorization'];
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, user_id: 'new-user-1' }) });
+      });
+
+      await page.getByRole('button', { name: 'Create New Staff' }).click();
+      await expect(page.getByRole('heading', { name: 'Create New Staff' })).toBeVisible();
+      await page.locator('.f').filter({ hasText: 'Work email' }).locator('input').fill('new.hire@maven.example');
+      await page.locator('.f').filter({ hasText: 'Full name' }).locator('input').fill('New Hire');
+      await page.locator('.f').filter({ hasText: 'Designation' }).locator('input').fill('Associate');
+      await page.locator('.f').filter({ hasText: 'Role' }).locator('select').selectOption('reviewer');
+      await page.getByRole('button', { name: 'Send Invite' }).click();
+
+      await expect(page.locator('#toast')).toContainText('Invite sent to new.hire@maven.example');
+      await expect(page.locator('#modalOverlay')).toHaveClass(/hidden/);
+      expect(requestBody).toMatchObject({ email: 'new.hire@maven.example', full_name: 'New Hire', designation: 'Associate', role: 'reviewer' });
+      expect(authHeader).toMatch(/^Bearer /);
+    });
+
+    test('requires email and full name before sending', async ({ page }) => {
+      await loginAndOpenStaff(page);
+      let called = false;
+      await page.route('**/functions/v1/create-staff-account', async (route) => { called = true; await route.fulfill({ status: 200, body: '{}' }); });
+      await page.getByRole('button', { name: 'Create New Staff' }).click();
+      await page.getByRole('button', { name: 'Send Invite' }).click();
+      await expect(page.locator('#toast')).toContainText('Work email and full name are required');
+      expect(called).toBe(false);
+    });
+
+    test('shows the server error and keeps the modal open when the function rejects the request', async ({ page }) => {
+      await loginAndOpenStaff(page);
+      await page.route('**/functions/v1/create-staff-account', async (route) => {
+        await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: 'Only an active admin can create staff accounts.' }) });
+      });
+      await page.getByRole('button', { name: 'Create New Staff' }).click();
+      await page.locator('.f').filter({ hasText: 'Work email' }).locator('input').fill('new.hire@maven.example');
+      await page.locator('.f').filter({ hasText: 'Full name' }).locator('input').fill('New Hire');
+      await page.getByRole('button', { name: 'Send Invite' }).click();
+      await expect(page.locator('#toast')).toContainText('Only an active admin can create staff accounts');
+      await expect(page.getByRole('heading', { name: 'Create New Staff' })).toBeVisible();
+    });
   });
 });
