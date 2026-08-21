@@ -56,16 +56,18 @@ function industries() {
 
   <section class="section-pad" style="padding-top:0">
     <div class="container">
-      <div class="industry-picker-grid">
-        ${data.industries.map(industryCard).join('')}
-      </div>
-      <div class="industry-detail-stage" id="industry-detail-stage" aria-live="polite">
-        <div class="industry-detail-placeholder" id="industry-detail-placeholder">
-          <span class="service-letter">Explore by industry</span>
-          <h2>Select an industry to see common needs and how Maven can help.</h2>
-          <p>The cards stay compact and consistent; detailed guidance opens here without stretching neighbouring cards.</p>
+      <div class="industry-explorer">
+        <ul class="industry-list" aria-label="Select an industry">
+          ${data.industries.map(industryCard).join('')}
+        </ul>
+        <div class="industry-detail-stage" id="industry-detail-stage" aria-live="polite">
+          <div class="industry-detail-placeholder" id="industry-detail-placeholder">
+            <span class="service-letter">Explore by industry</span>
+            <h2>Select an industry to see common needs and how Maven can help.</h2>
+            <p>The list stays compact and scannable; detailed guidance opens here without pushing the page around.</p>
+          </div>
+          ${data.industries.map(industryDetail).join('')}
         </div>
-        ${data.industries.map(industryDetail).join('')}
       </div>
       <p class="text-center tag-note" style="margin-top:28px">Don't see your type of business listed? Reach out — Maven supports most business structures across Nepal.</p>
     </div>
@@ -140,7 +142,10 @@ function contact() {
             <div><h3>Hours</h3><p>${esc(b.hours)}</p></div>
           </div>
         </div>
-        <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to send an inquiry.')}" target="_blank" rel="noopener">${icon('whatsapp')} Chat on WhatsApp</a>
+        <div class="contact-whatsapp-cta">
+          <span class="service-letter">Fastest response</span>
+          <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to send an inquiry.')}" target="_blank" rel="noopener">${icon('whatsapp')} Chat on WhatsApp</a>
+        </div>
         <div class="contact-map" style="margin-top:28px">
           <iframe src="${mapSrc}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Maven Consultancy location map"></iframe>
         </div>

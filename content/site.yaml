@@ -11,6 +11,12 @@ usefulLinks:
   - name: Nepal Rastra Bank (NRB)
     url: https://www.nrb.org.np/
     description: Nepal central bank, banking regulation and foreign exchange rules.
+  - name: Institute of Chartered Accountants of Nepal (ICAN)
+    url: https://en.ican.org.np/en/
+    description: Nepal's professional accounting regulatory body — standards, member directory, and public guidance on the chartered accountancy profession.
+  - name: Department of Industry (DOI)
+    url: https://doind.gov.np/
+    description: Registration and approval authority for industrial enterprises and foreign investment in Nepal, relevant for internationally connected businesses.
   - name: Nepal Government National Portal
     url: https://nepal.gov.np/
     description: Directory of Nepal government ministries, departments, and public services.
@@ -31,6 +37,7 @@ brand:
   mapQuery: New Baneshwor, Kathmandu, Nepal
   formspreeId: xgojnjby
   cloudflareAnalyticsToken: ''
+  googleSiteVerification: ''
   siteUrl: https://mavennepal.com.np
   social:
     facebook: ''
@@ -493,7 +500,7 @@ internationalAccounting:
     team, reporting requirements and internal review process.
   benefits:
     - title: Direct Communication
-      text: You communicate with the people responsible for your work rather than working through unnecessary call-centre or account-management layers.
+      text: You communicate with the people responsible for your work rather than working through unnecessary call-center or account-management layers.
     - title: Clear Written Communication
       text: Our team works in English and is comfortable with structured written communication, task tracking and remote collaboration.
     - title: Flexible Remote Support
@@ -709,7 +716,7 @@ virtualCfo:
         - Changes in customer payment periods
         - Changes in supplier payment periods
       note: >-
-        Scenario modelling is intended to support management's own decision-making and is not
+        Scenario modeling is intended to support management's own decision-making and is not
         investment, lending or regulated financial advice.
   levels:
     - title: "Level 1 — Bookkeeping Support"
@@ -719,7 +726,7 @@ virtualCfo:
     - title: "Level 3 — Management Reporting"
       text: Management pack, KPIs, receivables, payables and cash-flow visibility.
     - title: "Level 4 — Virtual CFO Support"
-      text: Budgets, forecasts, scenario modelling, management discussions and ongoing financial planning support.
+      text: Budgets, forecasts, scenario modeling, management discussions and ongoing financial planning support.
   levelsNote: You can begin at the level your business currently needs and expand only when additional support creates value.
   faqs:
     - q: Is Virtual CFO support the same as bookkeeping?
@@ -936,7 +943,7 @@ industries:
     needs:
       - Project-wise income, cost, and profitability
       - Advance, retention, and progress-billing records
-      - Material, labour, and subcontractor cost tracking
+      - Material, labor, and subcontractor cost tracking
       - Project cash-flow and payment planning
     howWeHelp:
       - Project-wise bookkeeping structures
@@ -1190,7 +1197,7 @@ pages:
     href: virtual-cfo.html
     hidden: false
   - key: nfrs-ifrs
-    label: NFRS/IFRS Support
+    label: NFRS / IFRS Support
     href: nfrs-ifrs.html
     hidden: false
   - key: packages
@@ -1257,14 +1264,14 @@ pageHeaders:
     title: Outsourced Accounting Services in Nepal
     subtitle: A dependable alternative to hiring a full-time in-house accountant.
   global-outsourcing:
-    eyebrow: International Services
+    eyebrow: Global Finance Delivery
     title: International Accounting & Finance Support
     subtitle: >-
       A Kathmandu-based team providing remote bookkeeping, reconciliation, reporting, and Virtual
       CFO support for businesses and accounting firms abroad.
   international-accounting:
-    eyebrow: Outsourced Accounting
-    title: International Outsourced Accounting & Bookkeeping
+    eyebrow: Remote Accounting Support
+    title: International Bookkeeping & Reconciliation Support
     subtitle: A remote team for the parts of your books that take too much time.
   virtual-cfo:
     eyebrow: Virtual CFO
@@ -1506,6 +1513,15 @@ seo:
   global-outsourcing.html:
     title: ''
     description: ''
+  international-accounting.html:
+    title: ''
+    description: ''
+  virtual-cfo.html:
+    title: ''
+    description: ''
+  nfrs-ifrs.html:
+    title: ''
+    description: ''
   packages.html:
     title: ''
     description: ''
@@ -1513,6 +1529,9 @@ seo:
     title: ''
     description: ''
   industries.html:
+    title: ''
+    description: ''
+  resources.html:
     title: ''
     description: ''
   useful-links.html:

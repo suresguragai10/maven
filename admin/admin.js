@@ -908,9 +908,13 @@
     ['services.html', 'Services'],
     ['outsourced-accounting.html', 'Outsourced Accounting'],
     ['global-outsourcing.html', 'Global Outsourcing'],
+    ['international-accounting.html', 'International Accounting'],
+    ['virtual-cfo.html', 'Virtual CFO'],
+    ['nfrs-ifrs.html', 'NFRS / IFRS'],
     ['packages.html', 'Packages'],
     ['documents-needed.html', 'Documents Checklist'],
     ['industries.html', 'Industries'],
+    ['resources.html', 'Resources'],
     ['useful-links.html', 'Useful Links'],
     ['calculators.html', 'Calculators'],
     ['faq.html', 'FAQ'],
@@ -1166,6 +1170,7 @@
     brandBody.appendChild(textField('Formspree Form ID (contact form email delivery)', function () { return c.brand.formspreeId; }, function (v) { c.brand.formspreeId = v; }, { hint: 'From formspree.io — just the ID (e.g. xgojnjby), not the full web address. Leave blank to keep the manual email/WhatsApp send flow.' }));
     brandBody.appendChild(textField('Website URL (for sitemap & sharing links)', function () { return c.brand.siteUrl; }, function (v) { c.brand.siteUrl = v; }, { hint: 'Your live domain, e.g. https://mavenconsultancy.com.np — leave blank until the final domain is ready. When set, the build creates sitemap.xml and canonical links.' }));
     brandBody.appendChild(textField('Cloudflare Web Analytics Token', function () { return c.brand.cloudflareAnalyticsToken; }, function (v) { c.brand.cloudflareAnalyticsToken = v; }, { hint: 'From Cloudflare dashboard → Analytics & Logs → Web Analytics → Manage Site → the JavaScript snippet (copy just the token value inside data-cf-beacon, not the whole script tag). Leave blank to keep analytics off.' }));
+    brandBody.appendChild(textField('Google Search Console Verification Code', function () { return c.brand.googleSiteVerification; }, function (v) { c.brand.googleSiteVerification = v; }, { hint: 'Only needed if DNS verification (the recommended method — see docs/SEARCH_CONSOLE_CHECKLIST.md) isn’t available. From Search Console → Settings → Ownership verification → HTML tag → copy just the content="..." value, not the whole <meta> tag. This is not a secret — it is designed to be publicly visible in page source and only proves site ownership. Leave blank if using DNS verification instead.' }));
     // Social links — footer icons. Blank = the icon is hidden on the site.
     if (!c.brand.social) c.brand.social = { facebook: '', instagram: '', tiktok: '', linkedin: '' };
     brandBody.appendChild(textField('Facebook Page URL', function () { return c.brand.social.facebook; }, function (v) { c.brand.social.facebook = v; }, { hint: 'Full link to your Facebook page, e.g. https://facebook.com/YourPage — leave blank to hide the Facebook icon.' }));
@@ -1182,7 +1187,7 @@
     if (!c.pageHeaders || typeof c.pageHeaders !== 'object') c.pageHeaders = {};
     var pagesBody = el('div');
     var hideLabel = el('label', 'block-label'); hideLabel.textContent = 'Hide / Show Pages'; pagesBody.appendChild(hideLabel);
-    var hideDesc = el('p', 'desc'); hideDesc.textContent = 'Untick a page to remove it from the site menu and footer (and mark it noindex). The page still builds, so existing buttons never break. Blog stays hidden until your first post is ready.'; pagesBody.appendChild(hideDesc);
+    var hideDesc = el('p', 'desc'); hideDesc.textContent = 'Untick a page to remove it from the site menu (and mark it noindex). The page still builds, so existing buttons never break. The footer only lists a fixed set of priority links and does not change based on this setting. Blog stays hidden until your first post is ready.'; pagesBody.appendChild(hideDesc);
     pagesBody.appendChild(pageVisibilityEditor(c.pages));
     var headLabel = el('label', 'block-label'); headLabel.textContent = 'Editable Page Headings'; headLabel.style.marginTop = '22px'; pagesBody.appendChild(headLabel);
     pagesBody.appendChild(pageHeadingsEditor(c.pageHeaders));
@@ -1307,7 +1312,7 @@
     iaBody.appendChild(editorialBlockEditor(ia.tools, { itemLabel: 'tool / workflow item' }));
     var iaSmallL = el('label', 'block-label'); iaSmallL.textContent = 'Start Small'; iaBody.appendChild(iaSmallL);
     iaBody.appendChild(editorialBlockEditor(ia.startSmall, { itemLabel: 'starter scope item' }));
-    area.appendChild(section('sec-international-accounting', 'International — Outsourced Accounting', 'Content for the International Outsourced Accounting & Bookkeeping page.', iaBody));
+    area.appendChild(section('sec-international-accounting', 'International — Outsourced Accounting', 'Content for the International Bookkeeping & Reconciliation Support page.', iaBody));
 
     // International — Virtual CFO & Management Reporting
     if (!c.virtualCfo || typeof c.virtualCfo !== 'object') c.virtualCfo = {};

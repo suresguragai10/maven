@@ -79,6 +79,14 @@ h1, h2, h3, h4 {
 h1 { font-size: clamp(2.1rem, 4.4vw, 3.4rem); font-weight: 700; }
 h2 { font-size: clamp(1.6rem, 2.6vw, 2.25rem); }
 h3 { font-size: 1.2rem; }
+/* Task 02: h4 previously had no explicit size in this shared rule, so it
+   silently fell back to the browser's own default (~1em) — same visual
+   size as body copy, just serif/navy/bold. Most former h4 uses were
+   already converted to h3 for real heading-order reasons (Task 26); this
+   makes the remaining, intentional label-weight h4 uses (e.g. footer
+   columns, which already override this locally) consistent by default
+   instead of relying on an unstated browser fallback. */
+h4 { font-size: 1rem; }
 
 p { color: var(--ink-soft); }
 
@@ -291,20 +299,6 @@ body.nav-open { overflow: hidden; }
 .hero-skyline { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; opacity: 0.22; z-index: 1; }
 .hero-art { position: relative; }
 
-/* Motion guardrail: hero accents stay visually light but do not bob forever.
-   The normal reveal system provides the one-off entrance animation; persistent
-   floating/bouncing is intentionally avoided for a calmer consultancy tone. */
-.hero-float-badge {
-  position: absolute; top: -22px; left: -20px; z-index: 3;
-  display: flex; align-items: center; gap: 10px;
-  background: rgba(255,255,255,0.96); border-radius: 14px; padding: 12px 16px;
-  box-shadow: var(--shadow-lg); transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.hero-float-badge .ic { width: 20px; height: 20px; color: var(--gold-600); flex-shrink: 0; }
-.hero-float-badge strong { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--navy-950); line-height: 1.1; }
-.hero-float-badge span { display: block; font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; }
-@media (max-width: 980px) { .hero-float-badge { top: -16px; left: -12px; padding: 9px 13px; } .hero-float-badge strong { font-size: 1rem; } }
-
 /* Reused by any other bg-navy section that gets the same decorative-skyline
    treatment as the hero (e.g. the homepage's Global Outsourcing section) —
    keeps the section's real content above the absolutely-positioned SVG. */
@@ -385,6 +379,22 @@ body.nav-open { overflow: hidden; }
 .page-hero-sub { max-width: 620px; margin: 16px auto 0; color: rgba(255,255,255,0.76); font-size: 1.05rem; }
 .page-hero--photo { background-size: cover; background-position: center; background-repeat: no-repeat; }
 
+/* ---------- Breadcrumbs (Task 15) ----------
+   Only rendered on pages genuinely nested under a hub in the real nav
+   hierarchy (see breadcrumbNav() in layout.js) -- a slim bar between the
+   header and the page's own navy hero, not styled to sit inside/over it,
+   so it reads clearly against either. */
+.breadcrumb-nav { background: var(--mist); border-bottom: 1px solid var(--border); padding: 10px 0; }
+.breadcrumb-nav ol { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.85rem; }
+.breadcrumb-nav li { display: flex; align-items: center; gap: 8px; }
+.breadcrumb-nav li:not(:last-child)::after {
+  content: ''; width: 5px; height: 5px; flex-shrink: 0;
+  border-top: 1.5px solid var(--ink-soft); border-right: 1.5px solid var(--ink-soft); transform: rotate(45deg);
+}
+.breadcrumb-nav a { color: var(--ink-soft); font-weight: 600; }
+.breadcrumb-nav a:hover { color: var(--gold-700); text-decoration: underline; }
+.breadcrumb-nav li.is-current span { color: var(--navy-900); font-weight: 600; }
+
 /* ---------- Grid helpers ---------- */
 /* Handbook Task 25: `1fr` is shorthand for `minmax(auto, 1fr)` — a track
    using it will NOT shrink below its content's own min-content width, so
@@ -392,9 +402,7 @@ body.nav-open { overflow: hidden; }
    whole grid (and the page) wider than the viewport even in a single-
    column layout. `minmax(0, 1fr)` fixes exactly that (lets the track
    shrink to 0 and grow to fill available space) without changing a
-   single breakpoint value or column count — this is what actually fixed
-   the confirmed home-page (.service-card--photo) and, by the same
-   mechanism, would fix any other grid-based card here. */
+   single breakpoint value or column count. */
 .grid { display: grid; gap: 26px; }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -415,29 +423,6 @@ body.nav-open { overflow: hidden; }
 .service-letter { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--gold-700); }
 .service-card h3 { font-size: 1.15rem; margin-top: 2px; }
 .service-tagline { font-size: 0.94rem; margin: 10px 0 16px; }
-
-/* Photo-header variant of .service-card on the homepage. The full Services
-   page uses the separate editorial-row system below. Images are real <img>
-   elements for predictable cropping/loading; the overlay is a separate
-   decorative layer rather than baked into a CSS background. */
-.service-card--photo { display: block; padding: 0; overflow: hidden; }
-.service-card-photo {
-  position: relative; aspect-ratio: 4 / 3; overflow: hidden; background-color: var(--navy-950);
-}
-.service-card-photo img { width:100%; height:100%; object-fit:cover; object-position:center; }
-.service-card-photo-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,31,58,.02),rgba(10,31,58,.32)); pointer-events:none; }
-.service-card-photo-badge {
-  position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 10px;
-  background: var(--navy-950); color: var(--gold-500); display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow-md);
-}
-.service-card-photo-badge .ic { width: 20px; height: 20px; }
-.service-card-body { padding: 24px 26px 26px; }
-.service-card-link {
-  display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 0.9rem; color: var(--gold-700);
-}
-.service-card-link:hover { text-decoration: underline; }
-.service-card-link .ic { width: 16px; height: 16px; }
 
 /* Closes the homepage's 6-category grid as a 7th, full-width cell (grid-
    column spans every column regardless of the breakpoint's column count) —
@@ -467,34 +452,24 @@ body.nav-open { overflow: hidden; }
 .industry-icon { width: 38px; height: 38px; border-radius: 8px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .industry-icon .ic { width: 20px; height: 20px; }
 
-/* Richer sibling of .industry-badge — icon + title + description, used only
-   on the dedicated Industries page (see ui.js industryCard()). Click-to-expand
-   footer (.industry-card-toggle/-panel) reveals needs/how-we-help detail —
-   flex column + the description's flex:1 (set inline in ui.js) keeps the
-   toggle footer aligned along a row even when descriptions differ in length. */
+/* Task 06: compact industry selector row — icon + name + chevron only (the
+   full description lives in the matching detail panel, see .industry-explorer
+   below), so a 13-item list stays scannable instead of repeating a
+   paragraph per row. Real <button>, not a decorative div — .industry-list-item
+   is the plain <li> wrapper. */
+.industry-list-item { list-style: none; }
 .industry-card {
-  background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 26px;
-  display: flex; flex-direction: column; box-shadow: var(--shadow-sm);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
-.industry-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-.industry-card-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-.industry-card-icon .ic { width: 22px; height: 22px; }
-.industry-card h2 { font-size: 1.05rem; margin: 0 0 8px; }
-.industry-card p { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
-
-.industry-card-toggle {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
-  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
-  font-size: 0.84rem; font-weight: 700; color: var(--gold-700); text-align: left;
-}
-.industry-card-toggle .ic-chevron { width: 17px; height: 17px; flex-shrink: 0; transition: transform 0.2s ease; }
-.industry-card.is-open .ic-chevron { transform: rotate(180deg); }
-.industry-card-panel { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
-.industry-card-panel-inner { padding-top: 14px; }
-.industry-card-panel-inner .service-letter { display: block; margin-bottom: 8px; }
-.industry-card-panel-inner .stamp-list--pkg { margin: 0 0 18px; }
-.industry-card-panel-inner .btn { margin-top: 4px; }
+.industry-card:hover { border-color: var(--gold-500); box-shadow: var(--shadow-sm); }
+.industry-card-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--gold-100); color: var(--gold-700); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.industry-card-icon .ic { width: 18px; height: 18px; }
+.industry-card-name { flex: 1; font-weight: 600; font-size: 0.94rem; color: var(--navy-900); }
+.industry-card-chevron { width: 16px; height: 16px; color: var(--ink-soft); flex-shrink: 0; transition: transform 0.18s ease, color 0.18s ease; }
+.industry-card.is-selected { border-color: var(--gold-500); background: var(--gold-100); box-shadow: var(--shadow-sm); }
+.industry-card.is-selected .industry-card-chevron { color: var(--gold-700); transform: translateX(3px); }
 
 .package-card {
   background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 32px;
@@ -597,6 +572,11 @@ body.nav-open { overflow: hidden; }
 .contact-info-icon .ic { width: 21px; height: 21px; }
 .contact-info-item h3 { font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--navy-800); margin-bottom: 3px; }
 .contact-info-item p { margin: 0; font-size: 0.96rem; }
+/* Task 08: a small label above the WhatsApp button establishes inquiry
+   hierarchy -- WhatsApp for a fast reply, the form (which already sets
+   "within one business day" expectations) for more detailed requirements. */
+.contact-whatsapp-cta { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.contact-whatsapp-cta .service-letter { display: block; }
 .contact-map { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .contact-map iframe { width: 100%; height: 320px; border: 0; display: block; }
 
@@ -683,12 +663,63 @@ body.nav-open { overflow: hidden; }
   .reveal-enabled .reveal { opacity: 1; transform: none; }
 }
 
+/* Task 03: restrained child stagger (60-90ms) for a group of elements that
+   should read as one short, deliberate entrance sequence (e.g. a capability
+   chapter's label -> heading -> service links -> CTA) rather than each
+   popping in independently. Client-side wiring is a one-line addition —
+   client.js observes .reveal-stagger the same way it already observes
+   .reveal (see "Scroll reveal"); everything else here is pure CSS, so it
+   inherits the exact same fail-open/reduced-motion safety already proven
+   for .reveal: reduced-motion or a failed observer means content is simply
+   present, never gated behind JS. Capped at 6 children -- a 7th+ direct
+   child gets no extra delay rather than an ever-growing wait. */
+.reveal-enabled .reveal-stagger > * {
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1), transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-enabled .reveal-stagger.is-visible > * { opacity: 1; transform: none; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 70ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 140ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 210ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 280ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(n+6) { transition-delay: 350ms; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-enabled .reveal-stagger > * { opacity: 1; transform: none; }
+}
+
+/* Task 03: capability/service image reveals get a very small scale-settle
+   (1.02 -> 1.00) alongside the parent card's own fade/translate — a subtle
+   "coming into focus" cue, not a zoom effect. Shares the same easing/
+   duration as the parent's own reveal transition and the same
+   .reveal-enabled/.is-visible gating, so it can never leave an image
+   stuck at 1.02 if JS fails or reduced-motion is on (both already force
+   .reveal.is-visible-equivalent visibility with no JS involved). */
+.reveal-enabled .capability-chapter-photo img {
+  transform: scale(1.02);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-enabled .reveal.is-visible .capability-chapter-photo img {
+  transform: scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-enabled .capability-chapter-photo img {
+    transform: none;
+  }
+}
+
 /* ---------- Misc ---------- */
 .text-center { text-align: center; }
 .mt-0 { margin-top: 0; }
 .divider { height: 1px; background: var(--border); margin: 56px 0; }
 .tag-note { font-size: 0.86rem; color: var(--ink-soft); }
 strong { color: var(--navy-900); }
+
+/* Task 07: compact topic labels (e.g. NFRS/IFRS "major reporting
+   considerations") -- a wrapped row of short names reads faster than a
+   vertical bullet list when there are many of them and each is just a
+   noun, not a sentence. */
+.topic-chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.topic-chip { display: inline-flex; align-items: center; background: var(--mist); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; color: var(--navy-800); }
 
 /* ===================== Honeypot (spam guard) ===================== */
 /* Visually and semantically hidden, but still submitted so bots fill it. */
@@ -701,6 +732,12 @@ strong { color: var(--navy-900); }
 
 /* ===================== Team page ===================== */
 .team-grid { align-items: stretch; }
+/* Task 08: layout adapts to actual team size (see teamGridFor() in
+   pages6.js) instead of always assuming a 3+ member grid. */
+.team-grid--solo { display: flex; justify-content: center; }
+.team-grid--solo .team-card { max-width: 400px; width: 100%; padding: 44px 38px; }
+.team-grid--solo .team-card-avatar { width: 100px; height: 100px; font-size: 2.1rem; }
+.team-grid--pair { max-width: 720px; margin: 0 auto; }
 .team-card {
   background: #fff;
   border: 1px solid var(--border);
@@ -801,33 +838,118 @@ strong { color: var(--navy-900); }
 @media (max-width:860px){ .international-showcase-grid{grid-template-columns:1fr;gap:34px}.international-proof-grid{grid-template-columns:1fr 1fr} }
 @media (max-width:520px){ .international-proof-grid{grid-template-columns:1fr} }
 
-/* Service photography system: stable local imagery + alternating editorial rows. */
+/* Service photography system: stable local imagery. Task 05 replaced the
+   old alternating per-service photo row (.service-editorial) with the
+   capability-chapter model below — one shared editorial image per chapter,
+   individual services rendered as typography-led .service-card entries
+   (see serviceEntry() in ui.js) instead of a forced photo per row.
+   .service-editorial-list is still used as a plain vertical-stack wrapper
+   for chapter compositions (see Home's "What We Do" section). */
 .service-editorial-list { display:flex; flex-direction:column; gap:28px; }
-.service-editorial { display:grid; grid-template-columns:minmax(240px,.72fr) minmax(0,1.28fr); border:1px solid var(--border); border-radius:16px; overflow:hidden; background:#fff; box-shadow:var(--shadow-sm); min-height:300px; }
-.service-editorial--reverse { grid-template-columns:minmax(0,1.28fr) minmax(240px,.72fr); }
-.service-editorial--reverse .service-editorial-photo { order:2; }
-.service-editorial-photo { min-height:100%; position:relative; overflow:hidden; background:var(--navy-950); }
-.service-editorial-photo img { width:100%; height:100%; min-height:300px; object-fit:cover; object-position:center; }
-.service-editorial-photo-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,31,58,.02),rgba(10,31,58,.34)); pointer-events:none; }
-.service-editorial-icon { position:absolute; top:20px; right:20px; width:48px; height:48px; border-radius:12px; background:var(--navy-950); color:var(--gold-500); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-md); }
-.service-editorial-icon .ic { width:22px; height:22px; }
-.service-editorial-body { padding:34px 38px 36px; }
-.service-editorial-body h2 { margin:6px 0 10px; font-size:clamp(1.4rem,2.2vw,1.85rem); }
-.service-editorial-body .service-tagline { font-size:1rem; margin-bottom:20px; }
-.service-editorial-body .stamp-list { gap:9px; }
-.service-editorial-actions { margin-top:24px; }
-@media (max-width:760px){ .service-editorial,.service-editorial--reverse{grid-template-columns:1fr}.service-editorial--reverse .service-editorial-photo{order:0}.service-editorial-photo{min-height:210px}.service-editorial-photo img{min-height:210px;aspect-ratio:16/9}.service-editorial-body{padding:26px 24px 30px} }
 
-/* Industries: selection cards stay the same height; rich detail has its own stage. */
-.industry-picker-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; align-items:stretch; }
-.industry-card { min-height:248px; }
-.industry-card p { flex:1; }
-.industry-card-select { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; margin-top:18px; padding-top:14px; border-top:1px solid var(--border); color:var(--gold-700); font-size:.85rem; font-weight:700; text-align:left; }
-.industry-card-select .ic { width:16px; height:16px; transition:transform .18s ease; }
-.industry-card.is-selected { border-color:var(--gold-500); box-shadow:var(--shadow-md); }
-.industry-card.is-selected .industry-card-select .ic { transform:translateX(3px); }
-.industry-detail-stage { margin-top:32px; }
-.industry-detail-placeholder,.industry-detail-panel { border-radius:16px; border:1px solid var(--border); padding:34px; background:linear-gradient(135deg,#fff 0%,var(--mist) 100%); }
+/* ---------- Capability chapter (Task 02) ----------
+   Shared primitive for "one integrated composition" sections: image,
+   chapter label, heading, a short list of real service links, and one
+   CTA — never a detached photo next to a separate white card.
+
+   Three variants carry different visual weight per the design brief,
+   sharing one composition model:
+   - --structured (Establish & Comply): calm, moderate image, plain entry point.
+   - --feature (Run Your Finance Function): the largest, most prominent treatment.
+   - --technical (Advise & Report Better): typography-led, most restrained image.
+
+   Image slots use object-fit:cover over a fixed-ratio container (no
+   fixed crop baked into markup), so swapping in real Maven office/team
+   photography later is a source-file change only, never a layout change. */
+.capability-chapter {
+  display: grid; grid-template-columns: minmax(260px,.86fr) minmax(0,1.14fr);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;
+  background: #fff; box-shadow: var(--shadow-sm); min-height: 320px;
+}
+.capability-chapter--reverse { grid-template-columns: minmax(0,1.14fr) minmax(260px,.86fr); }
+.capability-chapter--reverse .capability-chapter-photo { order: 2; }
+.capability-chapter-photo { min-height: 100%; position: relative; overflow: hidden; background: var(--navy-950); }
+.capability-chapter-photo img { width: 100%; height: 100%; min-height: 320px; object-fit: cover; object-position: center; }
+.capability-chapter-photo-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,31,58,.04), rgba(10,31,58,.38)); pointer-events: none; }
+.capability-chapter-body { padding: 40px 44px 42px; display: flex; flex-direction: column; }
+.capability-chapter-body .eyebrow { margin-bottom: 4px; }
+.capability-chapter-body h2 { margin: 4px 0 12px; }
+.capability-chapter-text { font-size: 1rem; margin-bottom: 22px; max-width: 46ch; }
+.capability-chapter-links { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
+.capability-chapter-links a { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.93rem; color: var(--navy-800); width: fit-content; }
+.capability-chapter-links a:hover { color: var(--gold-700); text-decoration: underline; }
+.capability-chapter-links .ic { width: 15px; height: 15px; color: var(--gold-600); flex-shrink: 0; }
+.capability-chapter-actions { margin-top: auto; }
+
+/* Establish & Comply — calm, structured, the smallest image of the three. */
+.capability-chapter--structured { grid-template-columns: minmax(220px,.62fr) minmax(0,1.38fr); }
+.capability-chapter--structured.capability-chapter--reverse { grid-template-columns: minmax(0,1.38fr) minmax(220px,.62fr); }
+.capability-chapter--structured .capability-chapter-body { padding: 34px 38px; }
+
+/* Run Your Finance Function — the largest, most prominent feature treatment. */
+.capability-chapter--feature { min-height: 380px; }
+.capability-chapter--feature .capability-chapter-photo img { min-height: 380px; }
+.capability-chapter--feature .capability-chapter-body { padding: 46px 50px 48px; }
+.capability-chapter--feature .capability-chapter-body h2 { font-size: clamp(1.6rem,2.6vw,2.1rem); }
+
+/* Advise & Report Better — typography-led technical authority, restrained
+   imagery: narrower image column, no icon badge, quieter shade. */
+.capability-chapter--technical { grid-template-columns: minmax(200px,.5fr) minmax(0,1.5fr); }
+.capability-chapter--technical.capability-chapter--reverse { grid-template-columns: minmax(0,1.5fr) minmax(200px,.5fr); }
+.capability-chapter--technical .capability-chapter-photo-shade { background: linear-gradient(180deg, rgba(10,31,58,.08), rgba(10,31,58,.46)); }
+.capability-chapter--technical .capability-chapter-body { padding: 38px 42px; }
+
+@media (max-width: 780px) {
+  .capability-chapter, .capability-chapter--reverse, .capability-chapter--structured, .capability-chapter--structured.capability-chapter--reverse, .capability-chapter--technical, .capability-chapter--technical.capability-chapter--reverse {
+    grid-template-columns: 1fr;
+  }
+  .capability-chapter--reverse .capability-chapter-photo, .capability-chapter--technical.capability-chapter--reverse .capability-chapter-photo { order: 0; }
+  .capability-chapter-photo, .capability-chapter--feature .capability-chapter-photo { min-height: 220px; }
+  .capability-chapter-photo img, .capability-chapter--feature .capability-chapter-photo img { min-height: 220px; aspect-ratio: 16/9; }
+  .capability-chapter-body, .capability-chapter--structured .capability-chapter-body, .capability-chapter--feature .capability-chapter-body, .capability-chapter--technical .capability-chapter-body { padding: 28px 24px 30px; }
+}
+
+/* Task 05: individual services beneath a chapter's shared editorial image —
+   typography-led .service-card entries (see serviceEntry() in ui.js), no
+   forced photo per service. */
+.service-entry-grid { margin-top: 30px; }
+
+/* Task 06: Industries master/detail explorer. Desktop: a compact selector
+   list (left) and a detail stage (right) side by side, matching the
+   requested "compact selector/list left, detail right" pattern instead of
+   a description-card grid with a full-width stage underneath. The list
+   (13 compact rows) is reliably taller than any one industry's detail
+   content, so the right column has real room to make its detail panel
+   sticky without ever looking broken (a grid item defaults to
+   align-items:stretch, so .industry-detail-stage's own box always matches
+   the taller list column's height — sticky is applied to its children,
+   which naturally sit shorter than that stretched box, giving them room
+   to stick). Mobile/tablet: single column, list above detail — selecting
+   an item still scrolls the detail into view immediately (client.js
+   selectIndustry/scrollElementIntoView, unchanged), so the selected
+   industry appears right away rather than requiring a scroll past the
+   remaining, unselected list items. */
+.industry-explorer { display:grid; grid-template-columns:minmax(260px,320px) 1fr; gap:32px; }
+.industry-list { display:flex; flex-direction:column; gap:8px; }
+.industry-detail-placeholder,.industry-detail-panel {
+  position:sticky; top:96px;
+  border-radius:16px; border:1px solid var(--border); padding:34px; background:linear-gradient(135deg,#fff 0%,var(--mist) 100%);
+}
+/* Task 03: a short transition confirming the selected-detail change,
+   without delaying content -- client.js still toggles [hidden] instantly
+   (so the new panel's content is immediately present/reachable, never
+   gated behind a wait), this only animates its own appearance. Removing
+   `hidden` (display:none -> block) always restarts a CSS animation on an
+   element, so no JS class-toggling is needed to replay this on every
+   selection, and the global prefers-reduced-motion override already
+   neutralizes animation-duration site-wide with no extra rule needed here. */
+.industry-detail-placeholder:not([hidden]), .industry-detail-panel:not([hidden]) {
+  animation: industry-detail-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes industry-detail-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
 .industry-detail-placeholder { text-align:center; }
 .industry-detail-placeholder h2 { max-width:650px; margin:6px auto 10px; font-size:1.55rem; }
 .industry-detail-placeholder p { max-width:650px; margin:0 auto; }
@@ -840,8 +962,12 @@ strong { color: var(--navy-900); }
 .industry-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:34px; padding-top:24px; border-top:1px solid var(--border); }
 .industry-detail-grid h3 { font-size:1rem; margin-bottom:12px; }
 .industry-detail-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
-@media (max-width:980px){ .industry-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
-@media (max-width:640px){ .industry-picker-grid{grid-template-columns:1fr}.industry-card{min-height:auto}.industry-detail-grid{grid-template-columns:1fr}.industry-detail-placeholder,.industry-detail-panel{padding:26px 22px} }
+@media (max-width:959px){
+  .industry-explorer { display:block; }
+  .industry-detail-stage { margin-top:28px; }
+  .industry-detail-placeholder,.industry-detail-panel { position:static; top:auto; }
+}
+@media (max-width:640px){ .industry-detail-grid{grid-template-columns:1fr}.industry-detail-placeholder,.industry-detail-panel{padding:26px 22px} }
 
 /* ---------- Batch 2B: final public composition + responsive polish ---------- */
 /* Break the homepage out of consecutive grey slabs: the Industries section is
@@ -874,9 +1000,6 @@ strong { color: var(--navy-900); }
 }
 
 @media (max-width: 640px) {
-  /* The 100+ badge is repeated in the evidence/stat row below the hero. Hiding
-     only this decorative duplicate keeps the phone first fold calm. */
-  .hero-float-badge { display: none; }
   .hero-art { max-width: min(100%, 300px); margin-inline: auto; }
   .trust-bar { display: grid; grid-template-columns: minmax(0, 1fr); }
   .trust-item { align-items: flex-start; }

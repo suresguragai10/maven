@@ -14,6 +14,12 @@ This is the visual source of truth for the August 2026 professional-quality pass
 
 Gold is an accent for emphasis, icons, key actions, and small proof details. It is not a default section background. Work Desk status colors remain semantic and are not introduced into public marketing sections.
 
+**Surface usage (Task 02)** — every section background on the public site should be a deliberate choice from exactly these four, never a one-off value:
+- **White** (`--white`) — the default page/card surface. Most sections.
+- **Navy** (`--navy-950`, via `.bg-navy`) — reserved for high-contrast emphasis bands (hero, CTA bands, the International showcase) — never more than one or two per page, or it stops reading as emphasis.
+- **Warm-neutral** (`--mist`/`--mist-dark`, via `.bg-mist`) — the quiet alternate-section background used to separate adjacent white sections without a hard border or a shadow; also `--gold-100` for small warm accents (badges, stat highlights), not full sections.
+- **Gold** — accent only, as above; a full gold section background does not occur anywhere on the site and should not be introduced.
+
 ## Typography
 
 - Display/headings: Source Serif 4, with Georgia/Times fallback.
@@ -49,6 +55,19 @@ Whitespace must communicate hierarchy. Do not keep a large empty grid column sim
 - `--shadow-lg`: rare hero/proof emphasis
 
 Avoid placing every section inside a shadowed card. Use cards only when the content is genuinely a discrete object.
+
+## Capability chapter component (Task 02)
+
+`capabilityChapter()` in `ui.js` — a shared primitive for grouping multiple service categories into one integrated composition (image + chapter label + heading + a short list of real service links + one CTA), instead of a detached photo next to a separate white card.
+
+Three variants, matching the three capability chapters and their distinct visual weights:
+- `structured` (Establish & Comply — Business Registration, Tax & Compliance, Payroll): calm, moderate image, plain entry point.
+- `feature` (Run Your Finance Function — Outsourced Accounting & Bookkeeping, Financial Management & Reporting): the largest, most prominent treatment.
+- `technical` (Advise & Report Better — Business Advisory, NFRS/IFRS Implementation & Financial Reporting): typography-led, most restrained image.
+
+**Wired into Home and Services (Tasks 04–05).** Home uses it as a linked teaser (image + heading + a short list of service links + one CTA per chapter). The full Services page (Task 05) uses it as a chapter intro with no links/cta — each chapter's real individual services follow immediately below as typography-led `serviceEntry()` cards (icon marker + title + tagline + full item list + "Discuss This Service" link, no forced photo per service), preserving every original `services.html#anchor`. The old one-photo-per-service `.service-editorial` row pattern was removed; `serviceCard()` no longer exists.
+
+Image slots use `object-fit: cover` over a flexible-height container, not a fixed crop baked into markup — swapping the current editorial/stock photography for real Maven office/team/working-session photography later only means changing the `image.file` path, never the component or its layout.
 
 ## Photography
 

@@ -67,7 +67,10 @@ test.describe('Firm Work search + isolation (Handbook Task 23)', () => {
 
   test('a pure filter search (no text) stays Client-only — no Firm Work section appears', async ({ page }) => {
     await loginAndGoto(page, 'Search', 'Global Search');
-    const statusSel = page.locator('select').first();
+    // Task 29: Search gained an explicit scope selector as the first
+    // control in the filter row -- Status is now the second select, not
+    // the first.
+    const statusSel = page.locator('select').nth(1);
     await statusSel.selectOption({ label: 'In Progress' });
     await page.waitForTimeout(300);
     await expect(page.getByText('Alpha VAT Return')).toBeVisible();

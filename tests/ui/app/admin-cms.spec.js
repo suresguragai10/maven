@@ -105,6 +105,50 @@ test.describe('Admin CMS — valid save flow', () => {
   });
 });
 
+// Task 12: international-accounting.html, virtual-cfo.html, nfrs-ifrs.html,
+// and resources.html were missing from SEO_PAGES entirely -- 4 of Task 12's
+// own priority pages had no CMS-editable title/description, only the
+// hardcoded build.js default. This proves the fix actually works through
+// the real admin UI (field exists, edit reaches the diff summary, saves),
+// not just that the array in admin.js now has more entries in it.
+test.describe('Admin CMS — SEO fields for previously-missing priority pages', () => {
+  test('International Accounting, Virtual CFO, NFRS/IFRS, and Resources each have an editable SEO title/description field', async ({ page }) => {
+    const mock = await installGithubMock(page);
+    await connect(page, mock);
+
+    const seoSection = page.locator('#sec-seo');
+    for (const label of ['International Accounting page', 'Virtual CFO page', 'NFRS / IFRS page', 'Resources page']) {
+      const card = seoSection.locator('.sub-card').filter({ has: page.locator('strong', { hasText: label }) });
+      await expect(card, `${label} SEO card should exist`).toHaveCount(1);
+      await expect(card.locator('input, textarea')).toHaveCount(2); // title + description
+    }
+  });
+
+  test('editing International Accounting\'s SEO title reaches the diff summary and saves', async ({ page }) => {
+    const mock = await installGithubMock(page);
+    await connect(page, mock);
+
+    const card = page.locator('#sec-seo .sub-card').filter({ has: page.locator('strong', { hasText: 'International Accounting page' }) });
+    const titleInput = fieldByExactLabel(page, card, 'Browser / Google Title').locator('input');
+    await titleInput.fill('Custom International Accounting Title — Test Override');
+
+    await page.locator('#saveBtn').click();
+
+    const confirmBanner = page.locator('#saveBanner.confirm');
+    await expect(confirmBanner).toBeVisible();
+    // The diff summary truncates long values, so match the exact CMS path
+    // it edited (proving this field really is seo["international-accounting.html"].title)
+    // plus the start of the new value, not the full untruncated string.
+    await expect(confirmBanner).toContainText('seo.international-accounting.html.title');
+    await expect(confirmBanner).toContainText('Custom International Accounting Title');
+    expect(mock.state.putCalls.length).toBe(0);
+
+    await confirmBanner.locator('button:has-text("Confirm & Save to GitHub")').click();
+    await expect(page.locator('#toast')).toContainText('Saved to GitHub');
+    expect(mock.state.putCalls.length).toBe(1);
+  });
+});
+
 test.describe('Admin CMS — GitHub conflict (stale SHA)', () => {
   test('a 409 on save shows a conflict-specific message and never overwrites blindly', async ({ page }) => {
     const mock = await installGithubMock(page, { conflictOnSave: true });

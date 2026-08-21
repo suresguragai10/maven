@@ -34,6 +34,7 @@ function buildFixtureContent(overrides) {
       formspreeId: '',
       siteUrl: '',
       cloudflareAnalyticsToken: '',
+      googleSiteVerification: '',
       social: { facebook: '', instagram: '', tiktok: '', linkedin: '' },
     },
     trustPoints: ['Point one'],

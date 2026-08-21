@@ -2,18 +2,21 @@ const { icon, stampMark } = require('./icons');
 const { esc, internalHref } = require('./escape');
 const data = require('./data');
 
+// file is the full /images/<file>.jpg path fragment (already including the
+// "card-" prefix the actual asset files use) — callers use it as-is, no
+// prefix is added anywhere else.
 const SERVICE_PHOTO_META = {
-  registration: { file: 'registration', alt: 'Business registration documents prepared for review' },
-  bookkeeping: { file: 'bookkeeping', alt: 'Accounting records and bookkeeping working papers' },
-  tax: { file: 'tax', alt: 'Tax and compliance documents arranged for review' },
-  payroll: { file: 'payroll', alt: 'Payroll records and employee payment documentation' },
-  reporting: { file: 'reporting', alt: 'Financial reports and management reporting documents' },
-  advisory: { file: 'advisory', alt: 'Business advisory notes and financial planning materials' },
-  'nfrs-ifrs': { file: 'reporting', alt: 'Financial reporting materials used for NFRS and IFRS support' },
+  registration: { file: 'card-registration', alt: 'Business registration documents prepared for review' },
+  bookkeeping: { file: 'card-bookkeeping', alt: 'Accounting records and bookkeeping working papers' },
+  tax: { file: 'card-tax', alt: 'Tax and compliance documents arranged for review' },
+  payroll: { file: 'card-payroll', alt: 'Payroll records and employee payment documentation' },
+  reporting: { file: 'card-reporting', alt: 'Financial reports and management reporting documents' },
+  advisory: { file: 'card-advisory', alt: 'Business advisory notes and financial planning materials' },
+  'nfrs-ifrs': { file: 'card-reporting', alt: 'Financial reporting materials used for NFRS and IFRS support' },
 };
 
 function servicePhotoMeta(cat) {
-  return SERVICE_PHOTO_META[cat.key] || { file: 'reporting', alt: cat.title + ' service supporting documents' };
+  return SERVICE_PHOTO_META[cat.key] || { file: 'card-reporting', alt: cat.title + ' service supporting documents' };
 }
 
 function button(label, href, variant = 'primary', extra = '') {
@@ -56,26 +59,76 @@ function bulletList(items, cls = 'stamp-list') {
   return `<ul class="${cls}">${items.map(i => `<li>${stampMark('stamp-sm')}<span>${esc(i)}</span></li>`).join('')}</ul>`;
 }
 
-function serviceCard(cat, index = 0) {
-  // Full Services page: use an editorial image/content row instead of
-  // repeating another generic bordered card grid. Existing approved Maven
-  // service imagery is reused locally (no third-party dependency). NFRS/IFRS
-  // intentionally shares the reporting image until a dedicated approved
-  // photo is supplied.
-  const photo = servicePhotoMeta(cat);
-  const reverse = index % 2 ? ' service-editorial--reverse' : '';
-  return `<article class="service-editorial reveal${reverse}" id="${esc(cat.key)}">
-    <div class="service-editorial-photo">
-      <img src="/images/card-${esc(photo.file)}.jpg" alt="${esc(photo.alt)}" loading="lazy" decoding="async">
-      <span class="service-editorial-photo-shade" aria-hidden="true"></span>
-      <span class="service-editorial-icon" aria-hidden="true">${icon(cat.icon)}</span>
+// Task 05: individual service entry within a Services-page capability
+// chapter — typography + a restrained icon marker (the same .service-icon
+// badge already used for internationalTile()/pages2,4,7 service tiles), not
+// a forced photo per service. The chapter it belongs to already carries the
+// one shared editorial image (see capabilityChapter() below); this keeps
+// each of the 7 real services fully described (tagline + full item list)
+// without repeating a detached photo box next to every one of them.
+// Task 16: two of the seven services (Outsourced Accounting & Bookkeeping,
+// NFRS/IFRS) have their own dedicated deep-dive page -- their entry's CTA
+// should go there, not skip straight to Contact like the other five
+// (which have no page of their own to link to). Callers pass an optional
+// { href, ctaLabel } override; the default stays "Discuss This Service" -> contact.html.
+function serviceEntry(cat, opts = {}) {
+  const href = opts.href || 'contact.html';
+  const ctaLabel = opts.ctaLabel || 'Discuss This Service';
+  return `<article class="service-card reveal" id="${esc(cat.key)}">
+    <div class="service-card-head">
+      <span class="service-icon">${icon(cat.icon)}</span>
+      <div>
+        <span class="service-letter">Category ${esc(cat.letter)}</span>
+        <h3>${esc(cat.title)}</h3>
+      </div>
     </div>
-    <div class="service-editorial-body">
-      <span class="service-letter">Category ${esc(cat.letter)}</span>
-      <h2>${esc(cat.title)}</h2>
-      <p class="service-tagline">${esc(cat.tagline)}</p>
-      ${bulletList(cat.items)}
-      <div class="service-editorial-actions"><a class="btn btn-outline btn-sm" href="${internalHref('contact.html')}">Discuss This Service</a></div>
+    <p class="service-tagline">${esc(cat.tagline)}</p>
+    ${bulletList(cat.items)}
+    <div style="margin-top:20px">${button(ctaLabel, href, 'outline', `aria-label="${esc(ctaLabel + ' — ' + cat.title)}"`)}</div>
+  </article>`;
+}
+
+// Task 02: the shared "capability chapter" primitive — one integrated
+// composition (image + chapter label + heading + a short list of real
+// service links + one CTA), built to combine multiple service categories
+// into a single feature-level story instead of one photo per category.
+// NOT wired into any page yet (see docs/ARCHITECTURE_MAP.md — that's
+// deliberately later, page-specific work); this only defines the
+// reusable piece and proves it renders correctly (test/ui-components.test.js).
+//
+// variant: 'structured' | 'feature' | 'technical' — matches the three
+// capability chapters (Establish & Comply / Run Your Finance Function /
+// Advise & Report Better) and their distinct visual weights; see the
+// .capability-chapter--* rules in styles.css for what each actually changes.
+// image: { file, alt } — file is an /images/<file>.jpg path fragment,
+// same convention as servicePhotoMeta(), so real photography can replace
+// the current editorial/stock image by swapping the file, never the markup.
+// links: [{ label, href }] — href should be a real internal anchor this
+// chapter groups (e.g. 'services.html#tax'), not a new destination.
+// cta: { label, href }
+function capabilityChapter({
+  variant, chapterLabel, title, text, image, links = [], cta, reverse = false, id,
+}) {
+  const modifier = variant ? ` capability-chapter--${esc(variant)}` : '';
+  const reverseClass = reverse ? ' capability-chapter--reverse' : '';
+  const idAttr = id ? ` id="${esc(id)}"` : '';
+  const linksHtml = links.length
+    ? `<ul class="capability-chapter-links">${links.map((l) => `<li><a href="${internalHref(l.href)}">${icon('chevronRight')}<span>${esc(l.label)}</span></a></li>`).join('')}</ul>`
+    : '';
+  const ctaHtml = cta
+    ? `<div class="capability-chapter-actions">${button(cta.label, cta.href, 'outline', 'aria-label="' + esc(cta.label + ' — ' + title) + '"')}</div>`
+    : '';
+  return `<article class="capability-chapter reveal${modifier}${reverseClass}"${idAttr}>
+    <div class="capability-chapter-photo">
+      <img src="/images/${esc(image.file)}.jpg" alt="${esc(image.alt)}" loading="lazy" decoding="async">
+      <span class="capability-chapter-photo-shade" aria-hidden="true"></span>
+    </div>
+    <div class="capability-chapter-body">
+      ${eyebrow(chapterLabel)}
+      <h2>${esc(title)}</h2>
+      ${text ? `<p class="capability-chapter-text">${esc(text)}</p>` : ''}
+      ${linksHtml}
+      ${ctaHtml}
     </div>
   </article>`;
 }
@@ -111,28 +164,24 @@ function industryBadge(ind, i) {
 // Richer version of industryBadge, for the dedicated Industries page only —
 // the homepage/About teasers stay as compact badges (no description) so this
 // doesn't reintroduce the crowding a fuller card would add there.
-// Click-to-expand: the short description is always visible; needs/howWeHelp
-// (the fuller detail from the source content, too much to show on every card
-// at once) reveal on click, same pattern as the FAQ/documents accordions but
-// wired independently (see .industry-card-toggle in client.js) since the
-// trigger here is a card footer, not a full-width question row.
+// Task 06: with 13 real industries, a grid of description-cards became a
+// "many-industry selection problem" in its own right (too tall to scan, and
+// the old design once expanded detail inside one grid card, which made the
+// whole row inherit the tallest card's height — see the git history for
+// that bug). Cards are now one compact selector row each (icon + name only;
+// the description still lives in the matching detail panel below, so no
+// content is lost, just not duplicated in the picker). Rich detail renders
+// in a dedicated stage next to (desktop) or after (mobile) this list —
+// never inside the list itself.
 function industryCard(ind, i) {
   const id = `industry-${i}`;
-  // The old design expanded detail inside one item of a three-column CSS
-  // grid. That made the entire row inherit the tallest card's height and
-  // produced the large empty white blocks visible in the reported bug.
-  // Cards are now stable selectors; rich detail renders in a dedicated
-  // full-width stage below the grid instead of changing one grid row's
-  // geometry.
-  return `<article class="industry-card reveal" id="${id}">
-    <span class="industry-card-icon">${icon(ind.icon)}</span>
-    <h2>${esc(ind.name)}</h2>
-    ${ind.description ? `<p>${esc(ind.description)}</p>` : ''}
-    <button type="button" class="industry-card-select" aria-expanded="false" aria-controls="detail-${id}" data-industry-index="${i}">
-      <span>View common needs &amp; support</span>
-      ${icon('arrowRight')}
+  return `<li class="industry-list-item">
+    <button type="button" class="industry-card reveal" id="${id}" aria-expanded="false" aria-controls="detail-${id}" data-industry-index="${i}">
+      <span class="industry-card-icon">${icon(ind.icon)}</span>
+      <span class="industry-card-name">${esc(ind.name)}</span>
+      ${icon('chevronRight', 'industry-card-chevron')}
     </button>
-  </article>`;
+  </li>`;
 }
 
 function industryDetail(ind, i) {
@@ -260,6 +309,6 @@ function trustBar(points) {
 }
 
 module.exports = {
-  button, eyebrow, sectionHead, pageHero, bulletList, serviceCard, valueCard, whyCard,
+  button, eyebrow, sectionHead, pageHero, bulletList, serviceEntry, capabilityChapter, valueCard, whyCard,
   industryBadge, industryCard, industryDetail, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow, servicePhotoMeta,
 };

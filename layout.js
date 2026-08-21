@@ -132,35 +132,40 @@ function renderFooter() {
         </div>`
     : '';
 
+  // Task 09: every one of these destinations is already fully reachable via
+  // the header's own dropdowns (see navStructure in data.js) -- Services'
+  // dropdown alone already lists all 7 individual service anchors plus
+  // every dedicated service page, and Resources'/International's dropdowns
+  // already mirror what used to be duplicated here in full. The footer no
+  // longer tries to be a second complete sitemap; it keeps company
+  // identity, essential contact, the small set of genuinely major routes,
+  // and the legal/resource links a visitor specifically expects to find in
+  // a footer (privacy policy chief among them) -- roughly 12-14 total
+  // links, not ~19. Nothing here is unreachable elsewhere: it's all still
+  // in the header nav and/or linked from within the relevant hub pages
+  // (services.html, resources.html, global-outsourcing.html).
   const companyLinks = [
     { href: 'about.html', label: 'About Maven' },
     { href: 'team.html', label: 'Our Team' },
     { href: 'industries.html', label: 'Industries' },
     { href: 'contact.html', label: 'Contact' },
-    data.isVisible('testimonials') ? { href: 'testimonials.html', label: 'Testimonials' } : null,
-  ].filter(Boolean);
+  ];
   const servicesLinks = [
     { href: 'services.html', label: 'All Services' },
     { href: 'outsourced-accounting.html', label: 'Outsourced Accounting — Nepal' },
-    { href: 'services.html#tax', label: 'Tax & Compliance' },
-    { href: 'services.html#reporting', label: 'Financial Management & Reporting' },
     { href: 'nfrs-ifrs.html', label: 'NFRS / IFRS Implementation' },
     { href: 'packages.html', label: 'Packages' },
   ];
   const internationalLinks = [
     { href: 'global-outsourcing.html', label: 'International Services' },
-    { href: 'international-accounting.html', label: 'International Accounting' },
     { href: 'virtual-cfo.html', label: 'Virtual CFO / Management Reporting' },
   ];
   const resourceLinks = [
     { href: 'resources.html', label: 'Resources' },
     { href: 'documents-needed.html', label: 'Documents Checklist' },
-    { href: 'calculators.html', label: 'Financial Calculators' },
-    { href: 'useful-links.html', label: 'Useful Links' },
     { href: 'faq.html', label: 'FAQ' },
-    data.isVisible('blog') ? { href: 'blog.html', label: 'Blog' } : null,
     { href: 'privacy.html', label: 'Privacy Policy' },
-  ].filter(Boolean);
+  ];
 
   return `<footer class="site-footer">
     <div class="container footer-grid">
@@ -212,11 +217,16 @@ function jsonLd() {
     '@type': 'AccountingService',
     name: b.legalName,
     description: 'Accounting, tax, business registration, payroll, financial management and reporting, and compliance consultancy services for startups, SMEs, and growing businesses across Nepal.',
+    // Task 13: streetAddress now also carries addressNote (the real
+    // landmark shown on the actual Contact page, e.g. "Eyeplex Mall") —
+    // it was previously only in addressLine, so structured data was less
+    // complete than the visible page. Both fields are the same
+    // CMS-editable brand data used everywhere else; nothing invented.
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Kathmandu',
       addressCountry: 'NP',
-      streetAddress: b.addressLine,
+      streetAddress: [b.addressNote, b.addressLine].filter((v) => v && String(v).trim()).join(', '),
     },
     areaServed: 'Nepal',
     telephone: b.mobile,
@@ -231,7 +241,12 @@ function jsonLd() {
       closes: '17:00',
     },
   };
-  if (base) { obj.url = base + '/'; obj.image = base + '/images/og-image.png'; }
+  // Task 13: a stable @id ties every page's AccountingService block to the
+  // same one entity (a "#organization" fragment is a common, standard
+  // convention -- it need not resolve to a real fetchable resource), so
+  // Google/other consumers can recognize this as one coherent business
+  // across the whole site instead of independent per-page graphs.
+  if (base) { obj['@id'] = base + '/#organization'; obj.url = base + '/'; obj.image = base + '/images/og-image.png'; }
   if (sameAs.length) obj.sameAs = sameAs;
   // Every value here ultimately traces back to admin-entered CMS text (brand
   // name, address, social URLs). A value containing "</script>" would close
@@ -248,6 +263,44 @@ function siteBase() {
   return u ? u.replace(/\/+$/, '') : '';
 }
 
+// Task 15: BreadcrumbList structured data must match visible content
+// exactly -- breadcrumbNav() (the visible trail) and breadcrumbJsonLd()
+// (the matching schema) are both built from the same `items` array passed
+// in by the caller, so there is no way for one to drift from the other.
+// Only wired up for pages that are genuinely nested under a hub in the
+// real nav hierarchy (see navStructure in data.js) -- top-level pages
+// don't get one, since "Home > About" adds no real navigation/hierarchy
+// value there. Each item is { label, href }; the last item is the current
+// page (rendered as plain text, not a self-link, but still included with
+// its own href in the JSON-LD, which is standard BreadcrumbList practice).
+function breadcrumbNav(items) {
+  if (!items || !items.length) return '';
+  const lis = items.map((item, i) => {
+    const isLast = i === items.length - 1;
+    const inner = isLast
+      ? `<span aria-current="page">${esc(item.label)}</span>`
+      : `<a href="${internalHref(item.href)}">${esc(item.label)}</a>`;
+    return `<li${isLast ? ' class="is-current"' : ''}>${inner}</li>`;
+  }).join('');
+  return `<nav class="breadcrumb-nav" aria-label="Breadcrumb"><div class="container"><ol>${lis}</ol></div></nav>`;
+}
+
+function breadcrumbJsonLd(items) {
+  const base = siteBase();
+  if (!items || !items.length || !base) return '';
+  const obj = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.label,
+      item: base + internalHref(item.href),
+    })),
+  };
+  return `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`;
+}
+
 // Cloudflare Web Analytics beacon — only emitted once brand.cloudflareAnalyticsToken
 // is set (via the admin panel), so nothing loads until it's actually configured.
 function analyticsScript() {
@@ -256,7 +309,23 @@ function analyticsScript() {
   return `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token })}'></script>`;
 }
 
-function renderPage({ activeKey, file, title, description, bodyHtml, cssFile, jsFile, extraHead = '', noindex = false }) {
+// Task 19: Google Search Console's HTML-tag verification method. This value
+// is NOT a secret -- Google's own docs say it's designed to sit in public
+// page source (view-source already shows it to anyone) -- it only proves
+// "whoever can edit this site's HTML owns it," it grants no access to
+// anything on its own. Still owner-configured via the CMS rather than
+// hardcoded, same pattern as cloudflareAnalyticsToken above, so it's never
+// baked into the repo for a domain this codebase doesn't actually run on.
+// DNS TXT verification (done entirely at the DNS provider, no code
+// involved) is the preferred method -- see docs/SEARCH_CONSOLE_CHECKLIST.md
+// -- this tag exists as the safe fallback when DNS access isn't available.
+function googleSiteVerificationTag() {
+  const token = (data.brand.googleSiteVerification || '').trim();
+  if (!token) return '';
+  return `<meta name="google-site-verification" content="${esc(token)}">`;
+}
+
+function renderPage({ activeKey, file, title, description, bodyHtml, cssFile, jsFile, extraHead = '', noindex = false, breadcrumbs = null, heroImage = null }) {
   const base = siteBase();
   // Canonicalises to the extensionless path Cloudflare actually serves (it
   // redirects *.html -> extensionless by default) — index.html -> "/",
@@ -266,6 +335,16 @@ function renderPage({ activeKey, file, title, description, bodyHtml, cssFile, js
   const canonicalTag = pageUrl ? `<link rel="canonical" href="${pageUrl}">` : '';
   const ogUrlTag = pageUrl ? `<meta property="og:url" content="${pageUrl}">` : '';
   const robotsTag = noindex ? '<meta name="robots" content="noindex, nofollow">' : '';
+  // Task 18: measured (Playwright + CDP, throttled mobile) that every page's
+  // hero background photo is the actual LCP element -- Home via the
+  // external stylesheet's .hero rule, sub-pages via pageHero()'s inline
+  // style. Neither is discoverable by the browser as "high priority" by
+  // default the way a plain <img fetchpriority=high> would be, so a
+  // same-URL preload hint closes that gap without moving the image out of
+  // CSS (which works and isn't being changed). Only emitted when the
+  // caller actually knows this page's hero image (see heroImage in each
+  // build.js pages[] entry).
+  const heroPreloadTag = heroImage ? `<link rel="preload" as="image" href="${esc(heroImage)}" fetchpriority="high">` : '';
   // Social share preview image — only emitted once a site URL is set, since
   // og:image/twitter:image need a real absolute URL to be fetchable.
   const ogImageUrl = base ? `${base}/images/og-image.png` : '';
@@ -284,18 +363,23 @@ function renderPage({ activeKey, file, title, description, bodyHtml, cssFile, js
 <meta name="description" content="${esc(description)}">
 <meta name="theme-color" content="#102A4C">
 <link rel="icon" type="image/png" href="/images/logo-icon.png">
+${heroPreloadTag}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 ${robotsTag}
 ${canonicalTag}
+${googleSiteVerificationTag()}
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="${esc(data.brand.shortName)}">
 ${ogUrlTag}${ogImageTags}
 <meta name="twitter:card" content="${ogImageUrl ? 'summary_large_image' : 'summary'}">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(description)}">
 ${jsonLd()}
+${breadcrumbJsonLd(breadcrumbs)}
 ${extraHead}
 <link rel="stylesheet" href="/${cssFile}">
 ${analyticsScript()}
@@ -304,6 +388,7 @@ ${analyticsScript()}
 <a class="skip-link" href="#main">Skip to content</a>
 ${renderHeader(activeKey)}
 <main id="main">
+${breadcrumbNav(breadcrumbs)}
 ${bodyHtml}
 </main>
 ${renderFooter()}

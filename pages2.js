@@ -1,22 +1,82 @@
 const data = require('./data');
 const { icon, stampMark } = require('./icons');
 const {
-  button, sectionHead, pageHero, serviceCard, packageCard, ctaBand,
+  button, sectionHead, pageHero, serviceEntry, capabilityChapter, servicePhotoMeta, packageCard, ctaBand,
 } = require('./ui');
 const { esc, internalHref } = require('./escape');
 
+// Task 16: Outsourced Accounting & Bookkeeping and NFRS/IFRS each have their
+// own dedicated deep-dive page -- their entry's CTA should go there instead
+// of skipping straight to Contact, so the Services page actually connects
+// to those specialist pages in its own body content, not only via the
+// chapter-level image composition above each entry group.
+const SERVICE_DEEP_LINKS = {
+  bookkeeping: { href: 'outsourced-accounting.html', ctaLabel: 'Explore Outsourced Accounting' },
+  'nfrs-ifrs': { href: 'nfrs-ifrs.html', ctaLabel: 'Explore NFRS / IFRS Support' },
+};
+
+// Task 05: one chapter intro (shared editorial image + copy, via the same
+// capabilityChapter() primitive Home uses) followed by the chapter's real
+// individual services as typography-led entries — replaces the old
+// seven-row repeated photo-left/photo-right pattern. Every service keeps
+// its own anchor, full item list and "Discuss This Service" link; only the
+// per-row photo is gone (each chapter already carries one editorial image).
+function serviceChapterSection({ variant, bg, reverse, id, chapterLabel, title, text, image, categories }) {
+  return `<section class="section-pad${bg ? ' ' + bg : ''}">
+    <div class="container">
+      ${capabilityChapter({ variant, reverse, id, chapterLabel, title, text, image })}
+      <div class="grid grid-auto service-entry-grid">
+        ${categories.map((cat) => serviceEntry(cat, SERVICE_DEEP_LINKS[cat.key])).join('')}
+      </div>
+    </div>
+  </section>`;
+}
+
 function services() {
   const h = data.pageHeader('services');
+  const byKey = (key) => data.serviceCategories.find((c) => c.key === key);
+  const registration = byKey('registration');
+  const tax = byKey('tax');
+  const payroll = byKey('payroll');
+  const bookkeeping = byKey('bookkeeping');
+  const reporting = byKey('reporting');
+  const advisory = byKey('advisory');
+  const nfrsIfrs = byKey('nfrs-ifrs');
+
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/services-hero-bg.jpg')}
 
-  <section class="section-pad">
-    <div class="container">
-      <div class="service-editorial-list">
-        ${data.serviceCategories.map((cat, i) => serviceCard(cat, i)).join('')}
-      </div>
-    </div>
-  </section>
+  ${serviceChapterSection({
+    variant: 'structured',
+    id: 'establish-and-comply',
+    chapterLabel: 'Establish & Comply',
+    title: 'A solid legal and compliance foundation',
+    text: `${registration.tagline} ${tax.tagline} ${payroll.tagline}`,
+    image: servicePhotoMeta(registration),
+    categories: [registration, tax, payroll],
+  })}
+
+  ${serviceChapterSection({
+    variant: 'feature',
+    reverse: true,
+    bg: 'bg-mist',
+    id: 'run-your-finance-function',
+    chapterLabel: 'Run Your Finance Function',
+    title: 'Outsourced accounting, run like an in-house finance team',
+    text: `${bookkeeping.tagline} ${reporting.tagline}`,
+    image: servicePhotoMeta(bookkeeping),
+    categories: [bookkeeping, reporting],
+  })}
+
+  ${serviceChapterSection({
+    variant: 'technical',
+    id: 'advise-and-report-better',
+    chapterLabel: 'Advise & Report Better',
+    title: 'Guidance and reporting that grow with your business',
+    text: `${advisory.tagline} And as reporting needs become more complex — for lenders, investors, or growth — structured NFRS / IFRS implementation support.`,
+    image: servicePhotoMeta(advisory),
+    categories: [advisory, nfrsIfrs],
+  })}
 
   <section class="section-pad-sm bg-mist">
     <div class="container" style="max-width:820px">
@@ -110,11 +170,12 @@ function globalOutsourcing() {
       <div class="grid grid-2">
         ${(hub.tiles || []).map(internationalTile).join('')}
       </div>
+      <p class="text-center reveal" style="max-width:760px;margin:32px auto 0">Remote Accounting Support covers the day-to-day work of keeping your books accurate — bookkeeping, reconciliations, and monthly reporting. Virtual CFO support builds on that foundation with higher-skill, knowledge-process (KPO) work — turning accounting records into budgets, forecasts, and management reporting for decisions, not just compliance. Most engagements start with Remote Accounting Support and expand into Virtual CFO support once the accounting foundation is reliable.</p>
     </div>
   </section>
 
   ${ctaBand({
-    eyebrow: 'International Services',
+    eyebrow: 'Global Finance Delivery',
     title: 'Ready to build the right finance support for your business?',
     subtitle: hub.cta,
     buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about international accounting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],

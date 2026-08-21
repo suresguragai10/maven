@@ -35,11 +35,24 @@ async function loginToFeed(page, user, tables) {
   await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.locator('#app')).not.toHaveClass(/hidden/);
-  await page.getByRole('button', { name: 'Recent Updates' }).click();
-  await expect(page.getByRole('heading', { name: 'Since Last Seen' })).toBeVisible();
+  // Task 22: this feed is a page-level tab under the "Firm Work" sidebar
+  // destination, not its own sidebar button. Task 28: the tab/heading
+  // were renamed from "Recent Updates"/"Since Last Seen" to "Catch-Up"/
+  // "Firm Work Catch-Up" -- clearer scope, and no more "since last seen"
+  // phrasing that read like presence tracking.
+  await page.getByRole('button', { name: 'Firm Work', exact: true }).click();
+  await page.getByRole('tab', { name: 'Catch-Up' }).click();
+  await expect(page.getByRole('heading', { name: 'Firm Work Catch-Up' })).toBeVisible();
 }
 
 test.describe('Since Last Seen (Handbook Task 22)', () => {
+  test('Task 28: the intro copy is explicit that this tracks what YOU reviewed, not when anyone was online', async ({ page }) => {
+    await loginToFeed(page, EMPLOYEE_A, { work_items: [] });
+    const intro = page.locator('.card').first();
+    await expect(intro).toContainText('not a record of when anyone was online');
+    await expect(intro).toContainText('Firm Work only');
+  });
+
   test('shows nothing when there is no Firm Work activity since last seen', async ({ page }) => {
     const errors = [];
     page.on('pageerror', (err) => errors.push(err.message));
@@ -100,8 +113,14 @@ test.describe('Since Last Seen (Handbook Task 22)', () => {
     // queries even fire (they're awaited after), so waiting only for the
     // heading races the request listener below. Wait for the specific
     // requests themselves instead of a fixed timeout or the heading.
-    const activityReqPromise = page.waitForRequest((req) => req.url().includes('/rest/v1/work_activity'));
-    const commentsReqPromise = page.waitForRequest((req) => req.url().includes('/rest/v1/work_comments'));
+    // Task 22: getting to this feed now passes through the Firm Work list
+    // page first (Recent Updates is a tab under Firm Work, not its own
+    // sidebar item), which fires its own, differently-filtered
+    // work_comments/work_activity requests — so the predicate has to
+    // match the exclusion filter itself, not just the table name, or it
+    // can resolve on the wrong, earlier request.
+    const activityReqPromise = page.waitForRequest((req) => req.url().includes('/rest/v1/work_activity') && decodeURIComponent(req.url()).includes('actor_id=neq.'));
+    const commentsReqPromise = page.waitForRequest((req) => req.url().includes('/rest/v1/work_comments') && decodeURIComponent(req.url()).includes('author_id=neq.'));
     await loginToFeed(page, EMPLOYEE_A, { work_items: [item], work_activity: activity });
     const [activityReq, commentsReq] = await Promise.all([activityReqPromise, commentsReqPromise]);
 
@@ -139,7 +158,7 @@ test.describe('Since Last Seen (Handbook Task 22)', () => {
     // params, so after re-render the (now-stale) activity row is still
     // technically present in this mock -- what matters here is that the
     // RPC call itself fired and the page didn't error out re-rendering.
-    await expect(page.getByRole('heading', { name: 'Since Last Seen' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Firm Work Catch-Up' })).toBeVisible();
   });
 });
 

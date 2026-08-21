@@ -205,4 +205,37 @@ test.describe('Firm Work detail page — async handoff (Handbook Task 18)', () =
     await expect(pageB.locator('#toast')).toContainText('Next action updated');
     await contextB.close();
   });
+
+  test('Task 27: Status appears in the top-summary meta grid alongside the other at-a-glance fields', async ({ page }) => {
+    const item = firmItem({ status: 'blocked', blocker_reason: 'Waiting on ISP callback' });
+    await loginAndOpenDetail(page, ADMIN, item);
+    const card = page.locator('.card').first();
+    const statusMeta = card.locator('.meta-item').filter({ hasText: 'Status' });
+    await expect(statusMeta).toContainText('Blocked');
+  });
+
+  test('Task 27: the top summary shows a "Latest Update" preview before the long Checklist/Activity history', async ({ page }) => {
+    const item = firmItem();
+    const comment = { id: 'cm1', work_item_id: item.id, author_id: EMPLOYEE_A.id, body: 'Called the ISP, waiting on a callback tomorrow.', update_type: 'progress', created_at: '2026-08-12T09:00:00Z' };
+    await loginAndOpenDetail(page, ADMIN, item, { work_comments: [comment] });
+
+    const topCard = page.locator('.card').first();
+    const latestUpdateBox = topCard.locator('.action-box').filter({ hasText: 'Latest Update' });
+    await expect(latestUpdateBox).toContainText('Called the ISP, waiting on a callback tomorrow.');
+    await expect(latestUpdateBox).toContainText('Employee A');
+
+    // It's positioned in the TOP summary card, i.e. before the Checklist
+    // card further down the page -- the actual "next action before long
+    // history" ordering this task asks for.
+    const checklistCard = page.locator('.card').filter({ hasText: 'Checklist' });
+    const latestBox = await latestUpdateBox.boundingBox();
+    const checklistBox = await checklistCard.boundingBox();
+    expect(latestBox.y).toBeLessThan(checklistBox.y);
+  });
+
+  test('Task 27: no Latest Update preview appears when there are no updates yet', async ({ page }) => {
+    const item = firmItem();
+    await loginAndOpenDetail(page, ADMIN, item);
+    await expect(page.locator('.action-box').filter({ hasText: 'Latest Update' })).toHaveCount(0);
+  });
 });

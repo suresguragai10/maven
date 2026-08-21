@@ -14,6 +14,16 @@ const { calculators } = require('./pages5');
 const { team, testimonials, privacy, notFound } = require('./pages6');
 const { loadPosts } = require('./blog');
 
+// Task 15: breadcrumb chains for pages genuinely nested under a hub in the
+// real nav hierarchy (see navStructure in data.js) -- parent labels match
+// the header nav's own top-level labels exactly, so the breadcrumb never
+// says something different than the nav does for the same destination.
+const HOME_CRUMB = { label: 'Home', href: 'index.html' };
+const SERVICES_CRUMB = { label: 'Services', href: 'services.html' };
+const INTERNATIONAL_CRUMB = { label: 'International', href: 'global-outsourcing.html' };
+const RESOURCES_CRUMB = { label: 'Resources', href: 'resources.html' };
+const ABOUT_CRUMB = { label: 'About', href: 'about.html' };
+
 const outDirs = [path.join(__dirname, 'dist')];
 outDirs.forEach((d) => fs.mkdirSync(d, { recursive: true }));
 
@@ -75,103 +85,150 @@ function faqJsonLd() {
 const pages = [
   {
     file: 'index.html', activeKey: 'home', bodyHtml: home(),
-    // Kept to ~58/152 chars respectively — Google truncates titles around
-    // ~60 chars and descriptions around ~155-160. An earlier version of
-    // this ran 102/220 chars (added when "Financial Management" was folded
-    // into the site's positioning) and would have been cut off with "..."
-    // in search results.
-    title: `${data.brand.shortName} | Accounting, Tax & Financial Management`,
+    // Task 12: added "in Nepal" -- the homepage title previously carried no
+    // explicit local signal at all (the meta description did), despite
+    // Nepal/local being the site's #1 search intent (see docs/SEO_INTENT_MAP.md
+    // §1). Still one clear, human phrase, not a keyword list; description
+    // stays under Google's ~155-160 char truncation point.
+    title: `${data.brand.shortName} | Accounting, Tax & Financial Management in Nepal`,
     description: `${data.brand.legalName} provides accounting, tax, compliance, payroll, and financial management support for startups and SMEs across Nepal.`,
+    // Task 18: measured (real Playwright + CDP run, throttled mobile) that
+    // this hero photo is the actual LCP element on every page it appears
+    // on -- see docs/PERFORMANCE_AUDIT.md. heroImage triggers a matching
+    // <link rel=preload> in layout.js so the browser starts fetching it
+    // immediately instead of only discovering it once the CSS is parsed.
+    heroImage: '/images/hero-bg.jpg',
   },
   {
     file: 'about.html', activeKey: 'about', bodyHtml: about(),
     title: 'About Maven Consultancy | Business Consultancy in Kathmandu, Nepal',
     description: 'Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy providing business setup, accounting, tax, compliance, and advisory services.',
+    heroImage: '/images/about-hero-bg.jpg',
   },
   {
     file: 'services.html', activeKey: 'services', bodyHtml: services(),
     title: 'Accounting, Tax, Registration & Compliance Services in Nepal | Maven Consultancy',
     description: 'Business registration, PAN/VAT registration, bookkeeping, tax and compliance support, payroll, financial management and reporting, and business advisory services in Nepal.',
+    heroImage: '/images/services-hero-bg.jpg',
   },
   {
     file: 'outsourced-accounting.html', activeKey: 'outsourced-accounting', bodyHtml: outsourcedAccounting(),
     title: 'Outsourced Accounting Services in Nepal | Maven Consultancy',
     description: 'Outsourced bookkeeping, tax, payroll, and compliance support for growing businesses in Nepal — a practical alternative to hiring a full-time accountant.',
+    breadcrumbs: [HOME_CRUMB, SERVICES_CRUMB, { label: 'Outsourced Accounting', href: 'outsourced-accounting.html' }],
+    heroImage: '/images/outsourced-accounting-hero-bg.jpg',
   },
   {
     file: 'global-outsourcing.html', activeKey: 'global-outsourcing', bodyHtml: globalOutsourcing(),
     title: 'International Accounting & Finance Support | Maven Consultancy',
     description: 'Outsourced accounting, bookkeeping, and Virtual CFO / management reporting support for international businesses and accounting firms, from a Kathmandu-based team.',
+    heroImage: '/images/global-outsourcing-hero-bg.jpg',
   },
   {
+    // Task 12 (following the Task 10 finding in docs/SEO_INTENT_MAP.md §3):
+    // this page's title used to open with "International Outsourced
+    // Accounting," which read as a near-duplicate of global-outsourcing.html's
+    // "International Accounting & Finance Support" -- the two are meant to be
+    // hub (broad) vs. spoke (this page's actual, narrower job: day-to-day
+    // bookkeeping/reconciliation). The description already led with
+    // "bookkeeping, reconciliation" and needed no change; only the title did.
     file: 'international-accounting.html', activeKey: 'international-accounting', bodyHtml: internationalAccounting(),
-    title: 'International Outsourced Accounting & Bookkeeping | Maven Consultancy',
+    title: 'International Bookkeeping & Reconciliation Services | Maven Consultancy',
     description: 'Remote bookkeeping, reconciliation, accounts payable/receivable, and monthly financial reporting support for international businesses and accounting firms.',
+    breadcrumbs: [HOME_CRUMB, INTERNATIONAL_CRUMB, { label: 'International Accounting', href: 'international-accounting.html' }],
+    heroImage: '/images/global-outsourcing-hero-bg.jpg', // shared with the hub page -- deliberate, see internationalAccounting()
   },
   {
     file: 'virtual-cfo.html', activeKey: 'virtual-cfo', bodyHtml: virtualCfo(),
     title: 'Virtual CFO & Management Reporting | Maven Consultancy',
     description: 'Monthly management reporting, cash-flow forecasting, budgeting, KPI reporting, and scenario support for growing businesses — without a full-time senior finance hire.',
+    breadcrumbs: [HOME_CRUMB, INTERNATIONAL_CRUMB, { label: 'Virtual CFO', href: 'virtual-cfo.html' }],
+    heroImage: '/images/card-advisory.jpg',
   },
   {
     file: 'nfrs-ifrs.html', activeKey: 'nfrs-ifrs', bodyHtml: nfrsIfrs(),
     title: 'NFRS / IFRS Implementation & Financial Reporting Support | Maven Consultancy',
     description: 'Structured NFRS / IFRS implementation, financial statement preparation, and technical accounting support for businesses transitioning to or reporting under NFRS / IFRS in Nepal.',
+    breadcrumbs: [HOME_CRUMB, SERVICES_CRUMB, { label: 'NFRS / IFRS Implementation', href: 'nfrs-ifrs.html' }],
+    heroImage: '/images/card-reporting.jpg',
   },
   {
     file: 'packages.html', activeKey: 'packages', bodyHtml: packages(),
     title: 'Accounting & Compliance Packages | Maven Consultancy Nepal',
     description: 'Startup Setup, Monthly Compliance, and Business Growth packages for accounting, tax, and compliance support in Nepal. Custom quotes after a short review.',
+    breadcrumbs: [HOME_CRUMB, SERVICES_CRUMB, { label: 'Packages', href: 'packages.html' }],
+    heroImage: '/images/packages-hero-bg.jpg',
   },
   {
     file: 'documents-needed.html', activeKey: 'documents-needed', bodyHtml: documentsNeeded(),
     title: 'Documents Checklist for Registration, PAN/VAT & Accounting | Maven Consultancy',
     description: 'General document checklists for company registration, PAN/VAT registration, monthly accounting, tax clearance, and project reports in Nepal.',
+    breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Documents Checklist', href: 'documents-needed.html' }],
+    heroImage: '/images/documents-needed-hero-bg.jpg',
   },
   {
     file: 'industries.html', activeKey: 'industries', bodyHtml: industries(),
     title: 'Industries We Serve Across Nepal | Maven Consultancy',
     description: 'Maven supports startups, SMEs, traders, restaurants, service companies, construction, online businesses, freelancers, schools, NGOs, and more across Nepal.',
+    heroImage: '/images/industries-hero-bg.jpg',
   },
   {
     file: 'resources.html', activeKey: 'resources', bodyHtml: resources(),
     title: 'Resources — Guides, Calculators & Reference Links | Maven Consultancy',
     description: 'Document checklists, financial calculators, useful government links, and FAQs for businesses in Nepal — curated by Maven Consultancy.',
+    // No heroImage: resources() uses a plain navy pageHero with no photo.
   },
   {
     file: 'useful-links.html', activeKey: 'useful-links', bodyHtml: usefulLinks(),
     title: 'Useful Links — Nepal Government Portals | Maven Consultancy',
     description: 'Official Nepal government portals for tax (IRD), company registration (OCR), social security (SSF), and banking (NRB) — curated by Maven Consultancy.',
+    breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Useful Links', href: 'useful-links.html' }],
+    heroImage: '/images/useful-links-hero-bg.jpg',
   },
   {
     file: 'calculators.html', activeKey: 'calculators', bodyHtml: calculators(),
     title: 'Free Financial Calculators — EMI, Salary Tax & VAT Nepal | Maven Consultancy',
     description: 'Free online calculators for Nepal: loan EMI calculator, salary income tax calculator with FY 2082/83 and 2083/84 slabs, and 13% VAT calculator.',
+    breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Financial Calculators', href: 'calculators.html' }],
+    heroImage: '/images/calculators-hero-bg.jpg',
   },
   {
     file: 'faq.html', activeKey: 'faq', bodyHtml: faq(), extraHead: faqJsonLd(),
     title: 'Frequently Asked Questions | Maven Consultancy Services',
     description: 'Answers about Maven Consultancy Services Pvt. Ltd. — accounting, tax, compliance, pricing, coverage across Nepal, and data confidentiality.',
+    breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'FAQ', href: 'faq.html' }],
+    heroImage: '/images/faq-hero-bg.jpg',
   },
   {
+    // Task 13: title/description used to hardcode "New Baneshwor, Kathmandu,
+    // Nepal" as literal text while the page body itself already pulls the
+    // office address from data.brand.addressLine (CMS-editable) -- a real
+    // NAP-drift risk if the owner ever updates the address via the admin
+    // panel without knowing this string also needed a manual edit. Both now
+    // read from the same source as the rest of the site.
     file: 'contact.html', activeKey: 'contact', bodyHtml: contact(),
-    title: 'Contact Maven Consultancy | New Baneshwor, Kathmandu, Nepal',
-    description: 'Contact Maven Consultancy Services Pvt. Ltd. in New Baneshwor, Kathmandu for accounting, tax, registration, and compliance support across Nepal.',
+    title: `Contact ${data.brand.shortName} | ${data.brand.addressLine}`,
+    description: `Contact ${data.brand.legalName} in ${data.brand.addressLine} for accounting, tax, registration, and compliance support across Nepal.`,
+    heroImage: '/images/contact-hero-bg.jpg',
   },
   {
     file: 'team.html', activeKey: 'team', bodyHtml: team(),
     title: 'Our Team | Maven Consultancy Services Nepal',
     description: 'Meet the team behind Maven Consultancy Services Pvt. Ltd. — practical accounting, tax, and compliance support for businesses across Nepal.',
+    breadcrumbs: [HOME_CRUMB, ABOUT_CRUMB, { label: 'Our Team', href: 'team.html' }],
+    heroImage: '/images/team-hero-bg.jpg',
   },
   {
     file: 'testimonials.html', activeKey: 'testimonials', bodyHtml: testimonials(),
     title: 'Client Testimonials | Maven Consultancy Services Nepal',
     description: 'Feedback from businesses supported by Maven Consultancy Services Pvt. Ltd. across Nepal.',
+    // No heroImage: this page is hidden/noindexed, and pageHero() here is called with no bg photo anyway.
   },
   {
     file: 'privacy.html', activeKey: 'privacy', bodyHtml: privacy(),
     title: 'Privacy Policy | Maven Consultancy Services Nepal',
     description: 'How Maven Consultancy Services Pvt. Ltd. collects, uses, and protects the information you share through this website.',
+    heroImage: '/images/privacy-hero-bg.jpg',
   },
 ];
 
@@ -225,6 +282,8 @@ for (const p of pages) {
     jsFile,
     extraHead: p.extraHead || '',
     noindex,
+    breadcrumbs: p.breadcrumbs || null,
+    heroImage: p.heroImage || null,
   });
   outDirs.forEach((d) => fs.writeFileSync(path.join(d, p.file), html, 'utf8'));
   // Blog posts have a real publish date to use as <lastmod>. Everything else

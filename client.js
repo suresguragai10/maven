@@ -191,10 +191,11 @@
   });
 
   // ---- Industries master/detail selector ----
-  // Detail no longer expands inside a CSS-grid card. A single full-width
-  // stage below the card grid prevents the tall-card/empty-sibling bug and
-  // keeps scanning stable on desktop and mobile.
-  var industrySelectButtons = document.querySelectorAll('.industry-card-select');
+  // Task 06: a compact selector list (left on desktop, above on mobile)
+  // plus a separate detail stage (right on desktop, sticky; below on
+  // mobile) — detail never expands inside the list itself, so selecting
+  // one industry can't push the list around or stretch a neighbouring row.
+  var industrySelectButtons = document.querySelectorAll('.industry-card[data-industry-index]');
   var industryDetails = document.querySelectorAll('[data-industry-detail]');
   var industryPlaceholder = document.getElementById('industry-detail-placeholder');
   function selectIndustry(index, shouldScroll) {
@@ -356,7 +357,12 @@
   }
 
   // ---- Scroll reveal ----
-  var revealEls = document.querySelectorAll('.reveal');
+  // Task 03: .reveal-stagger groups (see styles.css) are observed exactly
+  // like .reveal -- the group itself gets is-visible on threshold-cross,
+  // and CSS nth-child transition-delay does the actual staggering of its
+  // direct children. No separate JS path, so the same fail-open/reduced-
+  // motion handling below covers both without any special-casing.
+  var revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
   if (revealEls.length) {
     var revealImmediately = function () {
       document.documentElement.classList.remove('reveal-enabled');

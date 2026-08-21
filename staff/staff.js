@@ -161,6 +161,8 @@
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04z"/>',
     briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="3" y1="13" x2="21" y2="13"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    menu: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
+    close: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -308,9 +310,24 @@
     }
   });
 
+  // Task 35: every field() call site across this entire app (hundreds of
+  // them, every modal and every filter row) used to produce a <label>
+  // that was only a visual sibling of its input -- no `for`/`id`
+  // relationship, so assistive tech had no guaranteed way to announce
+  // the label as the input's accessible name even though it looked
+  // correctly associated on screen. One fix here covers the whole app.
+  // The one call site that passes something other than a real form
+  // control (Templates' checklist editor, a <div> wrapper) just gets an
+  // inert `for` attribute -- harmless, not a regression from before.
+  var fieldIdCounter = 0;
   function field(labelText, inputEl) {
     var wrap = el('div', 'f');
     var label = el('label'); label.textContent = labelText;
+    if (!inputEl.id) {
+      fieldIdCounter += 1;
+      inputEl.id = 'field-auto-' + fieldIdCounter;
+    }
+    label.setAttribute('for', inputEl.id);
     wrap.appendChild(label);
     wrap.appendChild(inputEl);
     return wrap;
@@ -394,6 +411,25 @@
     if (tmpl && tmpl.requires_external_deadline) return 'Deadline requires verification';
     return 'No due date';
   }
+  // Task 24: a Client Work row's own "what do I do next" label, same
+  // convention as Today's attentionRow() action labels but covering every
+  // status a row in My Work can be in, not just the three "needs
+  // attention" reasons. Overdue always wins regardless of status -- an
+  // overdue ready-for-review item is still first and foremost overdue.
+  function nextActionLabel(w) {
+    if (isOverdue(w)) return 'Open';
+    switch (w.status) {
+      case 'to_do': return 'Start';
+      case 'in_progress': return 'Continue';
+      case 'waiting_for_client': return 'Follow Up';
+      case 'ready_for_review': return 'Awaiting Review';
+      case 'changes_required': return 'Fix';
+      case 'approved': return w.submission_required ? 'Submit' : 'Wrap Up';
+      case 'ready_to_submit': return 'Submit';
+      case 'completed': return 'View';
+      default: return 'Open';
+    }
+  }
   // A waiting-on-client requirement counts as "waiting too long" once its
   // own scheduled follow-up date has passed, or — if no follow-up was ever
   // scheduled — once it's simply been sitting unreceived for a while.
@@ -459,6 +495,54 @@
     if (panel.classList.contains('hidden')) return;
     if (panel.contains(e.target) || qs('#notifBellBtn').contains(e.target)) return;
     panel.classList.add('hidden');
+  });
+
+  // Task 22: Global Search moved out of the sidebar and into the topbar as
+  // a prominent utility (always one click away from anywhere) rather than
+  // competing with the primary workspace destinations for sidebar space.
+  qs('#searchIconSlot').appendChild(icon('search'));
+  qs('#globalSearchBtn').addEventListener('click', function () { goto('search'); });
+
+  // Task 22: mobile nav drawer. Same open/close/focus-trap/return-focus
+  // convention as the public site's .mobile-nav (client.js) — a toggle
+  // button, a full-viewport panel, Escape or the close button or clicking
+  // a nav item all close it, and focus never gets stranded on a
+  // now-hidden element. Desktop is unaffected: the toggle/close buttons
+  // are display:none above 820px and #sidebar just renders inline as
+  // always (see index.html).
+  qs('#menuIconSlot').appendChild(icon('menu'));
+  qs('#closeIconSlot').appendChild(icon('close'));
+  var navDrawerReturnFocus = null;
+  function openNavDrawer() {
+    document.body.classList.add('nav-drawer-open');
+    qs('#navToggleBtn').setAttribute('aria-expanded', 'true');
+    navDrawerReturnFocus = document.activeElement;
+    qs('#navCloseBtn').focus();
+  }
+  function closeNavDrawer() {
+    if (!document.body.classList.contains('nav-drawer-open')) return;
+    document.body.classList.remove('nav-drawer-open');
+    qs('#navToggleBtn').setAttribute('aria-expanded', 'false');
+    if (navDrawerReturnFocus && typeof navDrawerReturnFocus.focus === 'function') navDrawerReturnFocus.focus();
+    navDrawerReturnFocus = null;
+  }
+  qs('#navToggleBtn').addEventListener('click', openNavDrawer);
+  qs('#navCloseBtn').addEventListener('click', closeNavDrawer);
+  document.addEventListener('keydown', function (e) {
+    if (!document.body.classList.contains('nav-drawer-open')) return;
+    if (e.key === 'Escape') { closeNavDrawer(); return; }
+    if (e.key !== 'Tab') return;
+    var focusable = Array.prototype.slice.call(qs('#sidebar').querySelectorAll('button')).concat([qs('#navCloseBtn')]);
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   });
 
   async function handleLogin() {
@@ -739,6 +823,16 @@
     });
     head.appendChild(strong); head.appendChild(markAllBtn);
     panel.appendChild(head);
+    // Task 29: this panel only ever generates from Client Work (see
+    // generateNotifications' own header comment) — Firm Work has its own,
+    // separate Catch-Up feed. Both are correct as two distinct systems
+    // (a personal daily nudge vs. a team-wide since-you-last-reviewed
+    // feed), not redundant with each other, but "Notifications" alone
+    // gave no hint of that boundary. Stated explicitly here rather than
+    // left for someone to discover by an item never showing up.
+    var scopeNote = el('div', 'notif-scope-note');
+    scopeNote.textContent = 'Client Work only — Firm Work has its own Catch-Up feed.';
+    panel.appendChild(scopeNote);
 
     var res = await sb.from('notifications').select('*').eq('user_id', state.user.id).order('created_at', { ascending: false }).limit(30);
     var items = res.data || [];
@@ -908,7 +1002,21 @@
       renderAndFocus();
       return;
     }
-    var known = ['today', 'search', 'my-work', 'team', 'since-last-seen', 'review', 'all-work', 'deadlines', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'attendance', 'directory', 'profile', 'templates', 'staff', 'settings'];
+    // Task 25: Deadlines accepts an optional ?client=<id> the same way
+    // Search accepts its own query string -- this is what makes "View
+    // Deadlines" on a Clients-page card (or Client Detail) a real,
+    // reloadable/shareable link into a pre-filtered Deadlines view rather
+    // than just a jump to the unfiltered page. Consumed once by
+    // renderDeadlinesPage and cleared immediately after, so a later plain
+    // #deadlines navigation is never left stuck on someone else's filter.
+    if (hash === 'deadlines' || hash.indexOf('deadlines?') === 0) {
+      state.view = 'deadlines';
+      var qIdx = hash.indexOf('?');
+      state.deadlinesPrefillClient = qIdx !== -1 ? (new URLSearchParams(hash.slice(qIdx + 1)).get('client') || null) : null;
+      renderAndFocus();
+      return;
+    }
+    var known = ['today', 'search', 'my-work', 'team', 'since-last-seen', 'review', 'all-work', 'manager', 'reports', 'periods', 'todo', 'firm-work', 'clients', 'attendance', 'directory', 'profile', 'templates', 'staff', 'settings'];
     state.view = known.indexOf(hash) !== -1 ? hash : 'today';
     renderAndFocus();
   }
@@ -929,80 +1037,191 @@
   function gotoWork(id) { location.hash = 'work/' + id; }
   function gotoClient(id) { location.hash = 'client/' + id; }
   function gotoFirmWork(id) { location.hash = 'firmwork/' + id; }
+  // Task 25: the Clients-page cross-link into a client-filtered Deadlines
+  // view (see routeFromHash's own ?client= handling above).
+  function gotoDeadlinesForClient(clientId) { location.hash = 'deadlines?client=' + encodeURIComponent(clientId); }
 
   // ============================================================
   // Sidebar
   // ============================================================
+  // Task 22: information architecture redesign. Before this task the
+  // sidebar was 18 flat destinations for a five-person team — every screen
+  // was its own equal-weight nav entry. NAV_GROUPS collapses related
+  // screens behind one primary destination (Client Work, Firm Work, Team,
+  // Reports, Personal, Admin), each exposing its members as page-level
+  // tabs (see renderGroupTabs()) instead of separate sidebar buttons.
+  // Every existing hash route below is unchanged — this only changes how
+  // they're reached from the sidebar, not what they are, so every
+  // existing deep link (notifications, search links, bookmarks) still
+  // resolves exactly where it always did.
+  var NAV_GROUPS = {
+    clientWork: {
+      label: 'Client Work', icon: 'folder',
+      tabs: [
+        { view: 'all-work', label: 'All Work', guard: isReviewerOrAdmin },
+        { view: 'review', label: 'Review Queue', guard: isReviewerOrAdmin },
+        { view: 'deadlines', label: 'Deadlines' },
+        { view: 'clients', label: 'Clients' }
+      ]
+    },
+    firmWork: {
+      label: 'Firm Work', icon: 'briefcase',
+      tabs: [
+        { view: 'firm-work', label: 'Work' },
+        // Task 28: was "Recent Updates" — read on its own that sounded
+        // like it could mean recent updates across everything (including
+        // Client Work), and paired oddly with the page's own "Since Last
+        // Seen" heading. "Catch-Up" matches the page's own framing
+        // ("a catch-up feed") and needs no further scope explanation once
+        // it's already a tab under Firm Work.
+        { view: 'since-last-seen', label: 'Catch-Up' }
+      ]
+    },
+    team: {
+      label: 'Team', icon: 'users',
+      tabs: [
+        { view: 'team', label: 'Team Work' },
+        { view: 'directory', label: 'Directory' },
+        { view: 'attendance', label: 'Attendance' }
+      ]
+    },
+    reports: {
+      label: 'Reports', icon: 'chart',
+      tabs: [
+        { view: 'reports', label: 'Reports', guard: isReviewerOrAdmin },
+        { view: 'manager', label: 'Operations Overview', guard: isReviewerOrAdmin },
+        { view: 'periods', label: 'Period Summary' }
+      ]
+    },
+    personal: {
+      label: 'Personal', icon: 'user',
+      tabs: [
+        { view: 'profile', label: 'My Profile' },
+        { view: 'todo', label: 'My To-Do' }
+      ]
+    },
+    admin: {
+      label: 'Admin', icon: 'settings', guard: isAdmin,
+      tabs: [
+        { view: 'staff', label: 'Staff & Access' },
+        { view: 'templates', label: 'Templates' },
+        { view: 'settings', label: 'Settings' }
+      ]
+    }
+  };
+  // Reverse lookup built once — view name -> the group it lives under, used
+  // by render() to decide whether a page-level tab bar is needed at all.
+  var VIEW_TO_GROUP = {};
+  Object.keys(NAV_GROUPS).forEach(function (k) {
+    NAV_GROUPS[k].tabs.forEach(function (t) { VIEW_TO_GROUP[t.view] = k; });
+  });
+  function groupVisibleTabs(groupKey) {
+    return NAV_GROUPS[groupKey].tabs.filter(function (t) { return !t.guard || t.guard(); });
+  }
+  // A group's sidebar entry is "active" both when the current view is one
+  // of its own tabs, and when it's the detail page reached by drilling into
+  // one of them — same permissive either/or the flat sidebar always used
+  // (e.g. a work-item detail page previously lit up both "My Tasks" and
+  // "Client Work" at once; that's preserved here, not a new ambiguity).
+  function groupIsActive(groupKey) {
+    var tabViews = NAV_GROUPS[groupKey].tabs.map(function (t) { return t.view; });
+    if (tabViews.indexOf(state.view) !== -1) return true;
+    if (groupKey === 'clientWork' && (state.view === 'work-detail' || state.view === 'client-detail')) return true;
+    if (groupKey === 'firmWork' && state.view === 'firmwork-detail') return true;
+    return false;
+  }
   function renderSidebar() {
     var nav = qs('#sidebar');
     clear(nav);
     function group(label) {
       var g = el('div', 'sidebar-group'); g.textContent = label; nav.appendChild(g);
     }
-    function item(view, label, iconName) {
+    function navButton(label, iconName, isActive, onClick) {
       var b = el('button');
       b.type = 'button';
       b.appendChild(icon(iconName));
       b.appendChild(document.createTextNode(label));
-      var isActive = state.view === view ||
-        (state.view === 'work-detail' && (view === 'my-work' || view === 'all-work')) ||
-        (state.view === 'client-detail' && view === 'clients') ||
-        (state.view === 'firmwork-detail' && view === 'firm-work');
       b.classList.toggle('is-active', isActive);
       if (isActive) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-      b.addEventListener('click', function () { goto(view); });
+      b.addEventListener('click', function () { closeNavDrawer(); onClick(); });
       nav.appendChild(b);
+    }
+    function item(view, label, iconName, isActiveOverride) {
+      var isActive = typeof isActiveOverride === 'boolean' ? isActiveOverride : state.view === view;
+      navButton(label, iconName, isActive, function () { goto(view); });
+    }
+    function groupNavItem(groupKey) {
+      var g = NAV_GROUPS[groupKey];
+      if (g.guard && !g.guard()) return;
+      var tabs = groupVisibleTabs(groupKey);
+      if (!tabs.length) return;
+      navButton(g.label, g.icon, groupIsActive(groupKey), function () { goto(tabs[0].view); });
     }
     function externalItem(label, href, iconName) {
       var a = el('a', 'admin-link-btn'); a.href = href; a.target = '_blank'; a.rel = 'noopener';
       a.appendChild(icon(iconName)); a.appendChild(document.createTextNode(label)); nav.appendChild(a);
     }
 
-    // Navigation is organized by the real question a staff member is asking,
-    // not by which feature happened to be implemented first.
+    // Roughly the "Today, My Work, Client Work, Firm Work, Team, Reports,
+    // Personal, Admin" hierarchy: 7 destinations for most roles, 8 for
+    // admin — down from 18 flat entries, with nothing removed (every old
+    // destination is still one click away, just as a page-level tab now).
     group('Workspace');
-    item('today', 'Dashboard', 'sun');
-    item('my-work', 'My Tasks', 'clipboard');
-    item('firm-work', 'Firm Work', 'briefcase');
-    item('search', 'Global Search', 'search');
+    item('today', 'Today', 'sun');
+    item('my-work', 'My Work', 'clipboard', state.view === 'my-work' || state.view === 'work-detail');
+    groupNavItem('clientWork');
+    groupNavItem('firmWork');
 
-    group('Client Delivery');
-    if (isReviewerOrAdmin()) item('review', 'Review Queue', 'check');
-    if (isReviewerOrAdmin()) item('all-work', 'Client Work', 'folder');
-    item('deadlines', 'Deadlines', 'calendar');
-    item('clients', 'Clients', 'building');
-
-    group('Team');
-    item('team', 'Team Work', 'users');
-    item('directory', 'Staff Directory', 'idcard');
-    item('attendance', 'Attendance', 'clock');
-    item('since-last-seen', 'Recent Updates', 'message');
+    group('Team & Reporting');
+    groupNavItem('team');
+    groupNavItem('reports');
 
     group('Personal');
-    item('profile', 'My Profile', 'user');
-    item('todo', 'My To-Do', 'list');
-
-    group('Insights');
-    if (isReviewerOrAdmin()) item('manager', 'Operations Overview', 'users');
-    if (isReviewerOrAdmin()) item('reports', 'Reports', 'chart');
-    item('periods', 'Period Summary', 'calendar');
+    groupNavItem('personal');
 
     if (isAdmin()) {
       group('Administration');
-      item('staff', 'Staff & Access', 'users');
-      item('templates', 'Templates', 'flag');
-      item('settings', 'Settings', 'settings');
+      groupNavItem('admin');
       externalItem('Website Content Admin', '/admin/', 'settings');
     }
+  }
+
+  // The page-level tab row for a grouped destination (Client Work, Firm
+  // Work, Team, Reports, Personal, Admin) — appended into #main before the
+  // group's active screen renders. Skipped entirely when a role can only
+  // see one tab in the group (e.g. a plain employee's Reports group is
+  // just Period Summary), so nobody sees a tab bar with nothing to switch
+  // to.
+  function renderGroupTabs(main, groupKey) {
+    var g = NAV_GROUPS[groupKey];
+    var tabs = groupVisibleTabs(groupKey);
+    if (tabs.length < 2) return;
+    var bar = el('div', 'subtabs');
+    bar.setAttribute('role', 'tablist');
+    bar.setAttribute('aria-label', g.label + ' sections');
+    tabs.forEach(function (t) {
+      var b = el('button', 'subtab');
+      b.type = 'button';
+      b.textContent = t.label;
+      var isActive = state.view === t.view;
+      b.classList.toggle('is-active', isActive);
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(isActive));
+      b.addEventListener('click', function () { goto(t.view); });
+      bar.appendChild(b);
+    });
+    main.appendChild(bar);
   }
 
   function render() {
     renderSidebar();
     var main = qs('#main');
     clear(main);
+    var groupKey = VIEW_TO_GROUP[state.view];
+    if (groupKey) renderGroupTabs(main, groupKey);
     if (state.view === 'today') return renderTodayPage(main);
     if (state.view === 'search') return renderSearchPage(main, state.searchQuery || '');
-    if (state.view === 'my-work') return renderWorkListView(main, 'My Tasks', 'mine');
+    if (state.view === 'my-work') return renderWorkListView(main, 'My Work', 'mine');
     if (state.view === 'team') return renderTeamPage(main);
     if (state.view === 'since-last-seen') return renderSinceLastSeenPage(main);
     if (state.view === 'review') return renderWorkListView(main, 'Review', 'review');
@@ -1027,6 +1246,59 @@
   // work on next, not show off charts. Pulls only "my work" plus (for
   // reviewers/admins) how many items are sitting in the review queue.
   // ============================================================
+  // Task 23: compact punch in/out status, shown right on Today so the one
+  // attendance action most people take once or twice a day never needs its
+  // own page visit. Refreshes itself in place after a punch rather than a
+  // full Today re-render — same "quick action, quiet UI" reasoning as the
+  // checklist/waiting-item toggles elsewhere in this app. Deliberately not
+  // a full metrics/calendar view (that's the Attendance destination) — an
+  // action driving widget, not decorative analytics.
+  async function renderTodayAttendanceBar(main) {
+    var bar = el('div', 'today-attendance-bar');
+    main.appendChild(bar);
+    async function refresh() {
+      clear(bar);
+      bar.appendChild(icon('clock'));
+      var stateText = el('span', 'state-text');
+      var today = await loadTodayAttendance();
+      if (!today) {
+        stateText.textContent = 'Not punched in yet';
+        bar.appendChild(stateText);
+        var inBtn = el('button', 'btn btn-sm'); inBtn.type = 'button'; inBtn.textContent = 'Punch In';
+        inBtn.addEventListener('click', async function () {
+          inBtn.disabled = true;
+          var r = await sb.rpc('attendance_punch_in');
+          inBtn.disabled = false;
+          if (r.error) { toast('Punch in failed: ' + r.error.message, true); return; }
+          toast('Punched in.');
+          refresh();
+        });
+        bar.appendChild(inBtn);
+      } else if (!today.punched_out_at) {
+        stateText.appendChild(document.createTextNode('Punched in '));
+        var strongIn = el('strong'); strongIn.textContent = timeOnly(today.punched_in_at); stateText.appendChild(strongIn);
+        stateText.appendChild(document.createTextNode(' · currently open'));
+        bar.appendChild(stateText);
+        var outBtn = el('button', 'btn btn-outline btn-sm'); outBtn.type = 'button'; outBtn.textContent = 'Punch Out';
+        outBtn.addEventListener('click', async function () {
+          outBtn.disabled = true;
+          var r = await sb.rpc('attendance_punch_out');
+          outBtn.disabled = false;
+          if (r.error) { toast('Punch out failed: ' + r.error.message, true); return; }
+          toast('Punched out.');
+          refresh();
+        });
+        bar.appendChild(outBtn);
+      } else {
+        stateText.textContent = 'In ' + timeOnly(today.punched_in_at) + ' · Out ' + timeOnly(today.punched_out_at) + ' · ' + durationText(attendanceSeconds(today));
+        bar.appendChild(stateText);
+        var done = el('span', 'attendance-status-pill complete'); done.textContent = 'Completed';
+        bar.appendChild(done);
+      }
+    }
+    await refresh();
+  }
+
   async function renderTodayPage(main) {
     var greeting = el('h1', 'greeting');
     var hour = new Date().getHours();
@@ -1036,15 +1308,15 @@
     dateLine.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
     main.appendChild(dateLine);
 
+    await renderTodayAttendanceBar(main);
+
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
 
-    var mine = await loadWork('mine');
-    var reviewCount = 0;
-    if (isReviewerOrAdmin()) {
-      var reviewItems = await loadWork('review');
-      reviewCount = reviewItems.length;
-    }
+    var results = await Promise.all([loadWork('mine'), isReviewerOrAdmin() ? loadWork('review') : Promise.resolve([]), loadMyFirmWork()]);
+    var mine = results[0];
+    var reviewCount = results[1].length;
+    var firmMine = results[2];
     // Guarded rather than a bare removeChild: if a hash navigation lands
     // (e.g. a direct/shared link, or a notification click) before this
     // page's own initial fetch resolves, a newer render may have already
@@ -1109,7 +1381,49 @@
       main.appendChild(wrap);
     }
 
-    if (!attention.length && !upcoming.length) {
+    // Task 23: Firm Work's own "next actions" — clearly separated from
+    // Client Work compliance urgency above, both by its own heading (with
+    // the same gold FIRM badge used everywhere else Firm Work appears
+    // alongside Client Work) and by never reusing isOverdue()/
+    // attentionRow()'s red styling. A missed Firm target is a scheduling
+    // signal, not a statutory breach — see firmWorkRow()'s own note on
+    // this. Deliberately narrow (blocked + due this week only, not the
+    // full Firm Work list) so Today stays a "what do I do next" screen,
+    // not a second Firm Work list page.
+    var firmOpen = firmMine.filter(function (w) { return w.status !== 'completed'; });
+    var firmBlocked = firmOpen.filter(function (w) { return w.status === 'blocked'; });
+    var firmHorizon = new Date(); firmHorizon.setDate(firmHorizon.getDate() + 7);
+    var firmApproaching = firmOpen.filter(function (w) {
+      if (w.status === 'blocked' || !w.internal_due_date) return false;
+      var dt = new Date(w.internal_due_date + 'T00:00:00');
+      return dt <= firmHorizon;
+    }).sort(compareByDue);
+
+    if (firmBlocked.length || firmApproaching.length) {
+      var h2f = el('div', 'section-h section-h-firm'); h2f.style.marginTop = '22px';
+      h2f.appendChild(document.createTextNode('Firm Work — Next Actions '));
+      var firmTag = el('span', 'badge badge-scope-firm'); firmTag.textContent = 'FIRM';
+      h2f.appendChild(firmTag);
+      main.appendChild(h2f);
+      if (firmBlocked.length) {
+        var blockedWrap = el('div', 'task-group');
+        var h3bl = el('h3'); h3bl.appendChild(document.createTextNode('Blocked '));
+        var cbl = el('span', 'count'); cbl.textContent = String(firmBlocked.length); h3bl.appendChild(cbl);
+        blockedWrap.appendChild(h3bl);
+        firmBlocked.forEach(function (w) { blockedWrap.appendChild(firmWorkRow(w)); });
+        main.appendChild(blockedWrap);
+      }
+      if (firmApproaching.length) {
+        var approachWrap = el('div', 'task-group');
+        var h3ap = el('h3'); h3ap.appendChild(document.createTextNode('Approaching Targets '));
+        var cap = el('span', 'count'); cap.textContent = String(firmApproaching.length); h3ap.appendChild(cap);
+        approachWrap.appendChild(h3ap);
+        firmApproaching.forEach(function (w) { approachWrap.appendChild(firmWorkRow(w)); });
+        main.appendChild(approachWrap);
+      }
+    }
+
+    if (!attention.length && !upcoming.length && !firmBlocked.length && !firmApproaching.length) {
       var empty = el('div', 'empty-note'); empty.appendChild(icon('check')); empty.appendChild(document.createTextNode('Nothing needs your attention right now.'));
       main.appendChild(empty);
     }
@@ -1144,6 +1458,53 @@
   }
 
   // ============================================================
+  // Task 25: Client Work Hub connective strip — shown at the top of
+  // every screen in the Client Work group (All Work, Review Queue,
+  // Deadlines, Clients) so the four routes read as one coherent
+  // compliance workflow even though each stays its own page. Every stat
+  // is a real link into another one of these four screens, not a
+  // decorative count -- clicking "Review Queue" from the Deadlines page
+  // (or vice versa) is the actual point of this component. Deliberately
+  // never touches Firm Work (loadWork() is Client-Work-only everywhere
+  // it's used, see its own header comment) and never folds an internal
+  // target into the statutory-deadline count below (external_due_date
+  // only), matching this task's own "do not confuse internal targets
+  // with statutory deadlines" instruction. A self-contained fetch (not
+  // fed from the calling page's own query) so it stays a single,
+  // reusable component regardless of which of the four pages calls it.
+  async function renderClientWorkHubStrip(main) {
+    var strip = el('div', 'hub-strip');
+    main.appendChild(strip);
+
+    function stat(label, n, view, colorCls) {
+      var b = el('button', 'hub-stat' + (colorCls && n ? ' ' + colorCls : ''));
+      b.type = 'button';
+      var num = el('div', 'n'); num.textContent = String(n);
+      var l = el('div', 'l'); l.textContent = label;
+      b.appendChild(num); b.appendChild(l);
+      b.addEventListener('click', function () { goto(view); });
+      strip.appendChild(b);
+    }
+
+    var items = await loadWork(isReviewerOrAdmin() ? 'all' : 'mine');
+    var open = items.filter(function (w) { return w.status !== 'completed'; });
+    var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
+    var weekStr = localDateStr(weekOut);
+    var statutorySoon = open.filter(function (w) { return w.external_due_date && w.external_due_date <= weekStr; });
+
+    if (isReviewerOrAdmin()) {
+      var actionRequired = open.filter(function (w) {
+        return isOverdue(w) || w.status === 'waiting_for_client' || w.status === 'changes_required';
+      });
+      var reviewItems = await loadWork('review');
+      stat('Action Required', actionRequired.length, 'all-work', 'n-red');
+      stat('Review Queue', reviewItems.length, 'review', 'n-purple');
+    }
+    stat('Statutory Deadlines (7d)', statutorySoon.length, 'deadlines', 'n-amber');
+    stat('Active Clients', state.clients.filter(function (c) { return c.is_active; }).length, 'clients', null);
+  }
+
+  // ============================================================
   // Work list views (My Work / Review / All Work)
   // ============================================================
   async function renderWorkListView(main, title, mode) {
@@ -1167,6 +1528,12 @@
     }
     head.appendChild(headActions);
     main.appendChild(head);
+
+    // Task 25: the Client Work Hub strip belongs on Review Queue and All
+    // Work (both members of the Client Work group) — not on My Work,
+    // which is its own separate top-level destination, not part of this
+    // group (see Task 22's NAV_GROUPS).
+    if (mode !== 'mine') await renderClientWorkHubStrip(main);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
@@ -1229,10 +1596,17 @@
       { key: 'to_do', label: 'To Do', filter: function (w) { return w.status === 'to_do' && !isOverdue(w); } },
       { key: 'completed', label: 'Recently Completed', filter: function (w) { return w.status === 'completed'; } },
     ];
-    var shown = 0;
+    var shown = 0, completedHidden = 0;
     groups.forEach(function (g) {
       var rows = items.filter(g.filter);
-      if (g.key === 'completed') rows = rows.slice(0, 10);
+      if (g.key === 'completed') {
+        // Task 24: hidden by default (same "Show completed" convention as
+        // the Team page) so the actionable groups above it aren't pushed
+        // down the page/off a mobile screen by a status that, by
+        // definition, needs nothing further from anyone.
+        if (opts.hideCompleted) { completedHidden = rows.length; return; }
+        rows = rows.slice(0, 10);
+      }
       if (!rows.length) return;
       shown += rows.length;
       var wrap = el('div', 'task-group');
@@ -1244,11 +1618,11 @@
       rows.forEach(function (w) { wrap.appendChild(rowRenderer(w)); });
       main.appendChild(wrap);
     });
-    if (!shown && !opts.suppressEmpty) {
+    if (!shown && !completedHidden && !opts.suppressEmpty) {
       var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No work assigned to you yet.'));
       main.appendChild(empty);
     }
-    return shown;
+    return { shown: shown, completedHidden: completedHidden };
   }
 
   // Handbook Task 20: Firm Work's own grouped section within the
@@ -1257,7 +1631,8 @@
   // 5-status set and no overdue/urgency grouping -- Blocked is listed
   // first as the operationally-most-attention-needed state, not because
   // it's styled as urgent the way an overdue Client item is.
-  function renderFirmWorkGroups(main, items) {
+  function renderFirmWorkGroups(main, items, opts) {
+    opts = opts || {};
     var groups = [
       { key: 'blocked', label: 'Blocked', filter: function (w) { return w.status === 'blocked'; } },
       { key: 'in_progress', label: 'In Progress', filter: function (w) { return w.status === 'in_progress'; } },
@@ -1265,10 +1640,13 @@
       { key: 'to_do', label: 'To Do', filter: function (w) { return w.status === 'to_do'; } },
       { key: 'completed', label: 'Recently Completed', filter: function (w) { return w.status === 'completed'; } },
     ];
-    var shown = 0;
+    var shown = 0, completedHidden = 0;
     groups.forEach(function (g) {
       var rows = items.filter(g.filter);
-      if (g.key === 'completed') rows = rows.slice(0, 10);
+      if (g.key === 'completed') {
+        if (opts.hideCompleted) { completedHidden = rows.length; return; }
+        rows = rows.slice(0, 10);
+      }
       if (!rows.length) return;
       shown += rows.length;
       var wrap = el('div', 'task-group');
@@ -1280,7 +1658,7 @@
       rows.forEach(function (w) { wrap.appendChild(firmWorkRow(w)); });
       main.appendChild(wrap);
     });
-    return shown;
+    return { shown: shown, completedHidden: completedHidden };
   }
 
   // Handbook Task 20: "one view of work assigned to them" spanning both
@@ -1300,7 +1678,7 @@
 
     var filterCard = el('div', 'card my-tasks-filter');
     var filterLabel = el('span', 'scope-tabs-label'); filterLabel.textContent = 'Task scope';
-    var tabs = el('div', 'scope-tabs'); tabs.setAttribute('role', 'group'); tabs.setAttribute('aria-label', 'Filter My Tasks by scope');
+    var tabs = el('div', 'scope-tabs'); tabs.setAttribute('role', 'group'); tabs.setAttribute('aria-label', 'Filter My Work by scope');
     var currentScope = 'all';
     var buttons = {};
     [
@@ -1313,7 +1691,18 @@
       b.addEventListener('click', function () { currentScope = entry[0]; apply(); });
       buttons[entry[0]] = b; tabs.appendChild(b);
     });
-    filterCard.appendChild(filterLabel); filterCard.appendChild(tabs); main.appendChild(filterCard);
+    filterCard.appendChild(filterLabel); filterCard.appendChild(tabs);
+    // Task 24: "improve filters only where they reduce time-to-action" --
+    // completed work needs nothing further from anyone, so hiding it by
+    // default keeps the still-actionable groups above it closer to the
+    // top of the page/screen. Same "Show completed" convention already
+    // established on the Team page, not a new pattern.
+    var completedLabel = el('label', 'my-tasks-completed-toggle');
+    var completedCb = el('input'); completedCb.type = 'checkbox'; completedCb.style.width = 'auto';
+    completedLabel.appendChild(completedCb); completedLabel.appendChild(document.createTextNode('Show completed'));
+    filterCard.appendChild(completedLabel);
+    completedCb.addEventListener('change', apply);
+    main.appendChild(filterCard);
 
     var listWrap = el('div');
     main.appendChild(listWrap);
@@ -1325,7 +1714,7 @@
         buttons[key].setAttribute('aria-pressed', active ? 'true' : 'false');
       });
       clear(listWrap);
-      var shownClient = 0, shownFirm = 0;
+      var shownClient = 0, shownFirm = 0, hideCompleted = !completedCb.checked;
 
       if (currentScope !== 'firm') {
         if (clientItems.length) {
@@ -1334,14 +1723,16 @@
           var clientNote = el('p'); clientNote.textContent = 'Compliance work — filing/internal deadlines and review states remain priority signals.'; clientHead.appendChild(clientNote);
           listWrap.appendChild(clientHead);
         }
-        shownClient = renderGroupedWork(listWrap, clientItems, { rowRenderer: function (w) { return workRow(w, true); }, suppressEmpty: true });
+        var clientResult = renderGroupedWork(listWrap, clientItems, { rowRenderer: function (w) { return workRow(w, true); }, suppressEmpty: true, hideCompleted: hideCompleted });
+        shownClient = clientResult.shown;
       }
       if (currentScope !== 'client' && firmItems.length) {
         var firmHead = el('div', 'scope-section-head scope-section-head--firm');
         var firmTitle = el('h2'); firmTitle.textContent = 'Firm Work'; firmHead.appendChild(firmTitle);
         var firmNote = el('p'); firmNote.textContent = 'Internal Maven work — targets, blockers and next action without statutory-risk styling.'; firmHead.appendChild(firmNote);
         listWrap.appendChild(firmHead);
-        shownFirm = renderFirmWorkGroups(listWrap, firmItems);
+        var firmResult = renderFirmWorkGroups(listWrap, firmItems, { hideCompleted: hideCompleted });
+        shownFirm = firmResult.shown;
       }
 
       if (!shownClient && !shownFirm) {
@@ -1515,11 +1906,13 @@
   var SINCE_LAST_SEEN_DEFAULT_DAYS = 14;
 
   // ============================================================
-  // Since Last Seen — Handbook Task 22: a concise catch-up feed of Firm
-  // Work activity/updates since the caller last marked it reviewed.
-  // Deliberately NOT chat, presence, or push infrastructure -- no
-  // real-time delivery, no read receipts on other people, nothing beyond
-  // "what changed since I was last here."
+  // Firm Work Catch-Up (internal view/function names kept as
+  // renderSinceLastSeenPage / since_last_seen_at / mark_feed_seen from
+  // Handbook Task 22 — only the user-facing label changed, Task 28): a
+  // concise catch-up feed of Firm Work activity/updates since the caller
+  // last marked it reviewed. Deliberately NOT chat, presence, or push
+  // infrastructure -- no real-time delivery, no read receipts on other
+  // people, nothing beyond "what changed since I was last here."
   //
   // CLIENT WORK is deliberately excluded (see this migration's own
   // header comment) -- Notifications already covers Client Work status/
@@ -1531,14 +1924,23 @@
   async function renderSinceLastSeenPage(main) {
     clear(main); // this function re-renders itself in place after "Mark Reviewed", not just on first navigation
     var head = el('div', 'page-head');
-    var h1 = el('h1'); h1.textContent = 'Since Last Seen'; head.appendChild(h1);
+    // Task 28: renamed from "Since Last Seen" -- on its own that phrase
+    // reads like it tracks when a PERSON was last online (exactly the
+    // presence-monitoring impression this app has repeatedly and
+    // deliberately avoided elsewhere, e.g. Attendance's own explicit no-
+    // presence-tracking design). What this page actually tracks is when
+    // YOU last reviewed it -- nothing about anyone else's activity or
+    // whereabouts. The internal state field (`since_last_seen_at`) and
+    // RPC (`mark_feed_seen`) keep their original names; this is a
+    // user-facing copy fix only, not a schema change.
+    var h1 = el('h1'); h1.textContent = 'Firm Work Catch-Up'; head.appendChild(h1);
     var markBtn = el('button', 'btn btn-sm'); markBtn.type = 'button'; markBtn.appendChild(icon('check')); markBtn.appendChild(document.createTextNode('Mark Reviewed'));
     head.appendChild(markBtn);
     main.appendChild(head);
 
     var intro = el('div', 'card');
     var introP = el('p', 'desc'); introP.style.margin = '0';
-    introP.textContent = 'What changed on Firm Work while you were away — a catch-up feed, not a chat or notification stream.';
+    introP.textContent = 'Firm Work only, and only what changed since you last clicked "Mark Reviewed" here — not a chat, not a notification stream, and not a record of when anyone was online. Client Work has its own status/deadline notifications; this page never duplicates them.';
     intro.appendChild(introP);
     main.appendChild(intro);
 
@@ -1809,8 +2211,22 @@
       var scopeBadge = el('span', 'badge badge-scope-client'); scopeBadge.textContent = 'CLIENT';
       row.appendChild(scopeBadge);
     }
+    // Task 24: an explicit "what do I do next" label on every row, not
+    // just the ones Today already flags -- client/service/period/status/
+    // both deadlines were already conveyed above; this is the missing
+    // "and action" piece.
+    var action = el('span', 'row-action'); action.textContent = nextActionLabel(w) + ' →';
+    row.appendChild(action);
     return row;
   }
+
+  // Task 28: how long a Firm Work item can sit untouched before it's
+  // worth flagging as possibly needing a handoff -- about the WORK ITEM's
+  // own updated_at, never about whether a person was online/active (see
+  // firmWorkRow's own note on this below). Same 14-day order of
+  // magnitude as the Catch-Up feed's own window, kept as a separate
+  // constant since the two answer different questions.
+  var FIRM_WORK_STALE_DAYS = 14;
 
   // Handbook Task 20: Firm Work's row in the combined My Work list.
   // Deliberately its OWN renderer, not a branch inside workRow() above --
@@ -1837,12 +2253,41 @@
     catSpan.appendChild(icon('folder'));
     catSpan.appendChild(document.createTextNode((w.firm_category || 'Uncategorized') + (project ? ' · ' + project.name : '')));
     title.appendChild(strong); title.appendChild(catSpan);
+    // Task 24: the blocker reason itself, not just the "Blocked" status
+    // badge -- a blocked row otherwise conveyed WHAT is stuck but not WHY,
+    // which is the one piece of information someone actually needs before
+    // they can help unblock it. Neutral styling (.blocker, amber -- the
+    // same tone Today's own "Waiting" stat already uses), never the red
+    // compliance-breach language reserved for Client Work.
+    if (w.status === 'blocked' && w.blocker_reason) {
+      var blockerSpan = el('span', 'blocker');
+      blockerSpan.appendChild(icon('alert'));
+      blockerSpan.appendChild(document.createTextNode(truncateOneLine(w.blocker_reason, 70)));
+      title.appendChild(blockerSpan);
+    }
     var nextText = w.next_action || latestUpdateText;
     if (nextText) {
       var naSpan = el('span');
       naSpan.appendChild(icon('flag'));
       naSpan.appendChild(document.createTextNode(truncateOneLine(nextText, 70)));
       title.appendChild(naSpan);
+    }
+    // Task 28: "what needs handoff" -- a plain, neutral note when nobody
+    // has touched this item in a while. This reads updated_at on the WORK
+    // ITEM only; it says nothing about whether the owner was online,
+    // active, or working during that time (that kind of presence/activity
+    // tracking is exactly what this task's own DO NOT rules out). A
+    // blocked item already explains itself via the blocker reason above,
+    // so this is skipped there to avoid stacking two separate "something's
+    // wrong" notes on one row.
+    if (w.status !== 'completed' && w.status !== 'blocked') {
+      var daysSinceUpdate = Math.floor((Date.now() - new Date(w.updated_at).getTime()) / 86400000);
+      if (daysSinceUpdate >= FIRM_WORK_STALE_DAYS) {
+        var staleSpan = el('span', 'stale-note');
+        staleSpan.appendChild(icon('clock'));
+        staleSpan.appendChild(document.createTextNode('No update in ' + daysSinceUpdate + ' days — may need a handoff'));
+        title.appendChild(staleSpan);
+      }
     }
     row.appendChild(title);
     // Target date, plain -- never `.overdue`/red, per this task's own
@@ -1870,19 +2315,43 @@
     var h1 = el('h1'); h1.textContent = 'Deadlines'; head.appendChild(h1);
     main.appendChild(head);
 
-    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;';
+    await renderClientWorkHubStrip(main);
+
+    // Task 25: a "View Deadlines" link from the Clients page (or Client
+    // Detail) arrives as #deadlines?client=<id> -- consumed once here,
+    // then cleared immediately so a later plain #deadlines navigation is
+    // never left stuck on someone else's filter (see routeFromHash).
+    var prefillClient = state.deadlinesPrefillClient || null;
+    state.deadlinesPrefillClient = null;
+
+    var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;';
     var scopeSel = el('select'); scopeSel.style.width = 'auto';
     scopeSel.appendChild(new Option('My Deadlines', 'mine'));
     if (isReviewerOrAdmin()) scopeSel.appendChild(new Option('Team', 'all'));
+    // A client-filtered link only makes sense against the full team's
+    // work -- a reviewer/admin arriving from a client card almost never
+    // means "just the pieces of this client that happen to be mine."
+    if (prefillClient && isReviewerOrAdmin()) scopeSel.value = 'all';
     filterRow.appendChild(scopeSel);
     var clientSel = el('select'); clientSel.style.width = 'auto';
     clientSel.appendChild(new Option('All Clients', ''));
     state.clients.forEach(function (c) { clientSel.appendChild(new Option(c.name, c.id)); });
+    if (prefillClient) clientSel.value = prefillClient;
     filterRow.appendChild(clientSel);
     var serviceSel = el('select'); serviceSel.style.width = 'auto';
     serviceSel.appendChild(new Option('All Services', ''));
     state.templates.forEach(function (t) { serviceSel.appendChild(new Option(t.title, t.id)); });
     filterRow.appendChild(serviceSel);
+    // Task 25: "prioritize... upcoming external/statutory deadlines"
+    // without ever confusing them with internal targets -- this filters
+    // to only items with a real filing/external deadline set, and (when
+    // checked) groups by THAT date specifically rather than the
+    // internal-first effectiveDue() every other view uses, so an
+    // internal-only target can never quietly stand in for a statutory one.
+    var statutoryLabel = el('label'); statutoryLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-soft);cursor:pointer;';
+    var statutoryCb = el('input'); statutoryCb.type = 'checkbox'; statutoryCb.style.width = 'auto';
+    statutoryLabel.appendChild(statutoryCb); statutoryLabel.appendChild(document.createTextNode('Statutory deadlines only'));
+    filterRow.appendChild(statutoryLabel);
     main.appendChild(filterRow);
 
     var resultsWrap = el('div');
@@ -1893,19 +2362,25 @@
       var loading = el('div', 'empty-note'); loading.textContent = 'Loading…'; resultsWrap.appendChild(loading);
       var items = await loadWork(scopeSel.value === 'all' ? 'all' : 'mine');
       clear(resultsWrap);
-      items = items.filter(function (w) { return w.status !== 'completed' && effectiveDue(w); });
+      var statutoryOnly = statutoryCb.checked;
+      var dateOf = statutoryOnly ? function (w) { return w.external_due_date; } : effectiveDue;
+      items = items.filter(function (w) { return w.status !== 'completed' && (statutoryOnly ? w.external_due_date : effectiveDue(w)); });
       if (clientSel.value) items = items.filter(function (w) { return w.client_id === clientSel.value; });
       if (serviceSel.value) items = items.filter(function (w) { return w.service_template_id === serviceSel.value; });
-      items.sort(compareByDue);
+      items.sort(function (a, b) { return (dateOf(a) || '').localeCompare(dateOf(b) || ''); });
 
       var todayStr = localDateStr();
       var weekOut = new Date(); weekOut.setDate(weekOut.getDate() + 7);
       var weekStr = localDateStr(weekOut);
+      function isPastDate(w) {
+        var d = dateOf(w);
+        return !!d && new Date(d + 'T00:00:00') < new Date(new Date().toDateString());
+      }
       var groups = [
-        { key: 'overdue', label: 'Overdue', filter: function (w) { return isOverdue(w); } },
-        { key: 'today', label: 'Today', filter: function (w) { return !isOverdue(w) && effectiveDue(w) === todayStr; } },
-        { key: 'week', label: 'This Week', filter: function (w) { return !isOverdue(w) && effectiveDue(w) > todayStr && effectiveDue(w) <= weekStr; } },
-        { key: 'later', label: 'Later', filter: function (w) { return !isOverdue(w) && effectiveDue(w) > weekStr; } },
+        { key: 'overdue', label: statutoryOnly ? 'Past Due (Statutory)' : 'Overdue', filter: function (w) { return isPastDate(w); } },
+        { key: 'today', label: 'Today', filter: function (w) { return !isPastDate(w) && dateOf(w) === todayStr; } },
+        { key: 'week', label: 'This Week', filter: function (w) { return !isPastDate(w) && dateOf(w) > todayStr && dateOf(w) <= weekStr; } },
+        { key: 'later', label: 'Later', filter: function (w) { return !isPastDate(w) && dateOf(w) > weekStr; } },
       ];
       var shown = 0;
       groups.forEach(function (g) {
@@ -1922,13 +2397,15 @@
         resultsWrap.appendChild(wrap);
       });
       if (!shown) {
-        var empty = el('div', 'empty-note'); empty.appendChild(icon('calendar')); empty.appendChild(document.createTextNode('Nothing due.'));
+        var empty = el('div', 'empty-note'); empty.appendChild(icon('calendar'));
+        empty.appendChild(document.createTextNode(statutoryOnly ? 'No statutory deadlines set.' : 'Nothing due.'));
         resultsWrap.appendChild(empty);
       }
     }
     scopeSel.addEventListener('change', refresh);
     clientSel.addEventListener('change', refresh);
     serviceSel.addEventListener('change', refresh);
+    statutoryCb.addEventListener('change', refresh);
     await refresh();
   }
 
@@ -1938,8 +2415,22 @@
   // ============================================================
   async function renderManagerDashboard(main) {
     var head = el('div', 'page-head');
-    var h1 = el('h1'); h1.textContent = 'Manager Dashboard'; head.appendChild(h1);
+    // Task 33: heading brought in line with the sidebar/tab label
+    // ("Operations Overview" since Task 22) -- was still "Manager
+    // Dashboard" here, the same kind of nav-vs-heading mismatch Task 28
+    // fixed for the Firm Work Catch-Up feed.
+    var h1 = el('h1'); h1.textContent = 'Operations Overview'; head.appendChild(h1);
     main.appendChild(head);
+
+    // Task 33: explicit scope statement -- Client Work only, real-time
+    // exceptions/workload balancing, never a ranking. This was already
+    // true (see Team Workload's own code comment below) but only stated
+    // in a comment nobody using the page would ever read.
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = 'Client Work only — real-time exceptions and team workload balancing for right now, not a staff performance ranking. Firm Work never appears here; for trends and completed-work analysis over a date range, see Reports instead.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
@@ -2147,12 +2638,12 @@
   // oversight. No new SQL functions/views/paid BI tooling — every field
   // used below already exists on work_items; each report is a plain,
   // date-bounded Supabase query aggregated client-side, the same pattern
-  // Period Summary/Manager Dashboard/Deadlines already use elsewhere in
-  // this app. Three query shapes cover all 8 reports:
+  // Period Summary/Operations Overview/Deadlines already use elsewhere in
+  // this app. Three query shapes cover all 7 reports:
   //   - "active" (status <> completed): naturally small and always
   //     current regardless of the firm's total historical volume, used
-  //     for the 4 reports that are inherently about right-now/right-
-  //     ahead (Overdue, Waiting for Client, Review Wait, Upcoming).
+  //     for the 3 reports that are inherently about right-now/right-
+  //     ahead (Waiting for Client, Review Wait, Upcoming).
   //   - "created in range": everything opened within the selected
   //     window, used for Work by Service / Work by Status — "of what we
   //     opened in this window, how does it break down."
@@ -2162,6 +2653,17 @@
   //     alongside this task in the status-change handler above; historical
   //     items completed before that fix shipped won't have a completed_at
   //     and so won't appear here until backfilled (see the SQL note).
+  //
+  // Task 33: an "Overdue Work Items" report used to live here too — it
+  // was removed as a genuine duplicate of Operations Overview's own
+  // real-time overdue list (literally the same activeItems.filter(
+  // isOverdue) computation, same row rendering), and it never actually
+  // respected this page's own date-range picker in the first place
+  // ("what's overdue right now" isn't a date-ranged question). The
+  // remaining "active"-query reports (Waiting for Client, Review Wait,
+  // Upcoming) are trend/aggregate views, not the same shape as Overview's
+  // actionable exception lists, so they stay -- each says so in its own
+  // description below rather than leaving the relationship unstated.
   // ============================================================
   var REPORT_RANGE_PRESETS = [
     ['this_month', 'This Month'],
@@ -2214,7 +2716,7 @@
 
     var intro = el('div', 'card');
     var introP = el('p', 'desc'); introP.style.margin = '0';
-    introP.textContent = 'Firm operations and compliance visibility — totals and breakdowns only, not a staff performance leaderboard.';
+    introP.textContent = 'Client Work only — trends and completed-work analysis across a date range, totals and breakdowns only, never a staff performance leaderboard. Firm Work never appears here. For real-time overdue/exception triage right now, see Operations Overview instead.';
     intro.appendChild(introP);
     main.appendChild(intro);
 
@@ -2284,7 +2786,6 @@
       var createdItems = all[1].data || [];
       var completedItems = all[2].data || [];
 
-      resultsWrap.appendChild(buildOverdueReport(activeItems));
       resultsWrap.appendChild(buildWaitingReport(activeItems));
       resultsWrap.appendChild(buildReviewWaitReport(activeItems));
       resultsWrap.appendChild(buildUpcomingReport(activeItems));
@@ -2294,19 +2795,9 @@
       resultsWrap.appendChild(buildByStatusReport(createdItems));
     }
 
-    function buildOverdueReport(activeItems) {
-      var overdue = activeItems.filter(isOverdue).sort(compareByDue);
-      var card = reportCard('alert', 'Overdue Work Items');
-      var desc = el('p', 'desc'); desc.textContent = overdue.length + ' item' + (overdue.length === 1 ? '' : 's') + ' currently overdue.'; card.appendChild(desc);
-      var CAP = 25;
-      overdue.slice(0, CAP).forEach(function (w) { card.appendChild(workRow(w)); });
-      if (overdue.length > CAP) {
-        var more = el('p', 'desc'); more.style.margin = '8px 0 0'; more.textContent = '+' + (overdue.length - CAP) + ' more — see Search.';
-        card.appendChild(more);
-      }
-      if (!overdue.length) { var ok = el('p', 'desc'); ok.style.margin = '0'; ok.textContent = 'Nothing overdue right now.'; card.appendChild(ok); }
-      return card;
-    }
+    // Task 33: buildOverdueReport() was removed from here -- see this
+    // section's own header comment for why (a genuine duplicate of
+    // Operations Overview's real-time overdue list).
 
     function buildWaitingReport(activeItems) {
       var waiting = activeItems.filter(function (w) { return w.status === 'waiting_for_client'; });
@@ -2322,6 +2813,14 @@
       tile(waiting.length, 'Currently Waiting');
       tile(avgDays, 'Avg. Days Waiting');
       card.appendChild(strip);
+      // Task 33: distinguishes this aggregate trend metric from Operations
+      // Overview's "Waiting for Client Too Long" exception list, which
+      // this is NOT a duplicate of -- that one is a threshold-filtered,
+      // actionable list; this is every currently-waiting item's average
+      // age, an aggregate you can't get from a list of individual rows.
+      var note = el('p', 'desc'); note.style.cssText = 'margin:8px 0 0;';
+      note.textContent = 'An aggregate across every currently-waiting item, not the actionable list — see Operations Overview → Needs Attention → "Waiting for Client Too Long" for the specific items to follow up on.';
+      card.appendChild(note);
       return card;
     }
 
@@ -2339,7 +2838,7 @@
       tile(String(pending.length), 'Currently In Review');
       card.appendChild(strip);
       var note = el('p', 'desc'); note.style.cssText = 'margin:8px 0 0;';
-      note.textContent = 'Measures how long items currently sitting in review have been waiting so far — not a historical average across completed reviews.';
+      note.textContent = 'Measures how long items currently sitting in review have been waiting so far — not a historical average across completed reviews. For the specific items, see Operations Overview → Needs Attention → "Review Pending Too Long".';
       card.appendChild(note);
       return card;
     }
@@ -2356,7 +2855,11 @@
         { label: 'Rest of Month', items: open.filter(function (w) { return effectiveDue(w) > d14Str && effectiveDue(w) <= d30Str; }) },
       ];
       var card = reportCard('calendar', 'Upcoming Workload');
-      var desc = el('p', 'desc'); desc.textContent = 'Work not yet completed, due in the next 30 days.'; card.appendChild(desc);
+      // Task 33: firm-wide totals in fixed buckets -- a trend view, not a
+      // substitute for Deadlines (the actual browsable, filterable list
+      // of upcoming items) or Operations Overview's Team Workload (the
+      // per-person breakdown of the same underlying dates).
+      var desc = el('p', 'desc'); desc.textContent = 'Work not yet completed, due in the next 30 days, firm-wide. For a filterable, browsable list see Deadlines; for the per-person breakdown see Operations Overview → Team Workload.'; card.appendChild(desc);
       var strip = el('div', 'today-strip'); strip.style.marginBottom = '10px';
       var revealWrap = el('div');
       buckets.forEach(function (b) {
@@ -2460,7 +2963,11 @@
       var rows = Object.keys(STATUS_LABELS).filter(function (s) { return byStatus[s]; })
         .map(function (s) { return { key: s, label: STATUS_LABELS[s], value: byStatus[s] }; });
       var card = reportCard('list', 'Work by Status');
-      var desc = el('p', 'desc'); desc.textContent = 'Of work opened in this range, current status.'; card.appendChild(desc);
+      // Task 33: firm-wide, of everything opened in this date range --
+      // different scope from Period Summary's status cards, which are
+      // scoped to whatever period/service/assignee/etc a person picked
+      // (and to their own work only, for non-reviewer/admin staff).
+      var desc = el('p', 'desc'); desc.textContent = 'Of work opened in this range, current status, firm-wide. For a filtered breakdown by period/service/staff, see Period Summary.'; card.appendChild(desc);
       if (!rows.length) { var empty = el('p', 'desc'); empty.style.margin = '0'; empty.textContent = 'No work opened in this range.'; card.appendChild(empty); }
       else {
         var chartEl = simpleBarChart(rows.map(function (r) { return { label: r.label, value: r.value }; }));
@@ -2492,6 +2999,19 @@
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Period Summary'; head.appendChild(h1);
     main.appendChild(head);
+
+    // Task 33: this page had no scope statement at all before -- Client
+    // Work only (Firm Work never appears here), and the audience differs
+    // by role: everyone gets this page (not admin/reviewer-gated like
+    // Operations Overview or Reports), but a plain employee only ever
+    // sees their own work, never the whole team's.
+    var intro = el('div', 'card');
+    var introP = el('p', 'desc'); introP.style.margin = '0';
+    introP.textContent = isReviewerOrAdmin()
+      ? 'Client Work only. A filterable snapshot across the whole team, by period, service, staff or client.'
+      : 'Client Work only. A filterable snapshot of your own work, by period, service or client.';
+    intro.appendChild(introP);
+    main.appendChild(intro);
 
     var loading = el('div', 'empty-note'); loading.textContent = 'Loading…';
     main.appendChild(loading);
@@ -2648,6 +3168,13 @@
 
     var initial = new URLSearchParams(initialQuery || '');
     var filters = {
+      // Task 29: explicit All/Client/Firm scope, instead of Firm Work's
+      // participation being an implicit side effect of "did you type a
+      // search term" -- the actual old behavior, which meant the exact
+      // same set of filters could silently include or exclude Firm Work
+      // depending on whether the box was empty, with no visible control
+      // for it anywhere on the page.
+      scope: initial.get('scope') || 'all',
       q: initial.get('q') || '',
       status: initial.get('status') || '',
       client: initial.get('client') || '',
@@ -2667,6 +3194,14 @@
     card.appendChild(field('Search', qInput));
 
     var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px;';
+
+    // Task 29: explicit scope, first in the row since it governs how the
+    // rest of the row behaves (see refreshScopeState below).
+    var scopeSel = el('select'); scopeSel.style.width = 'auto';
+    scopeSel.appendChild(new Option('All (Client + Firm)', 'all'));
+    scopeSel.appendChild(new Option('Client Work only', 'client'));
+    scopeSel.appendChild(new Option('Firm Work only', 'firm'));
+    scopeSel.value = filters.scope;
 
     var statusSel = el('select'); statusSel.style.width = 'auto';
     statusSel.appendChild(new Option('All Statuses', ''));
@@ -2700,19 +3235,40 @@
 
     var dueFromInput = el('input'); dueFromInput.type = 'date'; dueFromInput.style.width = 'auto'; dueFromInput.value = filters.dueFrom;
     var dueToInput = el('input'); dueToInput.type = 'date'; dueToInput.style.width = 'auto'; dueToInput.value = filters.dueTo;
-    var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;align-items:center;gap:6px;';
+    // Task 35: matches Firm Work's own due-date range wrap -- flex-wrap
+    // lets the second date drop to its own line at narrow widths instead
+    // of forcing the whole page wider.
+    var dueWrap = el('div'); dueWrap.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;';
     var dueToLabel = el('span'); dueToLabel.textContent = 'to'; dueToLabel.style.cssText = 'font-size:.8rem;color:var(--ink-soft);';
     dueWrap.appendChild(dueFromInput); dueWrap.appendChild(dueToLabel); dueWrap.appendChild(dueToInput);
 
     var waitingLabel = el('label'); waitingLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-soft);white-space:nowrap;';
     var waitingCb = el('input'); waitingCb.type = 'checkbox'; waitingCb.style.width = 'auto'; waitingCb.checked = filters.waitingOnly;
     waitingLabel.appendChild(waitingCb); waitingLabel.appendChild(document.createTextNode('Waiting for Client only'));
-    if (filters.waitingOnly) statusSel.disabled = true;
 
+    filterRow.appendChild(scopeSel);
     [statusSel, clientSel, serviceSel, assigneeSel, reviewerSel, periodInput].forEach(function (elm) { filterRow.appendChild(elm); });
     filterRow.appendChild(dueWrap);
     filterRow.appendChild(waitingLabel);
     card.appendChild(filterRow);
+
+    // Task 29: "if a filter only applies to Client Work, state that
+    // rather than silently narrowing results." Status/Client/Service/
+    // Reviewer/Period/"Waiting for Client" have no Firm Work equivalent
+    // at all; Assignee and the due-date range are the two genuinely
+    // shared concepts. Stated once here, and reinforced by actually
+    // disabling the Client-only controls when Firm-only scope is picked
+    // (see refreshScopeState) so it's never just a sentence someone has
+    // to remember -- the form itself can't lie about what it's doing.
+    var scopeNote = el('div'); scopeNote.style.cssText = 'font-size:.78rem;color:var(--ink-soft);margin-top:8px;';
+    scopeNote.textContent = 'Status, Client, Service, Reviewer, Period, and "Waiting for Client" apply to Client Work only. Assignee and the due-date range apply to both Client and Firm Work.';
+    card.appendChild(scopeNote);
+
+    var clientOnlyControls = [statusSel, clientSel, serviceSel, reviewerSel, periodInput, waitingCb];
+    function refreshScopeState() {
+      var firmOnly = scopeSel.value === 'firm';
+      clientOnlyControls.forEach(function (elm) { elm.disabled = firmOnly || (elm === statusSel && filters.waitingOnly); });
+    }
 
     var statusLine = el('div'); statusLine.style.cssText = 'margin-top:12px;font-size:.85rem;color:var(--ink-soft);display:flex;align-items:center;gap:10px;';
     var statusText = el('span'); statusText.textContent = 'Searching…';
@@ -2733,6 +3289,7 @@
 
     function syncUrl() {
       var p = new URLSearchParams();
+      if (filters.scope !== 'all') p.set('scope', filters.scope);
       if (filters.q) p.set('q', filters.q);
       if (filters.status) p.set('status', filters.status);
       if (filters.client) p.set('client', filters.client);
@@ -2750,14 +3307,30 @@
       history.replaceState(null, '', '#search' + (str ? '?' + str : ''));
     }
 
+    // Task 29: whether each side of the search is even eligible to run,
+    // given the current scope and which filters are actually set. Client-
+    // only filters never make the Firm side eligible (they can't --
+    // they're disabled whenever scope is Firm-only, see refreshScopeState);
+    // Assignee and the due-date range are shared, so either one alone is
+    // enough to make Firm eligible too, closing the old gap where e.g.
+    // filtering by Assignee with no search text silently returned zero
+    // Firm Work results despite Assignee being a genuinely shared filter.
+    function clientEligible() {
+      return filters.scope !== 'firm' && !!(filters.q || filters.status || filters.client || filters.service || filters.assignee || filters.reviewer || filters.period || filters.dueFrom || filters.dueTo || filters.waitingOnly);
+    }
+    function firmEligible() {
+      return filters.scope !== 'client' && !!(filters.q || filters.assignee || filters.dueFrom || filters.dueTo);
+    }
+
     async function runSearch() {
       var seq = ++requestSeq;
       clear(resultsWrap);
-      var anyFilterActive = !!(filters.q || filters.status || filters.client || filters.service || filters.assignee || filters.reviewer || filters.period || filters.dueFrom || filters.dueTo || filters.waitingOnly);
+      var wantClient = clientEligible();
+      var wantFirm = firmEligible();
       // No query at all until there's something to filter by — an unbounded
       // select() the moment the page loads would be exactly the "download
       // the whole table just to search" this feature is meant to avoid.
-      if (!anyFilterActive) {
+      if (!wantClient && !wantFirm) {
         statusText.textContent = '';
         var prompt = el('div', 'empty-note'); prompt.appendChild(icon('search'));
         prompt.appendChild(document.createTextNode('Type a search term or choose a filter above.'));
@@ -2766,77 +3339,79 @@
       }
       var loading = el('div', 'empty-note'); loading.textContent = 'Searching…'; resultsWrap.appendChild(loading);
 
+      var term = stripOrSyntax(filters.q);
+
       // The filter row (client/service/period/staff/status/submission
       // reference) is a Client Work vocabulary — none of it maps onto
-      // Firm Work, so it only ever narrows this query. Firm Work
-      // participates in the free-text query below instead (Handbook
-      // Task 23) — this does NOT contaminate client compliance
-      // reporting: Today/Deadlines/Manager Dashboard/Period Summary/
-      // Reports all route through loadWork() or their own explicit
-      // work_scope='client' filter, none of which this page touches.
-      var query = sb.from('work_items').select('*').eq('work_scope', 'client').order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
-      if (filters.status) query = query.eq('status', filters.status);
-      if (filters.client) query = query.eq('client_id', filters.client);
-      if (filters.service) query = query.eq('service_template_id', filters.service);
-      if (filters.assignee) query = query.eq('assignee_id', filters.assignee);
-      if (filters.reviewer) query = query.eq('reviewer_id', filters.reviewer);
-      if (filters.period) query = query.ilike('period', '%' + stripOrSyntax(filters.period) + '%');
-      if (filters.waitingOnly) query = query.eq('status', 'waiting_for_client');
-      // Filtered against internal_due_date only (the primary due date
-      // used everywhere else in this app) — a work item with only an
-      // external_due_date set won't match a deadline range here. That's
-      // a deliberate simplification: a true either-column range needs a
-      // nested and/or PostgREST expression, which isn't worth the
-      // complexity for a range filter most templates won't even need
-      // (see 20260811090300_service_templates.sql's own filing_deadline_
-      // day comment on why external is the exception, not the rule).
-      if (filters.dueFrom) query = query.gte('internal_due_date', filters.dueFrom);
-      if (filters.dueTo) query = query.lte('internal_due_date', filters.dueTo);
+      // Firm Work, so it only ever narrows this query. This does NOT
+      // contaminate client compliance reporting: Today/Deadlines/Manager
+      // Dashboard/Period Summary/Reports all route through loadWork() or
+      // their own explicit work_scope='client' filter, none of which
+      // this page touches.
+      var queryPromise = Promise.resolve({ data: [] });
+      if (wantClient) {
+        var query = sb.from('work_items').select('*').eq('work_scope', 'client').order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
+        if (filters.status) query = query.eq('status', filters.status);
+        if (filters.client) query = query.eq('client_id', filters.client);
+        if (filters.service) query = query.eq('service_template_id', filters.service);
+        if (filters.assignee) query = query.eq('assignee_id', filters.assignee);
+        if (filters.reviewer) query = query.eq('reviewer_id', filters.reviewer);
+        if (filters.period) query = query.ilike('period', '%' + stripOrSyntax(filters.period) + '%');
+        if (filters.waitingOnly) query = query.eq('status', 'waiting_for_client');
+        // Filtered against internal_due_date only (the primary due date
+        // used everywhere else in this app) — a work item with only an
+        // external_due_date set won't match a deadline range here. That's
+        // a deliberate simplification: a true either-column range needs a
+        // nested and/or PostgREST expression, which isn't worth the
+        // complexity for a range filter most templates won't even need
+        // (see 20260811090300_service_templates.sql's own filing_deadline_
+        // day comment on why external is the exception, not the rule).
+        if (filters.dueFrom) query = query.gte('internal_due_date', filters.dueFrom);
+        if (filters.dueTo) query = query.lte('internal_due_date', filters.dueTo);
 
-      var term = stripOrSyntax(filters.q);
-      if (term) {
-        var lowerTerm = term.toLowerCase();
-        var matchingClientIds = state.clients.filter(function (c) { return c.name.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (c) { return c.id; });
-        var matchingStaffIds = state.profiles.filter(function (p) { return (p.full_name || '').toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (p) { return p.id; });
-        var matchingStatuses = Object.keys(STATUS_LABELS).filter(function (s) { return STATUS_LABELS[s].toLowerCase().indexOf(lowerTerm) !== -1; });
-        var matchingTemplateIds = state.templates.filter(function (t) { return t.title.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (t) { return t.id; });
+        if (term) {
+          var lowerTerm = term.toLowerCase();
+          var matchingClientIds = state.clients.filter(function (c) { return c.name.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (c) { return c.id; });
+          var matchingStaffIds = state.profiles.filter(function (p) { return (p.full_name || '').toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (p) { return p.id; });
+          var matchingStatuses = Object.keys(STATUS_LABELS).filter(function (s) { return STATUS_LABELS[s].toLowerCase().indexOf(lowerTerm) !== -1; });
+          var matchingTemplateIds = state.templates.filter(function (t) { return t.title.toLowerCase().indexOf(lowerTerm) !== -1; }).map(function (t) { return t.id; });
 
-        var orParts = ['title.ilike.%' + term + '%', 'period.ilike.%' + term + '%', 'submission_reference.ilike.%' + term + '%'];
-        if (matchingClientIds.length) orParts.push('client_id.in.(' + matchingClientIds.join(',') + ')');
-        if (matchingStaffIds.length) {
-          orParts.push('assignee_id.in.(' + matchingStaffIds.join(',') + ')');
-          orParts.push('reviewer_id.in.(' + matchingStaffIds.join(',') + ')');
+          var orParts = ['title.ilike.%' + term + '%', 'period.ilike.%' + term + '%', 'submission_reference.ilike.%' + term + '%'];
+          if (matchingClientIds.length) orParts.push('client_id.in.(' + matchingClientIds.join(',') + ')');
+          if (matchingStaffIds.length) {
+            orParts.push('assignee_id.in.(' + matchingStaffIds.join(',') + ')');
+            orParts.push('reviewer_id.in.(' + matchingStaffIds.join(',') + ')');
+          }
+          if (matchingStatuses.length) orParts.push('status.in.(' + matchingStatuses.join(',') + ')');
+          if (matchingTemplateIds.length) orParts.push('service_template_id.in.(' + matchingTemplateIds.join(',') + ')');
+          query = query.or(orParts.join(','));
         }
-        if (matchingStatuses.length) orParts.push('status.in.(' + matchingStatuses.join(',') + ')');
-        if (matchingTemplateIds.length) orParts.push('service_template_id.in.(' + matchingTemplateIds.join(',') + ')');
-        query = query.or(orParts.join(','));
+        queryPromise = query;
       }
 
-      // Handbook Task 23: Firm Work joins global Search too, but only
-      // when there's an actual free-text term — the rest of this page's
-      // filter row has no Firm Work equivalent, so a pure-filter search
-      // (no text) stays exactly the Client-only search it always was.
-      // Search fields mirror the Firm Work list's own (title/description/
-      // next_action/project name — Handbook Task 17/19); owner and due-
-      // date-range are shared, meaningful concepts so those two filters
-      // apply here too. Client/service/period/reviewer/submission/
-      // waiting have no Firm Work meaning and are correctly never applied.
+      // Handbook Task 23 / Task 29: Firm Work's own eligible fields —
+      // title/description/next_action/project name for free text, plus
+      // the two genuinely shared filters (assignee, due-date range).
+      // Client/service/period/reviewer/submission/waiting have no Firm
+      // Work meaning and are correctly never applied here.
       var firmQueryPromise = Promise.resolve({ data: [] });
-      if (term) {
-        var firmLowerTerm = term.toLowerCase();
-        var matchingProjectIds = state.projects.filter(function (p) { return p.name.toLowerCase().indexOf(firmLowerTerm) !== -1; }).map(function (p) { return p.id; });
-        var firmOrParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%'];
-        if (matchingProjectIds.length) firmOrParts.push('project_id.in.(' + matchingProjectIds.join(',') + ')');
+      if (wantFirm) {
         var firmQuery = sb.from('work_items').select('*').eq('work_scope', 'firm')
-          .order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP)
-          .or(firmOrParts.join(','));
+          .order('internal_due_date', { ascending: true, nullsFirst: false }).limit(RESULT_CAP);
+        if (term) {
+          var firmLowerTerm = term.toLowerCase();
+          var matchingProjectIds = state.projects.filter(function (p) { return p.name.toLowerCase().indexOf(firmLowerTerm) !== -1; }).map(function (p) { return p.id; });
+          var firmOrParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%'];
+          if (matchingProjectIds.length) firmOrParts.push('project_id.in.(' + matchingProjectIds.join(',') + ')');
+          firmQuery = firmQuery.or(firmOrParts.join(','));
+        }
         if (filters.assignee) firmQuery = firmQuery.eq('assignee_id', filters.assignee);
         if (filters.dueFrom) firmQuery = firmQuery.gte('internal_due_date', filters.dueFrom);
         if (filters.dueTo) firmQuery = firmQuery.lte('internal_due_date', filters.dueTo);
         firmQueryPromise = firmQuery;
       }
 
-      var results = await Promise.all([query, firmQueryPromise]);
+      var results = await Promise.all([queryPromise, firmQueryPromise]);
       var res = results[0];
       var firmRes = results[1];
       if (seq !== requestSeq) return; // superseded by a newer search
@@ -2852,7 +3427,7 @@
       var totalCount = items.length + firmItems.length;
       var cappedNote = (items.length >= RESULT_CAP || firmItems.length >= RESULT_CAP)
         ? 'Showing the first matches — narrow your search to see more precisely.'
-        : totalCount + ' match' + (totalCount === 1 ? '' : 'es') + (firmItems.length ? ' (' + items.length + ' Client, ' + firmItems.length + ' Firm)' : '') + '.';
+        : totalCount + ' match' + (totalCount === 1 ? '' : 'es') + (wantClient && wantFirm ? ' (' + items.length + ' Client, ' + firmItems.length + ' Firm)' : '') + '.';
       statusText.textContent = cappedNote;
       if (!totalCount) {
         var empty = el('div', 'empty-note'); empty.appendChild(icon('folder'));
@@ -2860,10 +3435,19 @@
         resultsWrap.appendChild(empty);
         return;
       }
-      // Client results first, unmistakably labeled CLIENT — Firm Work
-      // in its own labeled section below, never interleaved into the
-      // same list (Handbook Task 23's "clear FIRM label" requirement).
-      items.forEach(function (w) { resultsWrap.appendChild(workRow(w, true)); });
+      // Client results first, unmistakably labeled CLIENT under their own
+      // "Client Work" heading — Firm Work in its own separately-labeled
+      // "Firm Work" section below, never interleaved into the same list
+      // (Handbook Task 23's "clear FIRM label" requirement, Task 29's
+      // symmetric heading so Client isn't the unlabeled implicit default
+      // once both sections can appear together).
+      if (items.length) {
+        var clientHead = el('h2'); clientHead.style.cssText = 'font-size:1rem;margin:0 0 8px;';
+        clientHead.appendChild(icon('building'));
+        clientHead.appendChild(document.createTextNode('Client Work'));
+        resultsWrap.appendChild(clientHead);
+        items.forEach(function (w) { resultsWrap.appendChild(workRow(w, true)); });
+      }
       if (firmItems.length) {
         var firmHead = el('h2'); firmHead.style.cssText = 'font-size:1rem;margin:' + (items.length ? '18px' : '0') + ' 0 8px;';
         firmHead.appendChild(icon('briefcase'));
@@ -2881,6 +3465,11 @@
       debounceTimer = setTimeout(runSearch, 300);
     }
 
+    scopeSel.addEventListener('change', function () {
+      filters.scope = scopeSel.value;
+      refreshScopeState();
+      onFilterChange(true);
+    });
     qInput.addEventListener('input', function () { filters.q = qInput.value; onFilterChange(false); });
     periodInput.addEventListener('input', function () { filters.period = periodInput.value; onFilterChange(false); });
     statusSel.addEventListener('change', function () { filters.status = statusSel.value; onFilterChange(true); });
@@ -2896,17 +3485,25 @@
       // Client, not an independent second status filter — kept mutually
       // exclusive with the Status dropdown so the two can't silently
       // contradict each other (e.g. Status=Completed + Waiting checked).
-      if (waitingCb.checked) { filters.status = ''; statusSel.value = ''; statusSel.disabled = true; } else { statusSel.disabled = false; }
+      if (waitingCb.checked) { filters.status = ''; statusSel.value = ''; }
+      refreshScopeState();
       onFilterChange(true);
     });
     clearBtn.addEventListener('click', function () {
-      filters = { q: '', status: '', client: '', service: '', assignee: '', reviewer: '', period: '', dueFrom: '', dueTo: '', waitingOnly: false };
+      // Scope is deliberately preserved through Clear Filters -- it's the
+      // page's mode (which vocabulary of filters even applies), not one
+      // of the filters themselves; someone who picked "Firm Work only"
+      // almost certainly wants to stay there while clearing everything
+      // else, not get silently switched back to "All."
+      filters = { scope: filters.scope, q: '', status: '', client: '', service: '', assignee: '', reviewer: '', period: '', dueFrom: '', dueTo: '', waitingOnly: false };
       qInput.value = ''; periodInput.value = ''; dueFromInput.value = ''; dueToInput.value = '';
       statusSel.value = ''; clientSel.value = ''; serviceSel.value = ''; assigneeSel.value = ''; reviewerSel.value = '';
-      waitingCb.checked = false; statusSel.disabled = false;
+      waitingCb.checked = false;
+      refreshScopeState();
       onFilterChange(true);
     });
 
+    refreshScopeState();
     syncUrl();
     await runSearch();
   }
@@ -3183,19 +3780,67 @@
     activityBtn.addEventListener('click', function () { showTab(activityBtn, activityPane); });
 
     // ---- Overview pane ----
+    // Task 26: "put high-value operational context before long history" —
+    // the primary next action is the single answer to "what do I do about
+    // this," so it comes first, before even the meta grid. Reuses
+    // nextActionLabel() from My Work/Today (Task 24) so the status->action
+    // mapping can never drift between the list rows and this detail page.
+    var nextActionBox = el('div', 'next-action-callout');
+    nextActionBox.appendChild(icon('flag'));
+    var naText = el('span'); naText.textContent = nextActionLabel(work);
+    nextActionBox.appendChild(naText);
+    overviewPane.appendChild(nextActionBox);
+
+    // Task 26: at-a-glance state chips for checklist/waiting/submission —
+    // each already has its own full interactive section further down this
+    // same pane, but someone shouldn't have to scroll (or switch to the
+    // Checklist tab) just to see the two numbers that answer "how close is
+    // this." Only shown when actually relevant, so a plain to-do item
+    // without submission tracking or an active wait doesn't grow a row of
+    // empty/meaningless chips.
+    var chipsRow = el('div', 'detail-chips');
+    function chip(label, value, cls) {
+      var c = el('span', 'detail-chip' + (cls ? ' ' + cls : ''));
+      var l = el('span', 'k'); l.textContent = label;
+      var v = el('span', 'v'); v.textContent = value;
+      c.appendChild(l); c.appendChild(v);
+      chipsRow.appendChild(c);
+    }
+    if (checklist.length) {
+      chip('Checklist', checklist.filter(function (i) { return i.is_done; }).length + ' / ' + checklist.length + ' done');
+    }
+    if (work.status === 'waiting_for_client') {
+      var receivedCount = waitingItems.filter(function (wi) { return wi.is_received; }).length;
+      chip('Waiting on Client', waitingItems.length ? (receivedCount + ' / ' + waitingItems.length + ' received') : 'awaiting details', 'chip-amber');
+    }
+    if (work.submission_required) {
+      chip('Submission', SUBMISSION_STATUS_LABELS[work.submission_status || 'not_ready']);
+    }
+    if (chipsRow.children.length) overviewPane.appendChild(chipsRow);
+
     var metaGrid = el('div', 'meta-grid');
     metaGrid.appendChild(metaItem('Client', clientName(work.client_id), 'building'));
     metaGrid.appendChild(metaItem('Service', template ? template.title : 'Ad-hoc', 'idcard'));
+    metaGrid.appendChild(metaItem('Period', work.period || '—', 'calendar'));
+    metaGrid.appendChild(metaItem('Status', STATUS_LABELS[work.status] || work.status, 'check'));
     metaGrid.appendChild(metaItem('Assignee', profileName(work.assignee_id), 'user', true));
     metaGrid.appendChild(metaItem('Reviewer', work.reviewer_id ? profileName(work.reviewer_id) : '—', 'user', !!work.reviewer_id));
-    metaGrid.appendChild(metaItem('Internal Target', fmtDate(work.internal_due_date), 'calendar'));
+    // Task 26: "make Internal vs External/Statutory deadline visually
+    // unmistakable" — a plain "Internal Target" / "External / Filing
+    // Deadline" label pair (unchanged text, for continuity) now also
+    // carries a real color-coded tag on the value itself, not just a
+    // different label, so the two can't be confused at a glance the way
+    // two same-styled date fields could be.
+    var internalTag = work.internal_due_date ? { text: 'INTERNAL', cls: 'badge-internal' } : null;
+    metaGrid.appendChild(metaItem('Internal Target', fmtDate(work.internal_due_date), 'calendar', false, internalTag));
     // Handbook Task 12: distinct from "—" (no date, and none needed) —
     // a template flagged requires_external_deadline with no external_
     // due_date set means a governed rule hasn't been entered yet, not
     // that this work genuinely has no filing deadline.
     var needsDeadlineVerification = !work.external_due_date && !!(template && template.requires_external_deadline);
     var externalDeadlineText = work.external_due_date ? fmtDate(work.external_due_date) : (needsDeadlineVerification ? 'Requires verification' : '—');
-    var externalDeadlineItem = metaItem('External / Filing Deadline', externalDeadlineText, 'calendar');
+    var externalTag = (work.external_due_date || needsDeadlineVerification) ? { text: 'STATUTORY', cls: 'badge-statutory' } : null;
+    var externalDeadlineItem = metaItem('External / Filing Deadline', externalDeadlineText, 'calendar', false, externalTag);
     if (needsDeadlineVerification) { var edv = externalDeadlineItem.querySelector('.value'); if (edv) edv.style.color = 'var(--amber)'; }
     metaGrid.appendChild(externalDeadlineItem);
     metaGrid.appendChild(metaItem('Priority', work.priority.charAt(0).toUpperCase() + work.priority.slice(1), 'flag'));
@@ -3412,7 +4057,7 @@
         var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
         // Status change (waiting_for_client -> in_progress) is logged automatically by guard_work_item_update() (Handbook Task 7).
-        toast('Back In Progress.');
+        toast('Back in progress.');
         renderWorkDetail(id);
       });
       allReceivedBanner.appendChild(allReceivedText); allReceivedBanner.appendChild(returnBtn);
@@ -3424,7 +4069,7 @@
         var res = await sb.from('work_items').update({ status: 'in_progress', waiting_reason: null, waiting_since: null, follow_up_date: null, waiting_requested_by: null }).eq('id', work.id);
         if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
         // Status change (waiting_for_client -> in_progress) is logged automatically by guard_work_item_update() (Handbook Task 7).
-        toast('Marked as received — back In Progress.');
+        toast('Marked as received — back in progress.');
         renderWorkDetail(id);
       });
 
@@ -3918,7 +4563,11 @@
     openModal(wrap);
   }
 
-  function metaItem(label, value, iconName, showAvatar) {
+  // tag (Task 26, optional): { text, cls } — appends a small pill after
+  // the value. Used to make Internal vs External/Statutory deadlines
+  // visually unmistakable on Work Details (see renderWorkDetail's own
+  // metaGrid), not just distinguished by label text as before.
+  function metaItem(label, value, iconName, showAvatar, tag) {
     var wrap = el('div', 'meta-item');
     wrap.appendChild(icon(iconName, 'ic-lg'));
     var body = el('div');
@@ -3926,6 +4575,7 @@
     var v = el('div', 'value');
     if (showAvatar && value !== '—') v.appendChild(avatar(value, 'avatar-sm'));
     v.appendChild(document.createTextNode(value));
+    if (tag) { var t = el('span', 'badge ' + tag.cls); t.textContent = tag.text; v.appendChild(t); }
     body.appendChild(l); body.appendChild(v);
     wrap.appendChild(body);
     return wrap;
@@ -3934,7 +4584,7 @@
   // ============================================================
   // Admin: Clients
   // ============================================================
-  function renderClients(main) {
+  async function renderClients(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Clients'; head.appendChild(h1);
     if (isAdmin()) {
@@ -3943,6 +4593,8 @@
       head.appendChild(addBtn);
     }
     main.appendChild(head);
+
+    await renderClientWorkHubStrip(main);
 
     if (!state.clients.length) {
       var empty = el('div', 'empty-note');
@@ -3987,6 +4639,16 @@
       }
 
       var actions = el('div', 'actions');
+      // Task 25: "improve navigation between the related surfaces" —
+      // jumps straight into Deadlines pre-filtered to this client (see
+      // gotoDeadlinesForClient / routeFromHash's ?client= handling)
+      // instead of leaving someone to re-select the client by hand on a
+      // separate page.
+      var deadlinesBtn = el('button', 'btn btn-outline btn-sm'); deadlinesBtn.type = 'button';
+      deadlinesBtn.appendChild(icon('calendar'));
+      deadlinesBtn.appendChild(document.createTextNode('View Deadlines'));
+      deadlinesBtn.addEventListener('click', function () { gotoDeadlinesForClient(c.id); });
+      actions.appendChild(deadlinesBtn);
       if (isReviewerOrAdmin()) {
         var credBtn = el('button', 'btn btn-outline btn-sm'); credBtn.type = 'button';
         credBtn.appendChild(icon('idcard'));
@@ -4019,6 +4681,10 @@
   // Work and Recently Completed on the Client page so the two read as
   // one consistent format rather than two different list styles.
   function clientWorkTable(items) {
+    // Task 35: every other wide table in this app scrolls horizontally
+    // inside its own card instead of pushing the whole page wider (Task
+    // 32's convention for Staff & Access); this one was missed.
+    var scroll = el('div'); scroll.style.cssText = 'overflow-x:auto;';
     var table = el('table');
     var thead = el('thead'); var trh = el('tr');
     ['Service', 'Period', 'Status', 'Deadline'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
@@ -4035,7 +4701,8 @@
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
-    return table;
+    scroll.appendChild(table);
+    return scroll;
   }
 
   async function renderClientDetail(id) {
@@ -4686,10 +5353,22 @@
     }
     main.appendChild(head);
 
+    // Task 34: this page holds two genuinely different systems, easy to
+    // conflate since they share one screen -- a template's own fields
+    // (checklist/recurrence/assignees, edited freely, no citation needed)
+    // versus each service's governed statutory deadline rule (source-
+    // cited, verified-date, admin-only, full superseding history --
+    // "Manage Deadline Rule" on a template card, a stricter system on
+    // purpose). Workflow Settings (day-count thresholds like "warn N days
+    // before due") is a third, separate thing entirely, on its own page.
+    // None of the three ever rewrites already-generated work: a template
+    // edit only changes what NEW work gets created from it from now on
+    // (see openEditTemplateModal's own comment); a new deadline rule only
+    // changes what a FUTURE period generation computes.
     var note = el('div', 'card');
     var p = el('p', 'desc');
     p.style.margin = '0';
-    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). "Use This Template" fills in one work item at a time; "Generate Period Work" fills in a whole period at once from every client\'s Active Services.';
+    p.textContent = 'Templates describe recurring work (e.g. "VAT Return"). "Use This Template" fills in one work item at a time; "Generate Period Work" fills in a whole period at once from every client\'s Active Services. A template\'s statutory filing deadline is governed separately, per service, via "Manage Deadline Rule" below — source-cited and verified, never a guess. Workflow Settings (day-count thresholds, not deadlines) lives on its own Settings page. Editing any of these never rewrites work already generated — only what gets created from this point on.';
     note.appendChild(p);
     main.appendChild(note);
 
@@ -4770,7 +5449,7 @@
     var card = el('div', 'card');
     var h2 = el('h2'); h2.appendChild(icon('calendar')); h2.appendChild(document.createTextNode('Auto-Generate Periods')); card.appendChild(h2);
     var desc = el('p', 'desc');
-    desc.textContent = 'When an admin opens Work Desk, work gets generated for every active service whose type matches a period set below. A label and both Gregorian dates are required to activate a type; leave all three blank to pause it.';
+    desc.textContent = 'When an admin opens Work Desk, work gets generated for every active service whose type matches a period set below. A label and both Gregorian dates are required to activate a type; leave all three blank to pause it. Existing work for the same client/service/period is always skipped, never duplicated or overwritten — changing a period here only affects what gets generated from now on, never what was already created.';
     card.appendChild(desc);
 
     var res = await sb.from('app_settings').select('*').in('key', AUTO_GENERATE_KEYS.map(function (k) { return k[0]; }));
@@ -4785,7 +5464,10 @@
       var startInput = el('input'); startInput.type = 'date'; startInput.value = current.start;
       var endInput = el('input'); endInput.type = 'date'; endInput.value = current.end;
       row.appendChild(field(label, labelInput));
-      var rangeRow = el('div'); rangeRow.style.cssText = 'display:flex;gap:8px;';
+      // Task 35: two flex:1 date fields side by side don't fit at 320px;
+      // wrap lets the second one drop to its own line instead of pushing
+      // the page wider.
+      var rangeRow = el('div'); rangeRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
       var startWrap = el('div'); startWrap.style.flex = '1'; startWrap.appendChild(field('Period Start Date (Gregorian)', startInput));
       var endWrap = el('div'); endWrap.style.flex = '1'; endWrap.appendChild(field('Period End Date (Gregorian)', endInput));
       rangeRow.appendChild(startWrap); rangeRow.appendChild(endWrap);
@@ -4947,7 +5629,7 @@
     var formLabel = el('div', 'section-h'); formLabel.style.marginTop = '18px'; formLabel.textContent = 'Add / Replace Rule';
     wrap.appendChild(formLabel);
     var formNote = el('p', 'desc');
-    formNote.textContent = 'DO NOT guess this from memory or a generic website — enter it only from an owner-approved primary source (Finance Act/IRD notice, confirmed with the firm owner). Saving this replaces whichever rule is currently active.';
+    formNote.textContent = 'DO NOT guess this from memory or a generic website — enter it only from an owner-approved primary source (Finance Act/IRD notice, confirmed with the firm owner). Saving this replaces whichever rule is currently active for future generation only — work items already generated keep the filing deadline they were created with, never silently updated to match a new rule.';
     wrap.appendChild(formNote);
 
     var fyInput = el('input'); fyInput.type = 'text'; fyInput.placeholder = 'e.g. FY 2082/83 onwards';
@@ -5488,7 +6170,7 @@
     var filterCard = el('div', 'card');
     var filterRow = el('div'); filterRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
 
-    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title, description, category, project, owner, or next action…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
+    var searchInput = el('input'); searchInput.type = 'text'; searchInput.placeholder = 'Search title, description, category, project, owner, next action, or blocker…'; searchInput.style.cssText = 'flex:1;min-width:180px;';
     var ownerSel = el('select'); ownerSel.style.width = 'auto';
     ownerSel.appendChild(new Option('All Owners', ''));
     state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { ownerSel.appendChild(new Option(p.full_name, p.id)); });
@@ -5581,7 +6263,9 @@
         // ilike works directly) and owner (matched by name the same way
         // project/client/staff names already are elsewhere in this app)
         // were the two not yet covered.
-        var orParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%', 'firm_category.ilike.%' + term + '%'];
+        // Task 27: blocker_reason joins the same search -- "why is this
+        // stuck" is exactly the kind of thing someone searches for.
+        var orParts = ['title.ilike.%' + term + '%', 'description.ilike.%' + term + '%', 'next_action.ilike.%' + term + '%', 'firm_category.ilike.%' + term + '%', 'blocker_reason.ilike.%' + term + '%'];
         // Handbook Task 19: "Project name should participate in Firm
         // Work search where practical." project_id is a foreign key, not
         // text, so it can't join into an ilike directly -- matched the
@@ -5629,7 +6313,7 @@
       var tableScroll = el('div'); tableScroll.style.cssText = 'overflow-x:auto;';
       var table = el('table');
       var thead = el('thead'); var trh = el('tr');
-      ['Title', 'Category', 'Project', 'Owner', 'Status', 'Due Date', 'Priority', 'Next Action / Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+      ['Title', 'Category', 'Project', 'Owner', 'Status', 'Due Date', 'Priority', 'Blocker / Next Action / Update'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
       thead.appendChild(trh); table.appendChild(thead);
       var tbody = el('tbody');
       items.forEach(function (w) {
@@ -5653,10 +6337,20 @@
         // Handbook Task 17: next_action, when set, is a more direct
         // "what happens next" signal than a comment thread — falls back
         // to the latest update when there's no next_action recorded.
-        var tdUpdate = el('td'); tdUpdate.style.cssText = 'color:var(--ink-soft);font-size:.85rem;max-width:220px;';
+        // Task 27: a blocked item's own blocker reason outranks both —
+        // "why is this stuck" is the more urgent question than "what's
+        // next" once something is actually blocked. Amber, never red —
+        // this is an operational blocker, not a statutory breach.
+        var tdUpdate = el('td'); tdUpdate.style.cssText = 'font-size:.85rem;max-width:220px;';
         var latest = latestByItem[w.id];
-        if (w.next_action) tdUpdate.textContent = truncateOneLine(w.next_action, 60);
-        else tdUpdate.textContent = latest ? truncateOneLine(latest.body, 60) : '—';
+        if (w.status === 'blocked' && w.blocker_reason) {
+          tdUpdate.style.color = 'var(--amber)'; tdUpdate.style.fontWeight = '600';
+          tdUpdate.textContent = 'Blocked: ' + truncateOneLine(w.blocker_reason, 55);
+        } else {
+          tdUpdate.style.color = 'var(--ink-soft)';
+          if (w.next_action) tdUpdate.textContent = truncateOneLine(w.next_action, 60);
+          else tdUpdate.textContent = latest ? truncateOneLine(latest.body, 60) : '—';
+        }
         tr.appendChild(tdUpdate);
         tbody.appendChild(tr);
       });
@@ -5909,6 +6603,10 @@
     }
     metaGrid.appendChild(projectMeta);
     metaGrid.appendChild(metaItem('Owner', profileName(work.assignee_id), 'user', true));
+    // Task 27: Status alongside the rest of the at-a-glance fields, not
+    // just the corner badge -- matches Client Work Detail's own metaGrid
+    // treatment (Task 26) so the two detail pages read consistently.
+    metaGrid.appendChild(metaItem('Status', STATUS_LABELS[work.status] || work.status, 'check'));
     metaGrid.appendChild(metaItem('Priority', work.priority.charAt(0).toUpperCase() + work.priority.slice(1), 'flag'));
     metaGrid.appendChild(metaItem('Target Date', work.internal_due_date ? fmtDate(work.internal_due_date) : '—', 'calendar'));
     metaGrid.appendChild(metaItem('Last Updated', fmtDateTime(work.updated_at), 'calendar'));
@@ -6002,6 +6700,28 @@
     if (work.description) {
       var descP = el('p'); descP.style.cssText = 'white-space:pre-wrap;margin-top:14px;'; descP.textContent = work.description;
       card.appendChild(descP);
+    }
+    // Task 27: "recent meaningful update" belongs in the top summary,
+    // before long history -- a short preview here (comments is already
+    // newest-first) means nobody has to scroll past the Checklist card
+    // just to see the latest word on this item. The full thread with its
+    // own post box stays in the Updates card below; this is read-only.
+    if (comments.length) {
+      var latestComment = comments[0];
+      var latestBox = el('div', 'action-box'); latestBox.style.marginTop = '10px';
+      var latestTitle = el('div', 'action-title'); latestTitle.textContent = 'Latest Update'; latestBox.appendChild(latestTitle);
+      var latestWho = el('span', 'who'); latestWho.textContent = profileName(latestComment.author_id);
+      if (latestComment.update_type) {
+        var latestTypeBadge = el('span', 'badge badge-type'); latestTypeBadge.style.marginLeft = '8px';
+        latestTypeBadge.textContent = UPDATE_TYPE_LABELS[latestComment.update_type] || latestComment.update_type;
+        latestWho.appendChild(latestTypeBadge);
+      }
+      var latestWhen = el('span', 'when'); latestWhen.textContent = fmtDateTime(latestComment.created_at);
+      latestWho.appendChild(latestWhen);
+      latestBox.appendChild(latestWho);
+      var latestBody = el('p'); latestBody.style.marginTop = '4px'; latestBody.textContent = truncateOneLine(latestComment.body, 160);
+      latestBox.appendChild(latestBody);
+      card.appendChild(latestBox);
     }
     main.appendChild(card);
 
@@ -6463,14 +7183,27 @@
       var body = el('div');
       var n = el('h3'); n.textContent = p.full_name || 'Unnamed staff'; body.appendChild(n);
       var role = el('div', 'dir-role'); role.textContent = p.designation || (p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : 'Team member'); body.appendChild(role);
-      if (p.work_email) { var em = el('div', 'dir-line'); em.textContent = p.work_email; body.appendChild(em); }
-      if (p.phone) { var ph = el('div', 'dir-line'); ph.textContent = p.phone; body.appendChild(ph); }
+      // Task 31: real mailto:/tel: links -- a directory's whole point is
+      // reaching someone, so "click to email/call" beats plain text here,
+      // even though the client-contact rows elsewhere in this app stay
+      // plain text by their own established convention.
+      if (p.work_email) { var em = el('div', 'dir-line'); var emLink = el('a'); emLink.href = 'mailto:' + p.work_email; emLink.textContent = p.work_email; em.appendChild(emLink); body.appendChild(em); }
+      if (p.phone) { var ph = el('div', 'dir-line'); var phLink = el('a'); phLink.href = 'tel:' + p.phone.replace(/[^\d+]/g, ''); phLink.textContent = p.phone; ph.appendChild(phLink); body.appendChild(ph); }
       if (p.join_date) { var jd = el('div', 'dir-line'); jd.textContent = 'Joined ' + fmtDate(p.join_date); body.appendChild(jd); }
       card.appendChild(body); grid.appendChild(card);
     });
     main.appendChild(grid);
   }
 
+  // Task 31: the profile page is deliberately split into two visually
+  // distinct cards -- "Managed by Admin" (read-only, disabled inputs) and
+  // "You Can Edit" (the two fields update_my_profile() actually allows a
+  // self-update on, see that RPC's own scoping) -- instead of one mixed
+  // grid with a hint paragraph at the bottom. The boundary this reflects
+  // is real, not cosmetic: the admin-managed fields are read-only here
+  // because the DB itself doesn't let a self-update touch them (see
+  // 20260902090000_attendance_and_staff_profiles.sql), not because the
+  // UI merely chose to disable them.
   function renderProfilePage(main) {
     var p = state.profile;
     var hero = el('div', 'card profile-hero'); hero.appendChild(profilePhoto(p, true));
@@ -6478,14 +7211,26 @@
     var meta = el('div', 'profile-meta'); meta.textContent = (p.designation || 'Maven team member') + ' · ' + (p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : ''); text.appendChild(meta);
     hero.appendChild(text); main.appendChild(hero);
 
-    var info = el('div', 'card'); var h2 = el('h2'); h2.textContent = 'Profile details'; info.appendChild(h2);
-    var grid = el('div', 'profile-grid');
-    function readOnly(label, value) { var inp = el('input'); inp.value = value || ''; inp.disabled = true; grid.appendChild(field(label, inp)); }
-    readOnly('Full name', p.full_name); readOnly('Designation', p.designation); readOnly('Work email', p.work_email || state.user.email); readOnly('Join date', p.join_date ? fmtDate(p.join_date) : '');
-    var phone = el('input'); phone.value = p.phone || ''; grid.appendChild(field('Phone', phone));
-    var photo = el('input'); photo.type = 'text'; photo.placeholder = '/images/staff/name.jpg or Maven Supabase Storage URL'; photo.value = p.photo_url || ''; grid.appendChild(field('Profile photo (optional)', photo));
-    info.appendChild(grid);
-    var hint = el('p', 'f-hint'); hint.textContent = 'Name, role, designation, work email and join date are managed by an admin. You can update your phone and optionally use a local /images/ photo or a public Maven Supabase Storage image. If no photo is set, your initials are shown.'; info.appendChild(hint);
+    var adminCard = el('div', 'card');
+    var adminH2 = el('h2'); adminH2.appendChild(icon('idcard')); adminH2.appendChild(document.createTextNode('Managed by Admin')); adminCard.appendChild(adminH2);
+    var adminNote = el('p', 'desc'); adminNote.textContent = "These fields aren't yours to change here -- ask an admin if any of them need updating."; adminCard.appendChild(adminNote);
+    var adminGrid = el('div', 'profile-grid');
+    function readOnly(label, value) { var inp = el('input'); inp.value = value || ''; inp.disabled = true; adminGrid.appendChild(field(label, inp)); }
+    readOnly('Full name', p.full_name);
+    readOnly('Designation', p.designation);
+    readOnly('Role', p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : '');
+    readOnly('Work email', p.work_email || state.user.email);
+    readOnly('Join date', p.join_date ? fmtDate(p.join_date) : '');
+    adminCard.appendChild(adminGrid);
+    main.appendChild(adminCard);
+
+    var editCard = el('div', 'card');
+    var editH2 = el('h2'); editH2.appendChild(icon('user')); editH2.appendChild(document.createTextNode('You Can Edit')); editCard.appendChild(editH2);
+    var editGrid = el('div', 'profile-grid');
+    var phone = el('input'); phone.value = p.phone || ''; editGrid.appendChild(field('Phone', phone));
+    var photo = el('input'); photo.type = 'text'; photo.placeholder = '/images/staff/name.jpg or Maven Supabase Storage URL'; photo.value = p.photo_url || ''; editGrid.appendChild(field('Profile photo (optional)', photo));
+    editCard.appendChild(editGrid);
+    var hint = el('p', 'f-hint'); hint.textContent = 'A local /images/ path or a public Maven Supabase Storage image only — no upload tool, no cropping. Leave blank and your initials are shown instead.'; editCard.appendChild(hint);
     var save = el('button', 'btn btn-sm'); save.type = 'button'; save.textContent = 'Save My Profile';
     save.addEventListener('click', async function () {
       var photoValue = allowedStaffPhotoUrl(photo.value);
@@ -6499,7 +7244,8 @@
       qs('#whoName').textContent = state.profile.full_name || state.user.email;
       toast('Profile updated.'); render();
     });
-    info.appendChild(save); main.appendChild(info);
+    editCard.appendChild(save);
+    main.appendChild(editCard);
   }
 
   // ============================================================
@@ -6598,15 +7344,27 @@
     var newOut = r.new_punched_out_at ? timeOnly(r.new_punched_out_at) : 'open';
     return 'In ' + oldIn + ' → ' + newIn + ' · Out ' + oldOut + ' → ' + newOut;
   }
+  // Task 30: priority position 6/7 ("corrections" + "audit history") --
+  // this table IS the audit history; the "Correct"/"Add Missing Record"
+  // buttons that create the entries it shows live on the records table
+  // (renderAttendanceRecordsTable) directly above it, so the two stay
+  // visually adjacent.
   function renderAttendanceCorrectionHistory(main, corrections, personId) {
     if (!corrections.length) return;
     var card = el('div', 'card');
     var h2 = el('h2'); h2.textContent = 'Correction history'; card.appendChild(h2);
     var note = el('p', 'desc'); note.textContent = 'Attendance corrections are preserved with the reason and the admin who made the change.'; card.appendChild(note);
+    // Task 30: mobile-safe -- wide tables (Date/Staff/Change/Reason/
+    // Corrected by can exceed a phone's width) scroll horizontally
+    // within their own card rather than forcing the page body wider,
+    // same convention already established for the Firm Work list table.
+    var tableScroll = el('div'); tableScroll.style.cssText = 'overflow-x:auto;';
     var table = el('table'); var hd = el('thead'); var trh = el('tr');
-    var heads = ['Date']; if (isAdmin() && personId === '__all__') heads.push('Staff');
+    var heads = ['Date'];
+    if (isAdmin() && personId === '__all__') heads.push('Staff');
     heads = heads.concat(['Change', 'Reason', 'Corrected by']);
-    heads.forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); }); hd.appendChild(trh); table.appendChild(hd);
+    heads.forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    hd.appendChild(trh); table.appendChild(hd);
     var tb = el('tbody');
     corrections.forEach(function (r) {
       var tr = el('tr');
@@ -6616,34 +7374,103 @@
       td(correctionChangeText(r)); td(r.reason || '—'); td(profileName(r.corrected_by));
       tb.appendChild(tr);
     });
-    table.appendChild(tb); card.appendChild(table); main.appendChild(card);
+    table.appendChild(tb);
+    tableScroll.appendChild(table);
+    card.appendChild(tableScroll);
+    main.appendChild(card);
   }
+  // Task 30: priority position 3 ("own monthly history") -- a compact
+  // numeric summary of the selected person's selected month, ahead of
+  // both the day-by-day records table and the calendar.
   function renderAttendanceMetrics(main, entries) {
     var complete = entries.filter(function (r) { return !!r.punched_out_at; });
     var total = complete.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
     var vals = [
-      ['Punch days', entries.length], ['Completed days', complete.length], ['Open / incomplete', entries.length - complete.length], ['Total time', durationText(total)]
+      ['Punch days', entries.length],
+      ['Completed days', complete.length],
+      ['Open / incomplete', entries.length - complete.length],
+      ['Total time', durationText(total)],
     ];
-    var grid = el('div', 'metric-grid'); vals.forEach(function (v) { var c = el('div', 'metric-card'); var l = el('span','metric-label'); l.textContent=v[0]; var x=el('span','metric-value'); x.textContent=String(v[1]); c.appendChild(l); c.appendChild(x); grid.appendChild(c); }); main.appendChild(grid);
+    var grid = el('div', 'metric-grid');
+    vals.forEach(function (v) {
+      var c = el('div', 'metric-card');
+      var l = el('span', 'metric-label'); l.textContent = v[0];
+      var x = el('span', 'metric-value'); x.textContent = String(v[1]);
+      c.appendChild(l); c.appendChild(x);
+      grid.appendChild(c);
+    });
+    main.appendChild(grid);
   }
+  // Task 30: priority position 4 ("calendar") -- a visual complement to
+  // the records table above it, not a replacement for it. "No record"
+  // stays the neutral label for a day with nothing logged (see this
+  // function's own day-status text below) -- this app has no separate
+  // leave/absence tracking, so a blank day is never asserted to mean
+  // anything more specific than "nothing was punched."
   function renderAttendanceCalendar(main, entries, monthKey) {
-    var b = attendanceMonthBounds(monthKey); var card = el('div','card'); var h2=el('h2'); h2.textContent='Monthly calendar'; card.appendChild(h2);
-    var byDate={}; entries.forEach(function(r){byDate[r.work_date]=r;}); var cal=el('div','attendance-calendar');
-    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){var x=el('div','cal-head');x.textContent=d;cal.appendChild(x);});
-    var first=new Date(b.year,b.month-1,1); var days=new Date(b.year,b.month,0).getDate();
-    for(var blank=0;blank<first.getDay();blank++) cal.appendChild(el('div','cal-day is-empty'));
-    for(var day=1;day<=days;day++){
-      var ds=b.year+'-'+String(b.month).padStart(2,'0')+'-'+String(day).padStart(2,'0'); var r=byDate[ds]; var cell=el('div','cal-day'+(r?' has-record '+(r.punched_out_at?'is-complete':'is-open'):''));
-      var n=el('div','day-num');n.textContent=String(day);cell.appendChild(n);var st=el('div','day-status');
-      st.textContent=r?(r.punched_out_at?durationText(attendanceSeconds(r)):'Punched in'):'No record';cell.appendChild(st);cal.appendChild(cell);
+    var b = attendanceMonthBounds(monthKey);
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.textContent = 'Monthly calendar'; card.appendChild(h2);
+    var byDate = {};
+    entries.forEach(function (r) { byDate[r.work_date] = r; });
+    var cal = el('div', 'attendance-calendar');
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(function (d) {
+      var x = el('div', 'cal-head'); x.textContent = d; cal.appendChild(x);
+    });
+    var first = new Date(b.year, b.month - 1, 1);
+    var days = new Date(b.year, b.month, 0).getDate();
+    for (var blank = 0; blank < first.getDay(); blank++) cal.appendChild(el('div', 'cal-day is-empty'));
+    for (var day = 1; day <= days; day++) {
+      var ds = b.year + '-' + String(b.month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      var r = byDate[ds];
+      var cell = el('div', 'cal-day' + (r ? ' has-record ' + (r.punched_out_at ? 'is-complete' : 'is-open') : ''));
+      var n = el('div', 'day-num'); n.textContent = String(day); cell.appendChild(n);
+      var st = el('div', 'day-status');
+      st.textContent = r ? (r.punched_out_at ? durationText(attendanceSeconds(r)) : 'Punched in') : 'No record';
+      cell.appendChild(st);
+      cal.appendChild(cell);
     }
-    card.appendChild(cal);main.appendChild(card);
+    card.appendChild(cal);
+    main.appendChild(card);
   }
+  // Task 30: priority position 5 ("admin team view") -- deliberately
+  // last among the three data views (own history, calendar, team view),
+  // and only ever rendered in place of the individual calendar (never
+  // alongside it -- see renderAttendancePage's refreshResults), since an
+  // "everyone at once" table has no single person's calendar to pair
+  // with. Plain punch-day/completed/open/total-time counts only -- no
+  // productivity or ranking metric of any kind, and staff stay in their
+  // existing (alphabetical) load order, never sorted by these numbers.
   function renderTeamAttendanceSummary(main, entries) {
     if (!isAdmin()) return;
-    var by={}; entries.forEach(function(r){if(!by[r.user_id])by[r.user_id]=[];by[r.user_id].push(r);});
-    var card=el('div','card');var h2=el('h2');h2.textContent='Team monthly summary';card.appendChild(h2);var table=el('table');var thd=el('thead');var trh=el('tr');['Staff','Punch days','Completed','Open','Total time'].forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});thd.appendChild(trh);table.appendChild(thd);var tb=el('tbody');
-    state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){var arr=by[p.id]||[];var comp=arr.filter(function(r){return r.punched_out_at;});var sec=comp.reduce(function(sum,r){return sum+attendanceSeconds(r);},0);var tr=el('tr');[p.full_name,arr.length,comp.length,arr.length-comp.length,durationText(sec)].forEach(function(v){var td=el('td');td.textContent=String(v);tr.appendChild(td);});tb.appendChild(tr);});table.appendChild(tb);card.appendChild(table);main.appendChild(card);
+    var by = {};
+    entries.forEach(function (r) { if (!by[r.user_id]) by[r.user_id] = []; by[r.user_id].push(r); });
+    var card = el('div', 'card');
+    var h2 = el('h2'); h2.textContent = 'Team monthly summary'; card.appendChild(h2);
+    // Task 30: mobile-safe -- same overflow-x:auto convention as the
+    // other attendance tables (see renderAttendanceCorrectionHistory).
+    var tableScroll = el('div'); tableScroll.style.cssText = 'overflow-x:auto;';
+    var table = el('table');
+    var thd = el('thead'); var trh = el('tr');
+    ['Staff', 'Punch days', 'Completed', 'Open', 'Total time'].forEach(function (t) {
+      var th = el('th'); th.textContent = t; trh.appendChild(th);
+    });
+    thd.appendChild(trh); table.appendChild(thd);
+    var tb = el('tbody');
+    state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) {
+      var arr = by[p.id] || [];
+      var comp = arr.filter(function (r) { return r.punched_out_at; });
+      var sec = comp.reduce(function (sum, r) { return sum + attendanceSeconds(r); }, 0);
+      var tr = el('tr');
+      [p.full_name, arr.length, comp.length, arr.length - comp.length, durationText(sec)].forEach(function (v) {
+        var td = el('td'); td.textContent = String(v); tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    tableScroll.appendChild(table);
+    card.appendChild(tableScroll);
+    main.appendChild(card);
   }
   function openAttendanceCorrection(entry, selectedPerson, monthKey, onSaved) {
     if (!isAdmin()) return;
@@ -6655,16 +7482,186 @@
     var reason=el('textarea');reason.rows=3;reason.placeholder='Required: why is this record being corrected?';wrap.appendChild(field('Correction reason',reason));
     var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Correction';save.addEventListener('click',async function(){if(!person.value||!date.value||!pin.value||reason.value.trim().length<3){toast('Staff, date, punch-in and a correction reason are required.',true);return;}var inIso=nepalLocalInputToIso(pin.value);var outIso=pout.value?nepalLocalInputToIso(pout.value):null;if(!inIso||(pout.value&&!outIso)){toast('Enter valid Nepal punch times.',true);return;}if(outIso&&new Date(outIso)<new Date(inIso)){toast('Punch-out cannot be earlier than punch-in.',true);return;}save.disabled=true;var res=await sb.rpc('attendance_admin_correct',{p_user_id:person.value,p_work_date:date.value,p_punched_in_at:inIso,p_punched_out_at:outIso,p_reason:reason.value.trim()});save.disabled=false;if(res.error){toast('Could not correct attendance: '+res.error.message,true);return;}closeModal();toast('Attendance correction saved with audit history.');if(onSaved)onSaved();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
   }
+  // Task 30: priority position 3 ("own monthly history") -- the actual
+  // day-by-day record, ahead of the calendar. Admin-only Correct/Add
+  // controls live here, right next to the data they act on; the audit
+  // trail those actions produce is the separate Correction History card
+  // immediately after this one (see renderAttendancePage).
+  function renderAttendanceRecordsTable(main, entries, personId, monthKey, onCorrected) {
+    var card = el('div', 'card');
+    var hh = el('h2'); hh.textContent = 'Attendance records'; card.appendChild(hh);
+    if (isAdmin()) {
+      var add = el('button', 'btn btn-outline btn-sm'); add.type = 'button';
+      add.textContent = 'Add / Correct Missing Record'; add.style.marginBottom = '14px';
+      add.addEventListener('click', function () { openAttendanceCorrection(null, personId, monthKey, onCorrected); });
+      card.appendChild(add);
+    }
+    if (!entries.length) {
+      var none = el('div', 'empty-note'); none.textContent = 'No attendance records for this month.'; card.appendChild(none);
+      main.appendChild(card);
+      return;
+    }
+    // Task 30: mobile-safe -- same overflow-x:auto convention as the
+    // other attendance tables.
+    var tableScroll = el('div'); tableScroll.style.cssText = 'overflow-x:auto;';
+    var table = el('table');
+    var hd = el('thead'); var trh = el('tr');
+    var heads = ['Date'];
+    if (isAdmin() && personId === '__all__') heads.push('Staff');
+    heads = heads.concat(['Punch In', 'Punch Out', 'Total', 'Status']);
+    if (isAdmin()) heads.push('');
+    heads.forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    hd.appendChild(trh); table.appendChild(hd);
+    var tb = el('tbody');
+    entries.forEach(function (r) {
+      var tr = el('tr');
+      function td(v) { var x = el('td'); x.textContent = v; tr.appendChild(x); }
+      td(fmtDate(r.work_date));
+      if (isAdmin() && personId === '__all__') td(profileName(r.user_id));
+      td(timeOnly(r.punched_in_at));
+      td(timeOnly(r.punched_out_at));
+      td(r.punched_out_at ? durationText(attendanceSeconds(r)) : '—');
+      var st = el('td');
+      var pill = el('span', 'attendance-status-pill ' + (r.punched_out_at ? 'complete' : 'open'));
+      pill.textContent = r.punched_out_at ? 'Completed' : 'Open';
+      st.appendChild(pill); tr.appendChild(st);
+      if (isAdmin()) {
+        var act = el('td');
+        var edit = el('button', 'btn btn-outline btn-sm'); edit.type = 'button'; edit.textContent = 'Correct';
+        edit.addEventListener('click', function () { openAttendanceCorrection(r, personId, monthKey, onCorrected); });
+        act.appendChild(edit); tr.appendChild(act);
+      }
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    tableScroll.appendChild(table);
+    card.appendChild(tableScroll);
+    main.appendChild(card);
+  }
+
   async function renderAttendancePage(main) {
-    var head=el('div','page-head');var h1=el('h1');h1.textContent='Attendance';head.appendChild(h1);main.appendChild(head);var intro=el('p','workspace-intro');intro.textContent=isAdmin()?'Punch in/out for your own day, review team attendance, export monthly CSV, and correct records with an audit reason.':'Punch in/out and review your own monthly attendance. Other employees\' attendance is private to admins.';main.appendChild(intro);
-    var punchCard=el('div','card attendance-punch-card');var pLeft=el('div');var ph=el('h2');ph.textContent='Today · '+fmtDate(attendanceTodayDateStr());pLeft.appendChild(ph);var pd=el('p','desc');pd.textContent='One punch-in and one punch-out per Gregorian work date, using Nepal time (UTC+05:45). No location, IP or device data is collected.';pLeft.appendChild(pd);var stateLine=el('div','punch-state');pLeft.appendChild(stateLine);punchCard.appendChild(pLeft);var actionWrap=el('div');punchCard.appendChild(actionWrap);main.appendChild(punchCard);
-    async function refreshPunch(){clear(stateLine);clear(actionWrap);var today=await loadTodayAttendance();if(!today){stateLine.textContent='Not punched in yet.';var b=el('button','btn');b.type='button';b.textContent='Punch In';b.addEventListener('click',async function(){b.disabled=true;var r=await sb.rpc('attendance_punch_in');b.disabled=false;if(r.error){toast('Punch in failed: '+r.error.message,true);return;}toast('Punched in.');render();});actionWrap.appendChild(b);}else if(!today.punched_out_at){stateLine.textContent='Punched in '+timeOnly(today.punched_in_at)+' · currently open';var b2=el('button','btn');b2.type='button';b2.textContent='Punch Out';b2.addEventListener('click',async function(){b2.disabled=true;var r=await sb.rpc('attendance_punch_out');b2.disabled=false;if(r.error){toast('Punch out failed: '+r.error.message,true);return;}toast('Punched out.');render();});actionWrap.appendChild(b2);}else{stateLine.textContent='In '+timeOnly(today.punched_in_at)+' · Out '+timeOnly(today.punched_out_at)+' · '+durationText(attendanceSeconds(today));var done=el('span','attendance-status-pill complete');done.textContent='Completed';actionWrap.appendChild(done);}}
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Attendance'; head.appendChild(h1);
+    main.appendChild(head);
+    var intro = el('p', 'workspace-intro');
+    intro.textContent = isAdmin()
+      ? 'Punch in/out for your own day, review team attendance, export monthly CSV, and correct records with an audit reason.'
+      : 'Punch in/out and review your own monthly attendance. Other employees\' attendance is private to admins.';
+    main.appendChild(intro);
+
+    // ---- Priority 1: today's punch status ----
+    var punchCard = el('div', 'card attendance-punch-card');
+    var pLeft = el('div');
+    var ph = el('h2'); ph.textContent = 'Today · ' + fmtDate(attendanceTodayDateStr()); pLeft.appendChild(ph);
+    // Task 30, priority 2: Nepal time stated immediately next to today's
+    // status, as an actual current value -- not just the "(UTC+05:45)"
+    // parenthetical buried in the paragraph below, which is easy to skim
+    // past.
+    var nepalNowLine = el('div', 'nepal-now-line');
+    nepalNowLine.textContent = 'Nepal time now: ' + timeOnly(new Date().toISOString());
+    pLeft.appendChild(nepalNowLine);
+    var pd = el('p', 'desc');
+    pd.textContent = 'One punch-in and one punch-out per Gregorian work date, using Nepal time (UTC+05:45). No location, IP or device data is collected.';
+    pLeft.appendChild(pd);
+    var stateLine = el('div', 'punch-state'); pLeft.appendChild(stateLine);
+    punchCard.appendChild(pLeft);
+    var actionWrap = el('div'); punchCard.appendChild(actionWrap);
+    main.appendChild(punchCard);
+
+    async function refreshPunch() {
+      clear(stateLine); clear(actionWrap);
+      var today = await loadTodayAttendance();
+      if (!today) {
+        stateLine.textContent = 'Not punched in yet.';
+        var b = el('button', 'btn'); b.type = 'button'; b.textContent = 'Punch In';
+        b.addEventListener('click', async function () {
+          b.disabled = true;
+          var r = await sb.rpc('attendance_punch_in');
+          b.disabled = false;
+          if (r.error) { toast('Punch in failed: ' + r.error.message, true); return; }
+          toast('Punched in.');
+          render();
+        });
+        actionWrap.appendChild(b);
+      } else if (!today.punched_out_at) {
+        stateLine.textContent = 'Punched in ' + timeOnly(today.punched_in_at) + ' · currently open';
+        var b2 = el('button', 'btn'); b2.type = 'button'; b2.textContent = 'Punch Out';
+        b2.addEventListener('click', async function () {
+          b2.disabled = true;
+          var r = await sb.rpc('attendance_punch_out');
+          b2.disabled = false;
+          if (r.error) { toast('Punch out failed: ' + r.error.message, true); return; }
+          toast('Punched out.');
+          render();
+        });
+        actionWrap.appendChild(b2);
+      } else {
+        stateLine.textContent = 'In ' + timeOnly(today.punched_in_at) + ' · Out ' + timeOnly(today.punched_out_at) + ' · ' + durationText(attendanceSeconds(today));
+        var done = el('span', 'attendance-status-pill complete'); done.textContent = 'Completed';
+        actionWrap.appendChild(done);
+      }
+    }
     await refreshPunch();
 
-    var controlsCard=el('div','card');var controls=el('div','attendance-controls');var month=el('input');month.type='month';month.value=attendanceTodayDateStr().slice(0,7);controls.appendChild(field('Month',month));var person=null;if(isAdmin()){person=el('select');person.appendChild(new Option('All staff','__all__'));state.profiles.filter(function(p){return p.is_active;}).forEach(function(p){person.appendChild(new Option(p.full_name,p.id));});controls.appendChild(field('Staff view',person));}else{var own=el('input');own.value=state.profile.full_name;own.disabled=true;controls.appendChild(field('Staff',own));}var exportBtn=el('button','btn btn-outline btn-sm');exportBtn.type='button';exportBtn.textContent='Export CSV';controls.appendChild(exportBtn);controlsCard.appendChild(controls);main.appendChild(controlsCard);
-    var results=el('div');main.appendChild(results);
-    async function refreshResults(){clear(results);var personId=isAdmin()?person.value:state.user.id;var loaded=await Promise.all([loadAttendanceEntries(month.value,personId),loadAttendanceCorrections(month.value,personId)]);var entries=loaded[0],corrections=loaded[1];renderAttendanceMetrics(results,entries);if(isAdmin()&&personId==='__all__')renderTeamAttendanceSummary(results,entries);else renderAttendanceCalendar(results,entries,month.value);var card=el('div','card');var hh=el('h2');hh.textContent='Attendance records';card.appendChild(hh);if(isAdmin()){var add=el('button','btn btn-outline btn-sm');add.type='button';add.textContent='Add / Correct Missing Record';add.style.marginBottom='14px';add.addEventListener('click',function(){openAttendanceCorrection(null,personId,month.value,refreshResults);});card.appendChild(add);}if(!entries.length){var none=el('div','empty-note');none.textContent='No attendance records for this month.';card.appendChild(none);}else{var table=el('table');var hd=el('thead');var trh=el('tr');var heads=['Date'];if(isAdmin()&&personId==='__all__')heads.push('Staff');heads=heads.concat(['Punch In','Punch Out','Total','Status']);if(isAdmin())heads.push('');heads.forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});hd.appendChild(trh);table.appendChild(hd);var tb=el('tbody');entries.forEach(function(r){var tr=el('tr');function td(v){var x=el('td');x.textContent=v;tr.appendChild(x);}td(fmtDate(r.work_date));if(isAdmin()&&personId==='__all__')td(profileName(r.user_id));td(timeOnly(r.punched_in_at));td(timeOnly(r.punched_out_at));td(r.punched_out_at?durationText(attendanceSeconds(r)):'—');var st=el('td');var pill=el('span','attendance-status-pill '+(r.punched_out_at?'complete':'open'));pill.textContent=r.punched_out_at?'Completed':'Open';st.appendChild(pill);tr.appendChild(st);if(isAdmin()){var act=el('td');var edit=el('button','btn btn-outline btn-sm');edit.type='button';edit.textContent='Correct';edit.addEventListener('click',function(){openAttendanceCorrection(r,personId,month.value,refreshResults);});act.appendChild(edit);tr.appendChild(act);}tb.appendChild(tr);});table.appendChild(tb);card.appendChild(table);}results.appendChild(card);renderAttendanceCorrectionHistory(results,corrections,personId);exportBtn.onclick=function(){downloadAttendanceCsv(entries,month.value);};}
-    month.addEventListener('change',refreshResults);if(person)person.addEventListener('change',refreshResults);await refreshResults();
+    // ---- Filter controls (Month / Staff view) -- inputs governing
+    // everything below, kept near the top for reachability; the actual
+    // Export CSV action stays with the data it exports (see the bottom
+    // of refreshResults), matching this task's explicit priority order.
+    var controlsCard = el('div', 'card');
+    var controls = el('div', 'attendance-controls');
+    var month = el('input'); month.type = 'month'; month.value = attendanceTodayDateStr().slice(0, 7);
+    controls.appendChild(field('Month', month));
+    var person = null;
+    if (isAdmin()) {
+      person = el('select');
+      person.appendChild(new Option('All staff', '__all__'));
+      state.profiles.filter(function (p) { return p.is_active; }).forEach(function (p) { person.appendChild(new Option(p.full_name, p.id)); });
+      // Task 30: defaults to the admin's OWN record ("own monthly
+      // history" outranks "admin team view" in this task's own priority
+      // order), not "All staff" -- switching to the team view is then a
+      // deliberate choice, not what loads first.
+      person.value = state.user.id;
+      controls.appendChild(field('Staff view', person));
+    } else {
+      var own = el('input'); own.value = state.profile.full_name; own.disabled = true;
+      controls.appendChild(field('Staff', own));
+    }
+    controlsCard.appendChild(controls);
+    main.appendChild(controlsCard);
+
+    var results = el('div'); main.appendChild(results);
+
+    async function refreshResults() {
+      clear(results);
+      var personId = isAdmin() ? person.value : state.user.id;
+      var loaded = await Promise.all([loadAttendanceEntries(month.value, personId), loadAttendanceCorrections(month.value, personId)]);
+      var entries = loaded[0], corrections = loaded[1];
+      var viewingAllStaff = isAdmin() && personId === '__all__';
+
+      // Priority 3: own (or selected person's) monthly history.
+      renderAttendanceMetrics(results, entries);
+      renderAttendanceRecordsTable(results, entries, personId, month.value, refreshResults);
+      // Priority 4 / 5: the calendar only makes sense for one person at a
+      // time; "All staff" shows the team view instead, never both.
+      if (viewingAllStaff) renderTeamAttendanceSummary(results, entries);
+      else renderAttendanceCalendar(results, entries, month.value);
+      // Priority 6 / 7: corrections' own audit trail.
+      renderAttendanceCorrectionHistory(results, corrections, personId);
+
+      // Priority 8: CSV export, last -- a card of its own rather than a
+      // stray button in the top filter row.
+      var exportCard = el('div', 'card');
+      var exportP = el('p', 'desc'); exportP.style.margin = '0 0 10px';
+      exportP.textContent = 'Export ' + (viewingAllStaff ? 'the whole team\'s' : 'this') + ' selected month\'s attendance records as CSV.';
+      exportCard.appendChild(exportP);
+      var exportBtn = el('button', 'btn btn-outline btn-sm'); exportBtn.type = 'button'; exportBtn.textContent = 'Export CSV';
+      exportBtn.addEventListener('click', function () { downloadAttendanceCsv(entries, month.value); });
+      exportCard.appendChild(exportBtn);
+      results.appendChild(exportCard);
+    }
+    month.addEventListener('change', refreshResults);
+    if (person) person.addEventListener('change', refreshResults);
+    await refreshResults();
   }
 
   // ============================================================
@@ -6682,12 +7679,153 @@
     var actions=el('div','modal-actions');var save=el('button','btn');save.type='button';save.textContent='Save Profile';save.addEventListener('click',async function(){if(!name.value.trim()){toast('Full name is required.',true);return;}var photoValue=allowedStaffPhotoUrl(photo.value);if(photoValue===null){toast('Profile photo must be a local /images/ path or a public Maven Supabase Storage URL.',true);photo.focus();return;}save.disabled=true;var res=await sb.from('profiles').update({full_name:name.value.trim(),designation:designation.value.trim()||null,work_email:email.value.trim()||null,phone:phone.value.trim()||null,join_date:join.value||null,photo_url:photoValue||null}).eq('id',p2.id);save.disabled=false;if(res.error){toast('Could not update staff profile: '+res.error.message,true);return;}closeModal();await loadProfiles();if(p2.id===state.user.id)state.profile=state.profiles.find(function(x){return x.id===state.user.id;})||state.profile;toast('Staff profile updated.');render();});actions.appendChild(save);wrap.appendChild(actions);openModal(wrap);
   }
 
+  // Task 32: a role downgrade away from Reviewer/Admin down to Employee
+  // can silently strand review responsibility exactly the way
+  // deactivating someone with open assigned work would (see
+  // confirmDeactivateStaff's own comment) -- guard_work_item_update()'s
+  // reviewer-action branch requires BOTH current_user_role() = 'reviewer'
+  // AND reviewer_id = auth.uid(), so the instant someone's role changes
+  // to 'employee', they lose the ability to act as reviewer on any item
+  // still pointing at them as reviewer_id, even though nothing about
+  // those items changed. This is a warning, not a hard block: an admin
+  // can always fix an affected item later via its own Edit Basics/Edit
+  // Work reviewer field, so continuing anyway is a legitimate choice,
+  // just never a silent one.
+  async function confirmRoleChange(p2, newRole, roleSel, prevRole) {
+    var losesReviewerPower = (prevRole === 'reviewer' || prevRole === 'admin') && newRole === 'employee';
+    if (!losesReviewerPower) {
+      await applyRoleChange(p2, newRole, roleSel, prevRole);
+      return;
+    }
+    var res = await sb.from('work_items').select('*').eq('work_scope', 'client').eq('reviewer_id', p2.id).neq('status', 'completed');
+    if (res.error) { toast('Could not check their review queue: ' + res.error.message, true); roleSel.value = prevRole; return; }
+    var reviewing = res.data || [];
+    if (!reviewing.length) {
+      await applyRoleChange(p2, newRole, roleSel, prevRole);
+      return;
+    }
+
+    var wrap = el('div');
+    var head = el('div', 'modal-head');
+    var h2 = el('h2'); h2.textContent = 'Reassign Reviewer Before Changing Role';
+    var closeBtn = el('button', 'btn btn-outline btn-sm'); closeBtn.type = 'button'; closeBtn.textContent = 'Cancel';
+    closeBtn.addEventListener('click', function () { roleSel.value = prevRole; closeModal(); });
+    head.appendChild(h2); head.appendChild(closeBtn);
+    wrap.appendChild(head);
+
+    var p = el('p', 'desc');
+    p.textContent = p2.full_name + ' is still the reviewer on ' + reviewing.length + ' open Client Work item' + (reviewing.length === 1 ? '' : 's') + '. Once they\'re Employee, they can no longer act as reviewer on those — reassign the reviewer first, or continue anyway and fix it later.';
+    wrap.appendChild(p);
+
+    var list = el('ul'); list.style.paddingLeft = '18px'; list.style.listStyle = 'disc'; list.style.marginBottom = '14px';
+    reviewing.forEach(function (w) { var li = el('li'); li.textContent = w.title + (w.period ? ' (' + w.period + ')' : ''); list.appendChild(li); });
+    wrap.appendChild(list);
+
+    var reviewerSel = el('select');
+    reviewerSel.appendChild(new Option('— Leave as is, fix later —', ''));
+    state.profiles.filter(function (p3) { return p3.is_active && p3.id !== p2.id && (p3.role === 'reviewer' || p3.role === 'admin'); })
+      .forEach(function (p3) { reviewerSel.appendChild(new Option(p3.full_name, p3.id)); });
+    wrap.appendChild(field('Reassign reviewer on the above to', reviewerSel));
+
+    var actions = el('div', 'modal-actions');
+    var confirmBtn = el('button', 'btn'); confirmBtn.type = 'button';
+    confirmBtn.textContent = 'Continue';
+    confirmBtn.addEventListener('click', async function () {
+      confirmBtn.disabled = true;
+      if (reviewerSel.value) {
+        var reassignRes = await sb.from('work_items').update({ reviewer_id: reviewerSel.value }).eq('reviewer_id', p2.id).eq('work_scope', 'client').neq('status', 'completed');
+        if (reassignRes.error) { confirmBtn.disabled = false; toast('Could not reassign reviewer: ' + reassignRes.error.message, true); return; }
+      }
+      closeModal();
+      await applyRoleChange(p2, newRole, roleSel, prevRole);
+    });
+    actions.appendChild(confirmBtn);
+    wrap.appendChild(actions);
+    openModal(wrap);
+  }
+  async function applyRoleChange(p2, newRole, roleSel, prevRole) {
+    var res = await sb.from('profiles').update({ role: newRole }).eq('id', p2.id);
+    if (res.error) { toast('Could not update role: ' + res.error.message, true); roleSel.value = prevRole; return; }
+    p2.role = newRole;
+    toast(p2.full_name + ' is now ' + newRole + '.');
+  }
+
   function renderStaff(main) {
-    var head=el('div','page-head');var h1=el('h1');h1.textContent='Staff & Access';head.appendChild(h1);main.appendChild(head);
-    var intro=el('div','card');var p=el('p','desc');p.style.margin='0';p.textContent='Add the authentication user in Supabase first, then manage the person’s internal profile, role and active access here. Public website Team profiles remain separate.';intro.appendChild(p);main.appendChild(intro);
-    var card=el('div','card');var table=el('table');var thead=el('thead');var trh=el('tr');['Name','Designation','Role','Status','Profile'].forEach(function(t){var th=el('th');th.textContent=t;trh.appendChild(th);});thead.appendChild(trh);table.appendChild(thead);var tbody=el('tbody');
-    state.profiles.forEach(function(p2){var isSelf=p2.id===state.user.id;var tr=el('tr',p2.is_active?'':'inactive-row');var tdName=el('td');tdName.textContent=p2.full_name+(isSelf?' (you)':'');tr.appendChild(tdName);var tdDes=el('td');tdDes.textContent=p2.designation||'—';tr.appendChild(tdDes);var tdRole=el('td');var roleSel=el('select','role-select');['employee','reviewer','admin'].forEach(function(r){roleSel.appendChild(new Option(r.charAt(0).toUpperCase()+r.slice(1),r));});roleSel.value=p2.role;roleSel.disabled=isSelf;roleSel.addEventListener('change',async function(){var res=await sb.from('profiles').update({role:roleSel.value}).eq('id',p2.id);if(res.error){toast('Could not update role: '+res.error.message,true);roleSel.value=p2.role;return;}p2.role=roleSel.value;toast(p2.full_name+' is now '+roleSel.value+'.');});tdRole.appendChild(roleSel);tr.appendChild(tdRole);var tdStatus=el('td');var toggle=el('button','btn btn-outline btn-sm');toggle.type='button';toggle.textContent=p2.is_active?'Deactivate':'Reactivate';toggle.disabled=isSelf;toggle.addEventListener('click',async function(){if(!p2.is_active){var r=await sb.from('profiles').update({is_active:true}).eq('id',p2.id);if(r.error){toast('Could not update: '+r.error.message,true);return;}await loadProfiles();render();return;}await confirmDeactivateStaff(p2);});tdStatus.appendChild(toggle);tr.appendChild(tdStatus);var tdEdit=el('td');var edit=el('button','btn btn-outline btn-sm');edit.type='button';edit.textContent='Edit';edit.addEventListener('click',function(){openStaffProfileModal(p2);});tdEdit.appendChild(edit);tr.appendChild(tdEdit);tbody.appendChild(tr);});
-    table.appendChild(tbody);card.appendChild(table);main.appendChild(card);
+    var head = el('div', 'page-head');
+    var h1 = el('h1'); h1.textContent = 'Staff & Access'; head.appendChild(h1);
+    main.appendChild(head);
+
+    var intro = el('div', 'card');
+    var p = el('p', 'desc'); p.style.margin = '0 0 8px';
+    p.textContent = 'Create the person\'s login in the Supabase Dashboard first (Authentication → Users → Add User) — Work Desk never asks for or stores a Supabase service-role key, so a new sign-in can only be created there, not from this page. Once that account exists, a matching profile row is created automatically; manage their internal profile, role and active access here. Public website Team profiles remain separate.';
+    intro.appendChild(p);
+    var roleLegend = el('p', 'f-hint');
+    roleLegend.textContent = 'Employee: own work only. Reviewer: + can review/approve work where they\'re the assigned reviewer. Admin: full access, including Staff & Access itself.';
+    intro.appendChild(roleLegend);
+    main.appendChild(intro);
+
+    var card = el('div', 'card');
+    // Task 32: mobile-safe -- same overflow-x:auto convention used
+    // throughout this app's other wide tables.
+    var tableScroll = el('div'); tableScroll.style.cssText = 'overflow-x:auto;';
+    var table = el('table');
+    var thead = el('thead'); var trh = el('tr');
+    ['Name', 'Designation', 'Role', 'Status', 'Profile'].forEach(function (t) { var th = el('th'); th.textContent = t; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
+    var tbody = el('tbody');
+    state.profiles.forEach(function (p2) {
+      var isSelf = p2.id === state.user.id;
+      var tr = el('tr', p2.is_active ? '' : 'inactive-row');
+
+      var tdName = el('td'); tdName.textContent = p2.full_name + (isSelf ? ' (you)' : ''); tr.appendChild(tdName);
+      var tdDes = el('td'); tdDes.textContent = p2.designation || '—'; tr.appendChild(tdDes);
+
+      var tdRole = el('td');
+      var roleSel = el('select', 'role-select');
+      ['employee', 'reviewer', 'admin'].forEach(function (r) { roleSel.appendChild(new Option(r.charAt(0).toUpperCase() + r.slice(1), r)); });
+      roleSel.value = p2.role;
+      roleSel.disabled = isSelf;
+      roleSel.addEventListener('change', function () {
+        var prevRole = p2.role;
+        confirmRoleChange(p2, roleSel.value, roleSel, prevRole);
+      });
+      tdRole.appendChild(roleSel); tr.appendChild(tdRole);
+
+      // Task 32: an actual Active/Inactive status pill, not just the
+      // action button that used to be this whole column -- "Status" was
+      // the header, but the cell only ever showed what you could DO, not
+      // what the state currently WAS.
+      var tdStatus = el('td');
+      var statusPill = el('span', 'status-pill ' + (p2.is_active ? 'active' : 'inactive'));
+      statusPill.textContent = p2.is_active ? 'Active' : 'Inactive';
+      tdStatus.appendChild(statusPill);
+      var toggle = el('button', 'btn btn-outline btn-sm'); toggle.type = 'button';
+      toggle.style.marginLeft = '8px';
+      toggle.textContent = p2.is_active ? 'Deactivate' : 'Reactivate';
+      toggle.disabled = isSelf;
+      toggle.addEventListener('click', async function () {
+        if (!p2.is_active) {
+          var r = await sb.from('profiles').update({ is_active: true }).eq('id', p2.id);
+          if (r.error) { toast('Could not update: ' + r.error.message, true); return; }
+          await loadProfiles();
+          render();
+          return;
+        }
+        await confirmDeactivateStaff(p2);
+      });
+      tdStatus.appendChild(toggle); tr.appendChild(tdStatus);
+
+      var tdEdit = el('td');
+      var edit = el('button', 'btn btn-outline btn-sm'); edit.type = 'button'; edit.textContent = 'Edit';
+      edit.addEventListener('click', function () { openStaffProfileModal(p2); });
+      tdEdit.appendChild(edit); tr.appendChild(tdEdit);
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableScroll.appendChild(table);
+    card.appendChild(tableScroll);
+    main.appendChild(card);
   }
 
   // ============================================================
@@ -6709,7 +7847,7 @@
 
     var intro = el('div', 'card');
     var introP = el('p', 'desc'); introP.style.margin = '0';
-    introP.textContent = 'Workflow defaults used across Work Desk. Changing a value here never rewrites existing work — only what counts as an exception going forward, or what a new form starts pre-filled with.';
+    introP.textContent = 'Workflow defaults used across Work Desk. Changing a value here never rewrites existing work — only what counts as an exception going forward, or what a new form starts pre-filled with. This is business-preference thresholds only, never a statutory deadline — those are governed separately, per service, on the Templates page ("Manage Deadline Rule"), source-cited and verified, not editable as a plain number.';
     intro.appendChild(introP);
     main.appendChild(intro);
 

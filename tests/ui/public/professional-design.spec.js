@@ -22,7 +22,7 @@ test.describe('Professional public-site quality pass', () => {
         services: indexForEyebrow('What We Do'),
         packages: indexForEyebrow('Packages'),
         industries: indexForEyebrow('Industries We Serve'),
-        international: indexForEyebrow('International Services'),
+        international: indexForEyebrow('Global Finance Delivery from Nepal'),
       };
     });
 
@@ -32,22 +32,35 @@ test.describe('Professional public-site quality pass', () => {
     expect(order.international).toBeGreaterThan(order.industries);
   });
 
-  test('Services uses local editorial images instead of hot-linked production photos', async ({ page }) => {
+  test('Services groups the 7 real services into 3 chapters, each with one local editorial image', async ({ page }) => {
     await page.goto('/services');
-    const rows = page.locator('.service-editorial');
-    expect(await rows.count()).toBeGreaterThan(0);
-    const images = rows.locator('.service-editorial-photo img');
-    await expect(images).toHaveCount(await rows.count());
-    for (let i = 0; i < await images.count(); i++) {
+    const chapters = page.locator('.capability-chapter');
+    await expect(chapters).toHaveCount(3);
+    const images = chapters.locator('.capability-chapter-photo img');
+    await expect(images).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
       await expect(images.nth(i)).toHaveAttribute('src', /^\/images\/card-[a-z-]+\.jpg$/);
       const alt = await images.nth(i).getAttribute('alt');
       expect((alt || '').trim().length).toBeGreaterThan(10);
     }
   });
 
+  test('Services keeps all 7 individual services deep-linkable, without a forced photo per service', async ({ page }) => {
+    await page.goto('/services');
+    const keys = ['registration', 'bookkeeping', 'tax', 'payroll', 'reporting', 'advisory', 'nfrs-ifrs'];
+    for (const key of keys) {
+      const entry = page.locator(`#${key}`);
+      await expect(entry).toBeVisible();
+      await expect(entry).toHaveClass(/service-card/);
+      await expect(entry.locator('.service-card-photo, .service-editorial-photo')).toHaveCount(0);
+    }
+  });
+
   test('hero accents do not run permanent floating animations', async ({ page }) => {
+    // Task 04 removed the .hero-float-badge element entirely (it duplicated
+    // the "100+ clients served" stat already in the credibility row below
+    // the hero), so there's nothing left there to assert an animation state on.
     await page.goto('/');
-    await expect(page.locator('.hero-float-badge')).toHaveCSS('animation-name', 'none');
     await expect(page.locator('.doc-card-stamp')).toHaveCSS('animation-name', 'none');
   });
 

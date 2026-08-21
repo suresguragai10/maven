@@ -65,16 +65,30 @@ test.describe('Heading structure (Handbook Task 26)', () => {
     await expect(page.locator('h3.accordion-heading').first()).toBeVisible();
   });
 
-  test('Industries cards are h2 (no heading-level skip from the page h1)', async ({ page }) => {
+  test('Industries detail stage uses h2 (no heading-level skip from the page h1)', async ({ page }) => {
+    // Task 06: the compact selector list is real <button> rows (no per-row
+    // heading — screen readers navigate it as a list, via .industry-list's
+    // aria-label, not via heading shortcuts). The heading-level guarantee
+    // now comes from the detail stage instead: the placeholder's h2 before
+    // any selection, and each industry's own h2 (industryDetail()) once
+    // selected -- never a jump straight to h3 anywhere on this page.
     await page.goto('/industries');
     const h1Count = await page.locator('h1').count();
     expect(h1Count).toBe(1);
-    await expect(page.locator('.industry-card h2').first()).toBeVisible();
+    await expect(page.locator('.industry-detail-placeholder h2')).toBeVisible();
+
+    await page.locator('[data-industry-index="0"]').click();
+    await expect(page.locator('[data-industry-detail="0"] h2')).toBeVisible();
   });
 
-  test('Team cards are h2 (no heading-level skip from the page h1)', async ({ page }) => {
+  test('Team cards are h3, nested under the page\'s own "Our Team" h2 (no heading-level skip)', async ({ page }) => {
+    // Task 08: team() now renders a real sectionHead() (h2, "Our Team")
+    // above the card grid, so each member's name correctly nests one
+    // level under it as h3 -- not h2 as before Task 08, when no such h2
+    // existed yet on this page.
     await page.goto('/team');
-    await expect(page.locator('.team-card-name').first()).toHaveJSProperty('tagName', 'H2');
+    await expect(page.locator('h2', { hasText: 'Our Team' })).toBeVisible();
+    await expect(page.locator('.team-card-name').first()).toHaveJSProperty('tagName', 'H3');
   });
 
   test('Contact info items use h3, matching the page h2 -> h3 -> h3 order (no skip to h4)', async ({ page }) => {

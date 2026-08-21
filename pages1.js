@@ -3,7 +3,7 @@ const { esc, internalHref } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
-  statRow, servicePhotoMeta,
+  statRow, servicePhotoMeta, capabilityChapter,
 } = require('./ui');
 
 // Decorative Kathmandu skyline: generic building silhouettes plus three
@@ -102,11 +102,15 @@ function docCardArt() {
     .map(([key, label]) => ({ label, cat: data.serviceCategories.find((c) => c.key === key) }))
     .filter((t) => t.cat);
 
+  // Task 04: the "Clients Served" figure used to also float here, right
+  // next to the hero — but the credibility/proof section immediately
+  // below already states it twice (the about-facts sentence and the
+  // stat row), so a third instance in the very first viewport was exactly
+  // the "mechanical repetition in adjacent sections" this task's own
+  // instruction rules out. The number still appears, just once, where a
+  // visitor reaches it in the actual reading order instead of before
+  // they've read anything else.
   return `<div class="hero-art reveal">
-    <div class="hero-float-badge">
-      ${icon('users')}
-      <div><strong>${esc(data.brand.clientsServed)}</strong><span>Clients Served</span></div>
-    </div>
     <div class="doc-card">
       <div class="doc-card-tabs">
         ${tabs.map((t, i) => `<button type="button" class="doc-card-tab${i === 0 ? ' is-active' : ''}" aria-pressed="${i === 0}">${esc(t.label)}</button>`).join('')}
@@ -120,35 +124,6 @@ function docCardArt() {
       <div class="doc-card-stamp">${stampMark()}</div>
     </div>
   </div>`;
-}
-
-// Photo header + icon badge, matching the object-photo language used
-// throughout the hero-photo rollout (see [[maven_hero_photo_rollout]] in
-// memory) — deliberately objects, not people, for consistency with every
-// other photo on the site and to avoid the trust risk of AI-generated fake
-// "staff" photos. Image path is derived from cat.key (images/card-<key>.jpg)
-// so adding a 7th category needs only a new image file, no code change.
-// Dropped the old bullet-list preview: with a photo now providing visual
-// interest, repeating 3 of the category's items just crowded the card.
-// The whole card is the link (not just "See Full List" at the bottom) —
-// .service-card's hover lift/shadow applies to the full card area, so a
-// card that only *looked* fully clickable but wasn't would be the same
-// "looks clickable, does nothing" trap fixed earlier for industry badges.
-function homeServiceCard(cat) {
-  const photo = servicePhotoMeta(cat);
-  return `<a class="service-card service-card--photo reveal" href="${internalHref(`services.html#${cat.key}`)}">
-    <div class="service-card-photo">
-      <img src="/images/card-${esc(photo.file)}.jpg" alt="" loading="lazy" decoding="async">
-      <span class="service-card-photo-shade" aria-hidden="true"></span>
-      <span class="service-card-photo-badge" aria-hidden="true">${icon(cat.icon)}</span>
-    </div>
-    <div class="service-card-body">
-      <span class="service-letter">Category ${esc(cat.letter)}</span>
-      <h3>${esc(cat.title)}</h3>
-      <p class="service-tagline">${esc(cat.tagline)}</p>
-      <span class="service-card-link">See Full List ${icon('arrowRight')}</span>
-    </div>
-  </a>`;
 }
 
 function homePackageCard(pkg) {
@@ -206,27 +181,73 @@ function home() {
     </div>
   </section>
 
-  <section class="section-pad bg-mist">
+  <section class="section-pad bg-mist home-capabilities-section">
     <div class="container">
-      ${sectionHead({ eyebrow: 'What We Do', title: 'Services built around what Nepali businesses actually need', subtitle: 'From first registration to monthly compliance, Maven supports each stage with clear, practical work.' })}
-      <div class="grid grid-3">
-        ${data.serviceCategories.filter((c) => c.key !== 'nfrs-ifrs').map(homeServiceCard).join('')}
-        <div class="service-cta-tile reveal">
-          <div>
-            <h3>Not sure which service fits?</h3>
-            <p>Tell us about your business — we'll recommend the right mix, no obligation.</p>
-          </div>
-          ${button('Book a Free Initial Consultation', 'contact.html', 'primary')}
-        </div>
+      ${sectionHead({ eyebrow: 'What We Do', title: 'Three ways Maven supports your business', subtitle: 'From first registration to reporting that stands up to lenders and investors — one connected system, not a list of unrelated services.' })}
+      <div class="service-editorial-list">
+        ${(() => {
+          const byKey = (key) => data.serviceCategories.find((c) => c.key === key);
+          const registration = byKey('registration');
+          const tax = byKey('tax');
+          const payroll = byKey('payroll');
+          const bookkeeping = byKey('bookkeeping');
+          const reporting = byKey('reporting');
+          const advisory = byKey('advisory');
+          const nfrsIfrs = byKey('nfrs-ifrs');
+          const chapters = [];
+          if (registration && tax && payroll) {
+            chapters.push(capabilityChapter({
+              variant: 'structured',
+              id: 'establish-and-comply',
+              chapterLabel: 'Establish & Comply',
+              title: 'A solid legal and compliance foundation',
+              text: `${registration.tagline} ${tax.tagline} ${payroll.tagline}`,
+              image: servicePhotoMeta(registration),
+              links: [
+                { label: registration.title, href: `services.html#${registration.key}` },
+                { label: tax.title, href: `services.html#${tax.key}` },
+                { label: payroll.title, href: `services.html#${payroll.key}` },
+              ],
+              cta: { label: 'Discuss Your Compliance Needs', href: 'contact.html' },
+            }));
+          }
+          if (bookkeeping && reporting) {
+            chapters.push(capabilityChapter({
+              variant: 'feature',
+              reverse: true,
+              id: 'run-your-finance-function',
+              chapterLabel: 'Run Your Finance Function',
+              title: 'Outsourced accounting, run like an in-house finance team',
+              text: `${bookkeeping.tagline} ${reporting.tagline}`,
+              image: servicePhotoMeta(bookkeeping),
+              links: [
+                { label: bookkeeping.title, href: 'outsourced-accounting.html' },
+                { label: reporting.title, href: `services.html#${reporting.key}` },
+              ],
+              cta: { label: 'Explore Outsourced Accounting', href: 'outsourced-accounting.html' },
+            }));
+          }
+          if (advisory && nfrsIfrs) {
+            chapters.push(capabilityChapter({
+              variant: 'technical',
+              id: 'advise-and-report-better',
+              chapterLabel: 'Advise & Report Better',
+              title: 'Guidance and reporting that grow with your business',
+              text: `${advisory.tagline} And as reporting needs become more complex — for lenders, investors, or growth — structured NFRS / IFRS implementation support.`,
+              image: servicePhotoMeta(advisory),
+              links: [
+                { label: advisory.title, href: `services.html#${advisory.key}` },
+                { label: nfrsIfrs.title, href: 'nfrs-ifrs.html' },
+              ],
+              cta: { label: 'Discuss Advisory & Reporting Needs', href: 'contact.html' },
+            }));
+          }
+          return chapters.join('');
+        })()}
       </div>
-      <div class="hero-actions" style="justify-content:center;margin-top:36px">
-        ${button('View All Services', 'services.html', 'outline')}
-        ${button('NFRS / IFRS Implementation Support', 'nfrs-ifrs.html', 'outline')}
-      </div>
+      <div class="text-center" style="margin-top:36px">${button('View All Services', 'services.html', 'outline')}</div>
     </div>
   </section>
-
-
 
   <section class="section-pad">
     <div class="container">
@@ -244,23 +265,6 @@ function home() {
       <div class="grid grid-4">
         ${data.whyChoose.slice(0, 6).map(whyCard).join('')}
       </div>
-      <div style="margin-top:56px">
-        ${sectionHead({ eyebrow: 'How It Works', title: 'A clear, step-by-step process from inquiry to file closing' })}
-        <div class="process-list process-list--row">
-          ${(() => {
-            // Homepage teaser: the full 9-step breakdown lives only in this data
-            // (there's no separate process page), so we hand-pick steps that still
-            // span the whole arc — inquiry, scoping, requirements, delivery, closing —
-            // rather than truncating to the first N and cutting off before any work
-            // actually gets done.
-            const teaserSteps = data.process.filter((p) => [1, 2, 3, 6, 8, 9].includes(p.step));
-            // Renumber 1-5 for display so the badges read as a clean sequence
-            // instead of showing the underlying step's real number (which would
-            // jump 1, 3, 4, 6, 9 and look like steps are missing).
-            return teaserSteps.map((p, i) => processStep({ ...p, step: i + 1 }, i === teaserSteps.length - 1)).join('');
-          })()}
-        </div>
-      </div>
     </div>
   </section>
 
@@ -277,7 +281,7 @@ function home() {
   <section class="section-pad bg-navy skyline-section international-showcase">
     <div class="container international-showcase-grid">
       <div class="reveal international-showcase-copy">
-        <p class="eyebrow eyebrow--on-dark">International Services</p>
+        <p class="eyebrow eyebrow--on-dark">Global Finance Delivery from Nepal</p>
         <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
         <p style="margin-top:14px">${esc(data.internationalHub.intro)}</p>
         <div style="margin-top:26px">${button(esc(data.internationalHub.cta), 'global-outsourcing.html', 'primary')}</div>
@@ -288,7 +292,28 @@ function home() {
     </div>
     ${globalSkyline()}
   </section>
+
   <section class="section-pad">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'How It Works', title: 'A clear, step-by-step process from inquiry to file closing' })}
+      <div class="process-list process-list--row">
+        ${(() => {
+          // Homepage teaser: the full 9-step breakdown lives only in this data
+          // (there's no separate process page), so we hand-pick steps that still
+          // span the whole arc — inquiry, scoping, requirements, delivery, closing —
+          // rather than truncating to the first N and cutting off before any work
+          // actually gets done.
+          const teaserSteps = data.process.filter((p) => [1, 2, 3, 6, 8, 9].includes(p.step));
+          // Renumber 1-5 for display so the badges read as a clean sequence
+          // instead of showing the underlying step's real number (which would
+          // jump 1, 3, 4, 6, 9 and look like steps are missing).
+          return teaserSteps.map((p, i) => processStep({ ...p, step: i + 1 }, i === teaserSteps.length - 1)).join('');
+        })()}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
     <div class="container">
       ${sectionHead({ eyebrow: 'Frequently Asked', title: 'Quick answers before you reach out' })}
       <div class="accordion" style="max-width:760px;margin:0 auto">
@@ -321,6 +346,7 @@ function about() {
         ${sectionHead({ eyebrow: 'Who We Are', title: 'Practical support, organized records, clear communication', align: 'left' })}
         <p>${esc(data.aboutText)}</p>
         <p style="margin-top:16px">${esc(data.aboutClosing)}</p>
+        <div style="margin-top:22px">${button('Meet Our Team', 'team.html', 'outline')}</div>
       </div>
       <aside class="proof-panel reveal" aria-label="Maven facts">
         <span class="service-letter">Maven facts</span>

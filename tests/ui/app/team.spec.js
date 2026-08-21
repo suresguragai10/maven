@@ -44,7 +44,9 @@ async function loginToTeam(page, tables) {
   await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.locator('#app')).not.toHaveClass(/hidden/);
-  await page.getByRole('button', { name: 'Team Work', exact: true }).click();
+  // Task 22: Team Work is now a page-level tab under the "Team" sidebar
+  // destination, not its own sidebar button.
+  await page.getByRole('button', { name: 'Team', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible();
 }
 
@@ -161,6 +163,40 @@ test.describe('Team screen (Handbook Task 21)', () => {
     const bodyText = (await page.locator('#main').innerText()).toLowerCase();
     ['productivity', 'score', 'ranking', 'ranked', 'hours worked', 'online', 'offline', 'utilization', 'time zone', 'timezone'].forEach((term) => {
       expect(bodyText, `found forbidden term "${term}" on the Team page`).not.toContain(term);
+    });
+  });
+
+  test('Task 28: a stale, open Firm Work item shows a "may need a handoff" note; a recently-updated one does not', async ({ page }) => {
+    const daysAgoIso = (n) => new Date(Date.now() - n * 86400000).toISOString();
+    const staleItem = Object.assign(firmItem('w1', 'Untouched onboarding checklist', EMPLOYEE_A.id), { updated_at: daysAgoIso(20) });
+    const freshItem = Object.assign(firmItem('w2', 'Actively worked marketing task', EMPLOYEE_A.id), { updated_at: daysAgoIso(1) });
+    await loginToTeam(page, { work_items: [staleItem, freshItem] });
+
+    const staleRow = page.locator('.task-row').filter({ hasText: 'Untouched onboarding checklist' });
+    await expect(staleRow.locator('.stale-note')).toContainText('may need a handoff');
+    const freshRow = page.locator('.task-row').filter({ hasText: 'Actively worked marketing task' });
+    await expect(freshRow.locator('.stale-note')).toHaveCount(0);
+  });
+
+  test('Task 28: a blocked item shows its blocker reason instead of a redundant handoff note', async ({ page }) => {
+    const daysAgoIso = (n) => new Date(Date.now() - n * 86400000).toISOString();
+    const blockedItem = Object.assign(
+      firmItem('w1', 'Renew office lease', EMPLOYEE_A.id, 'blocked'),
+      { updated_at: daysAgoIso(20), blocker_reason: 'Waiting on landlord signature' }
+    );
+    await loginToTeam(page, { work_items: [blockedItem] });
+    const row = page.locator('.task-row').filter({ hasText: 'Renew office lease' });
+    await expect(row.locator('.blocker')).toContainText('Waiting on landlord signature');
+    await expect(row.locator('.stale-note')).toHaveCount(0);
+  });
+
+  test('Task 28: the handoff note is about the work item, never a claim about the person\'s activity or presence', async ({ page }) => {
+    const daysAgoIso = (n) => new Date(Date.now() - n * 86400000).toISOString();
+    const staleItem = Object.assign(firmItem('w1', 'Untouched task', EMPLOYEE_A.id), { updated_at: daysAgoIso(20) });
+    await loginToTeam(page, { work_items: [staleItem] });
+    const bodyText = (await page.locator('#main').innerText()).toLowerCase();
+    ['online', 'offline', 'last seen', 'presence'].forEach((term) => {
+      expect(bodyText, `found presence-flavored term "${term}" near the handoff note`).not.toContain(term);
     });
   });
 });

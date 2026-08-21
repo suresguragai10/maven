@@ -80,6 +80,9 @@
   .notif-panel{position:fixed;top:57px;right:20px;width:340px;max-width:calc(100vw - 40px);max-height:70vh;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.22);z-index:35;}
   .notif-panel .notif-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);}
   .notif-panel .notif-head strong{font-size:.88rem;color:var(--navy-950);}
+  /* Task 29: explicit scope note under the panel header -- see that
+     call site's own comment on why this line exists. */
+  .notif-scope-note{padding:8px 14px;font-size:.72rem;color:var(--ink-soft);border-bottom:1px solid var(--border);background:var(--mist);}
   .notif-row{display:flex;align-items:flex-start;gap:8px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
   .notif-row:hover{background:var(--mist);}
   .notif-row.is-read{opacity:.55;}
@@ -98,7 +101,42 @@
   #sidebar button.is-active .ic{color:var(--gold-500);opacity:1;}
   #sidebar .sidebar-group{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:14px 12px 6px;}
   #main{flex:1;padding:26px 26px 90px;min-width:0;}
-  @media (max-width:820px){ #layout{flex-direction:column;} #sidebar{position:static;height:auto;width:100%;display:flex;flex-wrap:wrap;gap:2px;padding:14px;} #sidebar .sidebar-group{display:none;} }
+
+  /* ---- Page-level sub-navigation (Task 22): a small horizontal tab row
+     used by grouped destinations (Client Work, Firm Work, Team, Reports,
+     Personal, Admin) so those areas can hold several related screens
+     behind one primary sidebar entry instead of each screen being its own
+     top-level destination. Only rendered when a group has 2+ screens
+     visible to the current role — see renderGroupTabs() in staff.js. */
+  .subtabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap;}
+  .subtab{padding:10px 16px;font-size:.87rem;font-weight:600;color:var(--ink-soft);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;}
+  .subtab:hover{color:var(--navy-900);}
+  .subtab.is-active{color:var(--navy-950);border-bottom-color:var(--gold-500);}
+
+  /* ---- Mobile nav drawer (Task 22): replaces the old wrapped-button
+     sidebar row on small screens with an off-canvas panel, same
+     open/close/focus-trap convention as the public site's .mobile-nav
+     (client.js) — hamburger toggle in the topbar, full-viewport panel,
+     Escape/close-button/nav-item-click all close it, focus returns to the
+     toggle on close. Desktop (>820px) never sees any of this; the toggle
+     and close button are hidden there and #sidebar stays the plain sticky
+     column it always was. */
+  .drawer-toggle,.drawer-close{display:none;}
+  @media (max-width:820px){
+    #layout{flex-direction:column;}
+    .drawer-toggle{display:inline-flex;}
+    .drawer-close{display:none;position:fixed;top:12px;right:16px;z-index:201;color:#fff;}
+    body.nav-drawer-open .drawer-close{display:inline-flex;}
+    body.nav-drawer-open{overflow:hidden;}
+    #sidebar{position:fixed;inset:0;z-index:200;width:100%;height:100vh;background:var(--navy-950);padding:64px 18px 24px;overflow-y:auto;display:none;}
+    body.nav-drawer-open #sidebar{display:block;}
+    #sidebar button{color:#fff;padding:13px 12px;font-size:1rem;}
+    #sidebar button .ic{color:rgba(255,255,255,.7);}
+    #sidebar button:hover{background:rgba(255,255,255,.08);color:#fff;}
+    #sidebar button.is-active{background:var(--gold-500);color:var(--navy-950);}
+    #sidebar button.is-active .ic{color:var(--navy-950);}
+    #sidebar .sidebar-group{color:rgba(255,255,255,.5);}
+  }
 
   .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 1px 2px rgba(16,42,76,.04);}
   .card h2{font-size:1.1rem;margin-bottom:4px;display:flex;align-items:center;gap:9px;}
@@ -128,9 +166,23 @@
   .task-row .title strong{display:block;font-size:.95rem;color:var(--navy-950);}
   .task-row .title span{font-size:.82rem;color:var(--ink-soft);display:flex;align-items:center;gap:5px;margin-top:2px;}
   .task-row .title span .ic{width:13px;height:13px;}
+  /* Task 28: a neutral "may need a handoff" note (Firm Work rows only) --
+     italic to read as a soft observation, not a status/fact the way the
+     next-action or blocker lines above it are. */
+  .task-row .title .stale-note{font-style:italic;}
   .task-row .due{font-size:.8rem;color:var(--ink-soft);white-space:nowrap;display:flex;align-items:center;gap:5px;}
   .task-row .due .ic{width:14px;height:14px;}
   .task-row .due.overdue{color:var(--red);font-weight:700;}
+  /* Task 24: the explicit "what do I do next" label on Client Work rows,
+     same visual weight as attentionRow's own .action on Today. */
+  .task-row .row-action{font-size:.82rem;font-weight:700;color:var(--gold-700);white-space:nowrap;}
+  /* Task 24: a blocked Firm row's own reason -- amber, the same tone
+     already used for "Waiting" elsewhere in this app, never the red
+     compliance-breach color reserved for Client Work deadlines.
+     ".title .blocker" (not just ".blocker") to outrank the more specific
+     ".task-row .title span" ink-soft rule above. */
+  .task-row .title .blocker{color:var(--amber);font-weight:600;}
+  .task-row .title .blocker .ic{color:var(--amber);}
   .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap;}
   .badge-to_do{background:var(--mist-dark);color:var(--ink-soft);}
   .badge-in_progress{background:#E4EEFB;color:#1D4ED8;}
@@ -158,6 +210,13 @@
   /* ---- Today dashboard ---- */
   .greeting{font-size:1.5rem;margin-bottom:2px;}
   .greeting-date{color:var(--ink-soft);font-size:.92rem;margin-bottom:20px;}
+  /* Task 23: compact punch in/out status — an action-driving widget (not
+     decorative analytics), so it stays a single quiet row rather than the
+     full Attendance page's card treatment. */
+  .today-attendance-bar{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:20px;font-size:.85rem;flex-wrap:wrap;}
+  .today-attendance-bar .ic{color:var(--gold-600);flex-shrink:0;}
+  .today-attendance-bar .state-text{flex:1;color:var(--ink-soft);min-width:160px;}
+  .today-attendance-bar .state-text strong{color:var(--navy-950);}
   .today-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:26px;}
   .today-stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
   .today-stat .n{font-size:1.7rem;font-weight:800;color:var(--navy-950);line-height:1;}
@@ -165,7 +224,26 @@
   .today-stat .n.n-amber{color:var(--amber);}
   .today-stat .n.n-purple{color:#6D28D9;}
   .today-stat .l{font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-top:5px;}
+  /* Task 25: the Client Work Hub strip (All Work, Review Queue,
+     Deadlines, Clients) — same visual weight as Today's own stat strip,
+     but every stat is a real clickable link into another one of those
+     four screens (hence <button>, not <div>), which is the whole point
+     of this component. */
+  .hub-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px;}
+  .hub-stat{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:border-color .12s ease,box-shadow .12s ease;}
+  .hub-stat:hover{border-color:var(--gold-500);box-shadow:0 4px 14px -6px rgba(16,42,76,.18);}
+  .hub-stat .n{font-size:1.5rem;font-weight:800;color:var(--navy-950);line-height:1;}
+  .hub-stat.n-red .n{color:var(--red);}
+  .hub-stat.n-amber .n{color:var(--amber);}
+  .hub-stat.n-purple .n{color:#6D28D9;}
+  .hub-stat .l{font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-top:5px;}
   .section-h{font-size:.95rem;font-weight:700;color:var(--navy-950);margin:0 0 12px;}
+  /* Task 23: Firm Work's Today section carries the same gold FIRM badge
+     used on My Work/Team rows, so it reads as clearly separate from
+     Client Work compliance urgency above without borrowing red/urgent
+     color language that belongs to statutory deadlines only. */
+  .section-h-firm{display:flex;align-items:center;gap:8px;}
+  .section-h-firm .badge{font-size:.65rem;}
   .attention-row{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--red);border-radius:10px;padding:13px 16px;margin-bottom:8px;cursor:pointer;}
   .attention-row:hover{box-shadow:0 4px 14px -6px rgba(16,42,76,.18);}
   .attention-row.reason-waiting{border-left-color:var(--amber);}
@@ -181,11 +259,33 @@
 
   /* ---- Work detail ---- */
   .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:6px;}
+  /* Task 26: the primary next action, first thing in Overview — same
+     gold "action" language as My Work/Today's row-level action labels
+     (Task 24), scaled up as its own callout since this is the one
+     highest-value line on the whole page. */
+  .next-action-callout{display:flex;align-items:center;gap:10px;background:var(--gold-100);border:1px solid #E9D6A8;border-radius:10px;padding:12px 16px;margin:16px 0 4px;font-size:.98rem;font-weight:700;color:var(--gold-700);}
+  .next-action-callout .ic{color:var(--gold-600);flex-shrink:0;}
+  /* Task 26: compact checklist/waiting/submission state chips -- the
+     numeric answer to "how close is this," visible without switching to
+     the Checklist tab or scrolling to the full action box below. */
+  .detail-chips{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0;}
+  .detail-chip{display:inline-flex;align-items:center;gap:6px;background:var(--mist);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:.8rem;}
+  .detail-chip .k{color:var(--ink-soft);font-weight:600;}
+  .detail-chip .v{color:var(--navy-950);font-weight:700;}
+  .detail-chip.chip-amber{background:var(--amber-soft);border-color:#f0d9a6;}
+  .detail-chip.chip-amber .k,.detail-chip.chip-amber .v{color:var(--amber);}
   .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;margin:18px 0;}
   .meta-item{display:flex;align-items:flex-start;gap:10px;}
   .meta-item .ic{color:var(--gold-600);margin-top:2px;}
   .meta-item label{display:block;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:3px;}
   .meta-item .value{display:flex;align-items:center;gap:7px;font-size:.94rem;color:var(--navy-950);}
+  /* Task 26: makes Internal vs External/Statutory deadlines visually
+     unmistakable -- not just different label text, a real color-coded
+     tag on the value itself. Amber (not red) deliberately: this marks
+     WHICH deadline is the legal one, it doesn't mean it's overdue. */
+  .meta-item .value .badge{font-size:.6rem;padding:2px 7px;}
+  .badge-internal{background:var(--mist-dark);color:var(--ink-soft);}
+  .badge-statutory{background:var(--amber-soft);color:var(--amber);}
   .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:18px 0 20px;}
   .tabs button{background:none;border:none;padding:10px 4px;margin-right:22px;font-size:.9rem;font-weight:700;color:var(--ink-soft);border-bottom:2px solid transparent;border-radius:0;}
   .tabs button.is-active{color:var(--navy-950);border-bottom-color:var(--gold-500);}
@@ -201,6 +301,11 @@
   .comment .who{font-size:.8rem;font-weight:700;color:var(--navy-900);}
   .comment .when{font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;}
   .comment p{margin:5px 0 0;font-size:.92rem;white-space:pre-wrap;}
+  /* Task 27: the "Latest Update" preview in Firm Work Detail's top
+     summary reuses .comment's who/when styling even though it isn't
+     itself a .comment row (it lives inside .action-box). */
+  .action-box .who{font-size:.8rem;font-weight:700;color:var(--navy-900);}
+  .action-box .when{font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;}
   .activity-row{padding:10px 0;border-bottom:1px solid var(--border);font-size:.88rem;}
   .activity-row .who{font-weight:700;color:var(--navy-900);}
   .activity-row .when{font-size:.74rem;color:var(--ink-soft);margin-left:8px;font-weight:400;}
@@ -213,6 +318,11 @@
   tr:last-child td{border-bottom:none;}
   .role-select{width:auto;padding:6px 10px;font-size:.85rem;}
   .inactive-row{opacity:.5;}
+  /* Task 32: an explicit Active/Inactive state pill on Staff & Access,
+     same visual language as .attendance-status-pill elsewhere. */
+  .status-pill{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-size:.72rem;font-weight:700;}
+  .status-pill.active{background:var(--green-soft);color:var(--green);}
+  .status-pill.inactive{background:var(--mist-dark);color:var(--ink-soft);}
 
   /* ---- Client cards ---- */
   .client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;}
@@ -264,9 +374,10 @@
   #sidebar .sidebar-group:first-child{padding-top:6px;}
   .workspace-intro{font-size:.88rem;color:var(--ink-soft);margin:-10px 0 20px;max-width:760px;}
   .page-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-  .my-tasks-filter{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:14px 16px;}
+  .my-tasks-filter{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:14px 16px;flex-wrap:wrap;}
   .scope-tabs-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;font-weight:800;color:var(--ink-soft);}
   .scope-tabs{display:inline-flex;gap:4px;padding:4px;background:var(--mist);border:1px solid var(--border);border-radius:10px;}
+  .my-tasks-completed-toggle{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-soft);cursor:pointer;}
   .scope-tab{border:0;background:transparent;color:var(--ink-soft);font:inherit;font-size:.82rem;font-weight:700;padding:8px 12px;border-radius:7px;cursor:pointer;}
   .scope-tab:hover{color:var(--navy-900);background:#fff;}
   .scope-tab.is-active{background:#fff;color:var(--navy-950);box-shadow:0 1px 3px rgba(10,31,58,.12);}
@@ -281,6 +392,10 @@
   .attendance-punch-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:22px;align-items:center;background:linear-gradient(135deg,var(--navy-950),var(--navy-800));color:#fff;border:none;}
   .attendance-punch-card h2{color:#fff;}
   .attendance-punch-card p.desc{color:rgba(255,255,255,.72);margin-bottom:0;}
+  /* Task 30: current Nepal time, stated as an actual value right next to
+     today's punch status (priority position 2), not just a "(UTC+05:45)"
+     aside easy to skim past. */
+  .nepal-now-line{font-size:.82rem;color:var(--gold-500);font-weight:700;margin-top:4px;}
   .attendance-punch-card .punch-state{font-size:.82rem;color:rgba(255,255,255,.76);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;}
   .attendance-punch-card .btn{min-width:142px;}
   .attendance-controls{display:grid;grid-template-columns:minmax(160px,220px) minmax(210px,1fr) auto;gap:12px;align-items:end;}
@@ -315,6 +430,17 @@
   @media(max-width:1050px){.directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:720px){.my-tasks-filter{align-items:flex-start;flex-direction:column}.scope-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.scope-tab{padding:9px 6px}.scope-section-head{align-items:flex-start;flex-direction:column;gap:3px}.scope-section-head p{text-align:left}.attendance-punch-card{grid-template-columns:1fr}.attendance-controls{grid-template-columns:1fr}.directory-grid{grid-template-columns:1fr}.profile-grid{grid-template-columns:1fr}.attendance-calendar{gap:4px}.cal-day{min-height:62px;padding:6px}.cal-day .day-status{font-size:.62rem;margin-top:6px}}
 
+  /* Task 35: Work Desk's own hover transitions are already minimal/
+     functional (120ms color/border/shadow, one 1px hover "lift" on
+     clickable rows) -- never marketing-style scroll reveal, which this
+     app has none of. This still respects prefers-reduced-motion for the
+     transform specifically, the one property here that's actual motion
+     rather than a colour/shadow fade. */
+  @media (prefers-reduced-motion: reduce) {
+    #sidebar button, .task-row, .hub-stat { transition: none; }
+    .task-row:hover { transform: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -342,15 +468,24 @@
 
 <div id="app" class="hidden">
   <header id="topbar">
+    <button class="btn btn-outline btn-sm drawer-toggle" id="navToggleBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <span id="menuIconSlot"></span>
+    </button>
     <div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Work Desk</span></div>
     <div class="spacer"></div>
-    <button class="btn btn-outline btn-sm" id="notifBellBtn" type="button" title="Notifications">
+    <button class="btn btn-outline btn-sm" id="globalSearchBtn" type="button" title="Global Search" aria-label="Global Search">
+      <span id="searchIconSlot"></span>
+    </button>
+    <button class="btn btn-outline btn-sm" id="notifBellBtn" type="button" title="Notifications (Client Work only)" aria-label="Notifications (Client Work only)">
       <span id="notifBellIconSlot"></span>
       <span id="notifBadge" class="notif-badge hidden">0</span>
     </button>
     <div class="who"><strong id="whoName">—</strong><span id="whoRole">—</span></div>
     <button class="btn btn-outline btn-sm" id="logoutBtn" type="button">Sign Out</button>
   </header>
+  <button class="drawer-close" id="navCloseBtn" type="button" aria-label="Close menu">
+    <span id="closeIconSlot"></span>
+  </button>
   <div id="layout">
     <nav id="sidebar" aria-label="Primary"></nav>
     <main id="main"></main>

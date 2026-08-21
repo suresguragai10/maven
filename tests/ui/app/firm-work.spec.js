@@ -71,6 +71,30 @@ test.describe('Firm Work — list and create/edit form (Handbook Task 17)', () =
     expect(errors, `console/page errors:\n${errors.join('\n')}`).toEqual([]);
   });
 
+  test('Task 27: a blocked item shows its blocker reason in the list, ahead of next_action', async ({ page }) => {
+    const blockedItem = Object.assign({}, FIRM_ITEM, {
+      id: 'w2', title: 'Renew office lease', status: 'blocked', blocker_reason: 'Waiting on landlord signature',
+    });
+    await installSupabaseMock(page, {
+      user: ADMIN,
+      tables: {
+        profiles: [ADMIN, EMPLOYEE_A, EMPLOYEE_B], clients: [], service_templates: [], deadline_rules: [],
+        projects: [PROJECT], app_settings: [], work_items: [blockedItem], work_comments: [],
+        work_checklist_items: [], work_activity: [], notifications: [], personal_todos: [],
+      },
+    });
+    await page.goto('/staff/');
+    await page.locator('input[type="email"], input[name="email"]').fill(ADMIN.email);
+    await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
+    await page.getByRole('button', { name: /sign in/i }).click();
+    await page.getByRole('button', { name: 'Firm Work' }).click();
+    // Default status filter is "open" (neq completed) -- Blocked is open,
+    // so it's already visible with no filter change needed.
+    const row = page.locator('table tbody tr').filter({ hasText: 'Renew office lease' });
+    await expect(row).toContainText('Blocked: Waiting on landlord signature');
+    await expect(row).not.toContainText('Call ISP for renewal quote');
+  });
+
   test('create form validation: blank title, missing category, missing owner all blocked; a real submission is allowed', async ({ page }) => {
     await loginToFirmWork(page);
     await page.getByRole('button', { name: 'New Firm Work' }).click();

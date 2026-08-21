@@ -46,8 +46,8 @@ async function loginToMyWork(page, tables) {
   await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.locator('#app')).not.toHaveClass(/hidden/);
-  await page.getByRole('button', { name: 'My Tasks' }).click();
-  await expect(page.getByRole('heading', { name: 'My Tasks' })).toBeVisible();
+  await page.getByRole('button', { name: 'My Work' }).click();
+  await expect(page.getByRole('heading', { name: 'My Work' })).toBeVisible();
 }
 
 test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
@@ -71,7 +71,7 @@ test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
     await loginToMyWork(page);
 
     const scopeGroup = page.getByRole('group', {
-      name: 'Filter My Tasks by scope',
+      name: 'Filter My Work by scope',
     });
 
     await expect(scopeGroup).toBeVisible();
@@ -162,9 +162,74 @@ test.describe('My Work — combined Client + Firm (Handbook Task 20)', () => {
     });
     await expect(page.getByText('Buy office snacks')).not.toBeVisible();
 
-    // And the reverse: My To-Do stays a private, separate page unaffected by this task.
-    await page.getByRole('button', { name: 'My To-Do' }).click();
+    // And the reverse: My To-Do stays a private, separate page unaffected by
+    // this task. Task 22: My To-Do is now a page-level tab under the
+    // "Personal" sidebar destination, not its own sidebar button.
+    await page.getByRole('button', { name: 'Personal', exact: true }).click();
+    await page.getByRole('tab', { name: 'My To-Do' }).click();
     await expect(page.getByText('Buy office snacks (private todo)')).toBeVisible();
+  });
+
+  test('Task 24: a Client Work row conveys client, service, period, status, both deadlines and an explicit next action', async ({ page }) => {
+    await loginToMyWork(page);
+    const row = page.locator('.task-row').filter({ hasText: 'Alpha VAT Return' });
+    await expect(row).toContainText('Alpha Trading Pvt. Ltd.'); // client
+    await expect(row).toContainText('Shrawan 2083'); // period
+    await expect(row).toContainText('In Progress'); // status
+    await expect(row).toContainText('Internal Target'); // internal deadline
+    // Overdue always wins as the action, regardless of underlying status.
+    await expect(row.locator('.row-action')).toHaveText('Open →');
+  });
+
+  test('Task 24: a non-overdue Client Work row\'s action label reflects its status', async ({ page }) => {
+    const toDoItem = {
+      id: 'w9', title: 'Beta bookkeeping', work_scope: 'client', client_id: CLIENT_ALPHA.id, service_template_id: null,
+      assignee_id: EMPLOYEE_A.id, reviewer_id: null, status: 'to_do', priority: 'normal',
+      internal_due_date: '2099-01-01', external_due_date: null, period: 'Bhadra 2083',
+      submission_required: false, review_required: true,
+      created_by: ADMIN.id, created_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-01T00:00:00Z',
+    };
+    await loginToMyWork(page, { work_items: [toDoItem] });
+    const row = page.locator('.task-row').filter({ hasText: 'Beta bookkeeping' });
+    await expect(row.locator('.row-action')).toHaveText('Start →');
+  });
+
+  test('Task 24: a blocked Firm Work row shows its blocker reason, styled neutrally, never as a compliance breach', async ({ page }) => {
+    const blockedItem = {
+      id: 'w10', title: 'Renew office lease', work_scope: 'firm', firm_category: 'Administration',
+      assignee_id: EMPLOYEE_A.id, status: 'blocked', priority: 'normal', internal_due_date: null,
+      description: null, project_id: null, next_action: null, blocker_reason: 'Waiting on landlord signature',
+      client_id: null, created_by: ADMIN.id, created_at: '2026-08-02T00:00:00Z', updated_at: '2026-08-02T00:00:00Z',
+    };
+    await loginToMyWork(page, { work_items: [blockedItem] });
+    const row = page.locator('.task-row').filter({ hasText: 'Renew office lease' });
+    await expect(row.locator('.blocker')).toContainText('Waiting on landlord signature');
+    await expect(row).not.toHaveClass(/attention-row/);
+  });
+
+  test('Task 24: completed work is hidden by default in My Work, reachable via "Show completed"', async ({ page }) => {
+    const completedClient = {
+      id: 'w11', title: 'Gamma VAT Return (done)', work_scope: 'client', client_id: CLIENT_ALPHA.id, service_template_id: null,
+      assignee_id: EMPLOYEE_A.id, reviewer_id: null, status: 'completed', priority: 'normal',
+      internal_due_date: '2026-01-01', external_due_date: null, period: 'Shrawan 2082',
+      submission_required: false, review_required: true,
+      created_by: ADMIN.id, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-05T00:00:00Z',
+    };
+    const completedFirm = {
+      id: 'w12', title: 'Old office move (done)', work_scope: 'firm', firm_category: 'Administration',
+      assignee_id: EMPLOYEE_A.id, status: 'completed', priority: 'normal', internal_due_date: '2026-01-01',
+      description: null, project_id: null, next_action: null, blocker_reason: null,
+      client_id: null, created_by: ADMIN.id, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-05T00:00:00Z',
+    };
+    await loginToMyWork(page, { work_items: [completedClient, completedFirm] });
+
+    await expect(page.getByText('Gamma VAT Return (done)')).not.toBeVisible();
+    await expect(page.getByText('Old office move (done)')).not.toBeVisible();
+
+    await page.getByRole('checkbox', { name: 'Show completed' }).check();
+
+    await expect(page.getByText('Gamma VAT Return (done)')).toBeVisible();
+    await expect(page.getByText('Old office move (done)')).toBeVisible();
   });
 });
 

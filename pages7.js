@@ -18,9 +18,52 @@ function supportAreaAccordion(area, i) {
   });
 }
 
+// Task 07: the four sections below (statement prep, policies, management
+// reporting, deliverables, why-choose) used to render as always-visible
+// intro+bullet-list+note blocks in the main reading path. Nothing in them
+// changed — they're now collapsed accordion items instead, same pattern as
+// supportAreaAccordion() above, just generalized since these don't all
+// share supportAreaAccordion's optional "output" field.
+function technicalDetailAccordion({ id, title, intro, items, note }) {
+  const body = `${intro ? `<p>${esc(intro)}</p>` : ''}${bulletList(items || [], 'stamp-list stamp-list--pkg')}${note ? `<p class="tag-note" style="margin-top:14px">${esc(note)}</p>` : ''}`;
+  return accordionItem({ id, headingHtml: esc(title), bodyHtml: body, open: false });
+}
+
+// Audit prep keeps its own function because its disclaimer ("Defined
+// Professional Boundaries" -- Maven does not issue statutory audit
+// opinions) is compliance-sensitive and stays in the same visually
+// distinct .partner-note treatment it always had, not demoted to a plain
+// .tag-note, even though it now sits inside a collapsed accordion body.
+function auditPrepAccordion(auditPrep) {
+  const body = `<p>${esc(auditPrep.intro || '')}</p>${bulletList(auditPrep.items || [], 'stamp-list stamp-list--pkg')}<div class="partner-note reveal" style="margin-top:20px"><h3 class="partner-note-title">Defined Professional Boundaries</h3><p>${esc(auditPrep.note || '')}</p></div>`;
+  return accordionItem({ id: 'nfrs-audit-prep', headingHtml: 'Audit Preparation Support', bodyHtml: body, open: false });
+}
+
+// Related Services: real, existing service categories only (Financial
+// Management & Reporting, Business Advisory, Outsourced Accounting) --
+// title/tagline pulled straight from data.serviceCategories, not written
+// fresh here, so this can never drift from or duplicate the Services page's
+// own copy.
+function relatedServiceCard(cat) {
+  const href = cat.key === 'bookkeeping' ? 'outsourced-accounting.html' : `services.html#${cat.key}`;
+  return `<article class="service-card reveal">
+    <div class="service-card-head">
+      <span class="service-icon">${icon(cat.icon)}</span>
+      <h3>${esc(cat.title)}</h3>
+    </div>
+    <p class="service-tagline">${esc(cat.tagline)}</p>
+    <div style="margin-top:16px">${button('Learn More', href, 'outline', `aria-label="${esc('Learn more about ' + cat.title)}"`)}</div>
+  </article>`;
+}
+
 function nfrsIfrs() {
   const h = data.pageHeader('nfrs-ifrs');
   const n = data.nfrsIfrs || {};
+  const technicalArea = (n.supportAreas || [])[2] || {};
+  const boundaryEntry = (n.whyChoose || []).find((w) => w.title === 'Defined Professional Boundaries') || {};
+  const boundaryNote = boundaryEntry.text || '';
+  const byKey = (key) => data.serviceCategories.find((c) => c.key === key);
+  const relatedCategories = [byKey('reporting'), byKey('advisory'), byKey('bookkeeping')].filter(Boolean);
 
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/card-reporting.jpg')}
@@ -34,60 +77,35 @@ function nfrsIfrs() {
 
   <section class="section-pad bg-mist">
     <div class="container" style="max-width:820px">
-      ${sectionHead({ eyebrow: 'Our Approach', title: n.introHeading })}
+      ${sectionHead({ eyebrow: 'Who This Service Is For', title: 'Is this the right fit for your business?' })}
+      ${bulletList(n.whoFor || [], 'stamp-list stamp-list--pkg')}
+      <p class="tag-note" style="margin-top:16px">${esc(n.whoForNote)}</p>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <div class="container" style="max-width:820px">
+      ${sectionHead({ eyebrow: 'Major Reporting Considerations', title: 'Where deeper technical analysis may be needed' })}
+      <p class="reveal">${esc(technicalArea.intro || '')}</p>
+      <div class="topic-chip-list reveal">
+        ${(technicalArea.items || []).map((t) => `<span class="topic-chip">${esc(t)}</span>`).join('')}
+      </div>
+      <p class="reveal" style="margin-top:16px">${esc((n.statementPrep || {}).note || '')} ${esc((n.policies || {}).note || '')} ${esc((n.managementReporting || {}).note || '')}</p>
+      <p class="tag-note" style="margin-top:16px">${esc(technicalArea.note || '')}</p>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container" style="max-width:820px">
+      ${sectionHead({ eyebrow: 'How Maven Supports You', title: n.introHeading })}
       <p class="reveal">${esc(n.introBody)}</p>
+      <p class="reveal" style="margin-top:14px">Support can extend across readiness assessment, transition planning, technical accounting analysis, financial statement preparation, policy documentation, management reporting, and audit-preparation coordination — covered area by area below.</p>
+      ${(n.whyChoose || []).slice(0, 3).map((w) => `<p class="reveal" style="margin-top:14px"><strong>${esc(w.title)}.</strong> ${esc(w.text)}</p>`).join('')}
+      <div class="info-note reveal" style="margin-top:20px">${esc(boundaryNote)}</div>
     </div>
   </section>
 
   <section class="section-pad">
-    <div class="container" style="max-width:820px">
-      ${sectionHead({ eyebrow: 'How We Can Support You', title: 'Assessment, transition, and technical accounting support' })}
-      <div class="accordion">
-        ${(n.supportAreas || []).map(supportAreaAccordion).join('')}
-      </div>
-    </div>
-  </section>
-
-  <section class="section-pad bg-mist">
-    <div class="container" style="max-width:820px">
-      ${sectionHead({ eyebrow: 'Financial Statements', title: (n.statementPrep || {}).heading || 'More Than Preparing The Numbers' })}
-      <p class="reveal">${esc((n.statementPrep || {}).intro)}</p>
-      ${bulletList((n.statementPrep || {}).items || [], 'stamp-list stamp-list--pkg')}
-      <div class="info-note reveal" style="margin-top:24px">${esc((n.statementPrep || {}).note)}</div>
-    </div>
-  </section>
-
-  <section class="section-pad">
-    <div class="container" style="max-width:820px">
-      ${sectionHead({ eyebrow: 'Accounting Policies & Documentation', title: 'Consistent practices, not just year-end adjustments' })}
-      <p class="reveal">${esc((n.policies || {}).intro)}</p>
-      ${bulletList((n.policies || {}).items || [], 'stamp-list stamp-list--pkg')}
-      <div class="info-note reveal" style="margin-top:24px">${esc((n.policies || {}).note)}</div>
-    </div>
-  </section>
-
-  <section class="section-pad bg-mist">
-    <div class="container" style="max-width:820px">
-      ${sectionHead({ eyebrow: 'Management Reporting', title: 'Connecting statutory reporting to decision-making' })}
-      <p class="reveal">${esc((n.managementReporting || {}).intro)}</p>
-      ${bulletList((n.managementReporting || {}).items || [], 'stamp-list stamp-list--pkg')}
-      <div class="info-note reveal" style="margin-top:24px">${esc((n.managementReporting || {}).note)}</div>
-    </div>
-  </section>
-
-  <section class="section-pad">
-    <div class="container" style="max-width:820px">
-      ${sectionHead({ eyebrow: 'Audit Preparation', title: 'Coordination support for year-end audit' })}
-      <p class="reveal">${esc((n.auditPrep || {}).intro)}</p>
-      ${bulletList((n.auditPrep || {}).items || [], 'stamp-list stamp-list--pkg')}
-      <div class="partner-note reveal" style="margin-top:24px">
-        <h3 class="partner-note-title">Defined Professional Boundaries</h3>
-        <p>${esc((n.auditPrep || {}).note)}</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="section-pad bg-mist">
     <div class="container">
       ${sectionHead({ eyebrow: 'Our Implementation Approach', title: 'From understanding your business to handover' })}
       <div class="process-list process-list--row">
@@ -96,26 +114,17 @@ function nfrsIfrs() {
     </div>
   </section>
 
-  <section class="section-pad">
-    <div class="container two-col">
-      <div class="reveal">
-        ${sectionHead({ eyebrow: 'Typical Deliverables', title: 'What an engagement can produce', align: 'left' })}
-        ${bulletList(n.deliverables || [], 'stamp-list stamp-list--pkg')}
-        <p class="tag-note" style="margin-top:16px">${esc(n.deliverablesNote)}</p>
-      </div>
-      <div class="reveal">
-        ${sectionHead({ eyebrow: 'Who This Service Is For', title: 'Is this the right fit for your business?', align: 'left' })}
-        ${bulletList(n.whoFor || [], 'stamp-list stamp-list--pkg')}
-        <p class="tag-note" style="margin-top:16px">${esc(n.whoForNote)}</p>
-      </div>
-    </div>
-  </section>
-
   <section class="section-pad bg-mist">
-    <div class="container">
-      ${sectionHead({ eyebrow: 'Why Work With Maven', title: 'Practical implementation, clearly communicated' })}
-      <div class="grid grid-4">
-        ${(n.whyChoose || []).map(whyCard).join('')}
+    <div class="container" style="max-width:820px">
+      ${sectionHead({ eyebrow: 'Technical Detail', title: 'Full scope, area by area' })}
+      <div class="accordion">
+        ${(n.supportAreas || []).map(supportAreaAccordion).join('')}
+        ${technicalDetailAccordion({ id: 'nfrs-statement-prep', title: (n.statementPrep || {}).heading || 'Financial Statement Preparation', intro: (n.statementPrep || {}).intro, items: (n.statementPrep || {}).items, note: (n.statementPrep || {}).note })}
+        ${technicalDetailAccordion({ id: 'nfrs-policies', title: 'Accounting Policies & Documentation', intro: (n.policies || {}).intro, items: (n.policies || {}).items, note: (n.policies || {}).note })}
+        ${technicalDetailAccordion({ id: 'nfrs-mgmt-reporting', title: 'Management Reporting Connection', intro: (n.managementReporting || {}).intro, items: (n.managementReporting || {}).items, note: (n.managementReporting || {}).note })}
+        ${auditPrepAccordion(n.auditPrep || {})}
+        ${technicalDetailAccordion({ id: 'nfrs-deliverables', title: 'Typical Deliverables', intro: null, items: n.deliverables, note: n.deliverablesNote })}
+        ${technicalDetailAccordion({ id: 'nfrs-why-choose', title: 'Why Work With Maven', intro: null, items: (n.whyChoose || []).map((w) => `${w.title}: ${w.text}`), note: null })}
       </div>
     </div>
   </section>
@@ -130,6 +139,15 @@ function nfrsIfrs() {
           bodyHtml: `<p>${esc(f.a)}</p>`,
           open: false,
         })).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad bg-mist">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'Related Services', title: 'Often paired with NFRS / IFRS support' })}
+      <div class="grid grid-3">
+        ${relatedCategories.map(relatedServiceCard).join('')}
       </div>
     </div>
   </section>
@@ -179,6 +197,7 @@ function internationalAccounting() {
       <div class="process-list process-list--row">
         ${(a.process || []).map((p, i, arr) => processStep({ step: i + 1, title: p.title, text: p.text }, i === arr.length - 1)).join('')}
       </div>
+      <p class="text-center tag-note" style="margin-top:24px">Ready for more than bookkeeping? See <a href="${internalHref('virtual-cfo.html')}" style="color:var(--gold-700);font-weight:700">Virtual CFO &amp; Management Reporting</a>.</p>
     </div>
   </section>
 
@@ -236,7 +255,7 @@ function internationalAccounting() {
   </section>
 
   ${ctaBand({
-    eyebrow: 'International Outsourced Accounting',
+    eyebrow: 'International Bookkeeping & Reconciliation',
     title: 'Ready to hand off your bookkeeping?',
     subtitle: a.cta,
     buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about outsourcing our bookkeeping.'), 'whatsapp', 'target="_blank" rel="noopener"')],
@@ -288,7 +307,7 @@ function virtualCfo() {
           open: false,
         })).join('')}
       </div>
-      <p class="text-center tag-note" style="margin-top:24px">Looking for day-to-day bookkeeping instead? See <a href="${internalHref('international-accounting.html')}" style="color:var(--gold-700);font-weight:700">International Outsourced Accounting</a>.</p>
+      <p class="text-center tag-note" style="margin-top:24px">Looking for day-to-day bookkeeping instead? See <a href="${internalHref('international-accounting.html')}" style="color:var(--gold-700);font-weight:700">International Bookkeeping & Reconciliation</a>.</p>
     </div>
   </section>
 

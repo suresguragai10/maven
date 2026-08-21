@@ -17,31 +17,53 @@ function teamCard(m) {
   const avatar = m.photo
     ? `<div class="team-card-avatar"><img src="${esc(safeUrl(m.photo))}" alt="${esc(m.name)}" loading="lazy"></div>`
     : `<div class="team-card-avatar" aria-hidden="true">${initials(m.name)}</div>`;
-  // Handbook Task 26: h2, not h3 -- team() has no sectionHead()-style h2
-  // between the page's h1 and this grid, so h3 here was a genuine
-  // heading-level skip. .team-card-name is styled by class, not tag, so
-  // this changes no visual output.
+  // Task 08: h3, not h2 -- team() now renders a real sectionHead() (its
+  // own h2, "Our Team") above this grid, so each member's name correctly
+  // nests one level under it. (Handbook Task 26 originally made this h2
+  // specifically because no such h2 existed yet; that reason no longer
+  // applies now that one does.) .team-card-name is styled by class, not
+  // tag, so this changes no visual output.
   return `<article class="team-card reveal">
     ${avatar}
-    <h2 class="team-card-name">${esc(m.name)}</h2>
+    <h3 class="team-card-name">${esc(m.name)}</h3>
     ${m.role ? `<p class="team-card-role">${esc(m.role)}</p>` : ''}
     ${loc}
     ${bio}
   </article>`;
 }
 
+// Task 08: a fixed 3-column grid looked broken with exactly one real member
+// (one card, two empty tracks of dead space) and wouldn't have looked much
+// better with two. The layout now adapts to the actual team size instead of
+// assuming a large team from the start -- 1 gets a centered, slightly
+// larger featured treatment; 2 gets a centered pair; 3+ gets the normal
+// grid (which already scales fine to a larger future team, no changes
+// needed there). teamCard() itself -- and its photo/initials fallback --
+// is completely unchanged by this, so real photography can still replace
+// the initials avatar later with no layout change.
+function teamGridFor(members) {
+  if (members.length === 0) {
+    return `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">Team profiles are being prepared — check back soon.</div>`;
+  }
+  if (members.length === 1) {
+    return `<div class="team-grid team-grid--solo">${teamCard(members[0])}</div>`;
+  }
+  if (members.length === 2) {
+    return `<div class="grid grid-2 team-grid team-grid--pair">${members.map(teamCard).join('')}</div>`;
+  }
+  return `<div class="grid grid-3 team-grid">${members.map(teamCard).join('')}</div>`;
+}
+
 function team() {
   const h = data.pageHeader('team');
   const members = data.teamMembers || [];
-  const grid = members.length
-    ? `<div class="grid grid-3 team-grid">${members.map(teamCard).join('')}</div>`
-    : `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">Team profiles are being prepared — check back soon.</div>`;
 
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/team-hero-bg.jpg')}
   <section class="section-pad">
     <div class="container">
-      ${grid}
+      ${members.length ? sectionHead({ eyebrow: 'Our Team', title: 'The people behind Maven’s client work' }) : ''}
+      ${teamGridFor(members)}
     </div>
   </section>
   ${ctaBand({
