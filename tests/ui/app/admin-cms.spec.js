@@ -214,6 +214,50 @@ test.describe('Admin CMS — Blog messaging', () => {
   });
 });
 
+// Real gap found during a full architecture audit: resourcesHub had zero
+// admin.js editor -- the one page's content that could only be changed by
+// hand-editing content/site.yaml directly, unlike every other page.
+test.describe('Admin CMS — Resources hub editor (previously the one page with no editor)', () => {
+  test('the Resources section exists with an editable intro and four tiles, each with title/text/CTA and a locked link', async ({ page }) => {
+    const mock = await installGithubMock(page);
+    await connect(page, mock);
+
+    const section = page.locator('#sec-resources');
+    await expect(section).toBeVisible();
+    await expect(fieldByExactLabel(page, section, 'Intro Paragraph')).toBeVisible();
+
+    const tiles = section.locator('.sub-card');
+    await expect(tiles).toHaveCount(4);
+    for (let i = 0; i < 4; i++) {
+      const tile = tiles.nth(i);
+      await expect(fieldByExactLabel(page, tile, 'Title').locator('input, textarea')).toBeVisible();
+      await expect(fieldByExactLabel(page, tile, 'Text').locator('input, textarea')).toBeVisible();
+      await expect(fieldByExactLabel(page, tile, 'Call-to-Action Text').locator('input, textarea')).toBeVisible();
+      await expect(tile.locator('.locked-tag')).toContainText('locked');
+    }
+  });
+
+  test('editing a Resources tile\'s title reaches the diff summary and saves', async ({ page }) => {
+    const mock = await installGithubMock(page);
+    await connect(page, mock);
+
+    const firstTile = page.locator('#sec-resources .sub-card').first();
+    const titleInput = fieldByExactLabel(page, firstTile, 'Title').locator('input, textarea');
+    await titleInput.fill('Custom Documents Checklist Title — Test Override');
+
+    await page.locator('#saveBtn').click();
+
+    const confirmBanner = page.locator('#saveBanner.confirm');
+    await expect(confirmBanner).toBeVisible();
+    await expect(confirmBanner).toContainText('resourcesHub.tiles: 4 → 4 item(s), content changed');
+    expect(mock.state.putCalls.length).toBe(0);
+
+    await confirmBanner.locator('button:has-text("Confirm & Save to GitHub")').click();
+    await expect(page.locator('#toast')).toContainText('Saved to GitHub');
+    expect(mock.state.putCalls.length).toBe(1);
+  });
+});
+
 test.describe('Admin CMS — disconnect clears the token', () => {
   test('Disconnect returns to the connect screen with no token left in storage', async ({ page }) => {
     const mock = await installGithubMock(page);

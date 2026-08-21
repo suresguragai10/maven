@@ -382,6 +382,27 @@
     return wrap;
   }
 
+  // Resources hub tiles: title/text/cta editable, icon/href locked (fixed
+  // pages) -- same convention as hubTilesEditor above, minus the tagline
+  // field this shape doesn't have. Was previously the one page with no
+  // admin editor at all (had to be hand-edited in content/site.yaml).
+  function resourcesTilesEditor(arr) {
+    var wrap = el('div');
+    arr.forEach(function (tile) {
+      var card = el('div', 'sub-card');
+      var head = el('div', 'sub-head');
+      var strong = el('strong'); strong.textContent = 'Tile';
+      var lock = el('span', 'locked-tag'); lock.textContent = 'links to: ' + tile.href + ' (locked)';
+      head.appendChild(strong); head.appendChild(lock);
+      card.appendChild(head);
+      card.appendChild(textField('Title', function () { return tile.title; }, function (v) { tile.title = v; }));
+      card.appendChild(textField('Text', function () { return tile.text; }, function (v) { tile.text = v; }, { multiline: true, rows: 2 }));
+      card.appendChild(textField('Call-to-Action Text', function () { return tile.cta; }, function (v) { tile.cta = v; }));
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
   // Document groups: title editable, items string list editable
   function documentGroupsEditor(arr) {
     var wrap = el('div');
@@ -1362,6 +1383,17 @@
     // Useful Links
     if (!c.usefulLinks) c.usefulLinks = [];
     area.appendChild(section('sec-useful-links', 'Useful Links', 'Official government portals shown on the Useful Links page. Double-check web addresses carefully — a broken link is easy to miss.', usefulLinksEditor(c.usefulLinks)));
+
+    // Resources hub — links to the four pages above, plus FAQ
+    if (!c.resourcesHub || typeof c.resourcesHub !== 'object') c.resourcesHub = {};
+    var rh = c.resourcesHub;
+    if (!Array.isArray(rh.tiles)) rh.tiles = [];
+    var rhBody = el('div');
+    rhBody.appendChild(textField('Intro Paragraph', function () { return rh.intro; }, function (v) { rh.intro = v; }, { multiline: true, rows: 2 }));
+    var rhTilesWrap = el('div', 'f-field'); var rhTilesL = el('label'); rhTilesL.textContent = 'Resource Tiles'; rhTilesWrap.appendChild(rhTilesL);
+    rhTilesWrap.appendChild(resourcesTilesEditor(rh.tiles));
+    rhBody.appendChild(rhTilesWrap);
+    area.appendChild(section('sec-resources', 'Resources Hub', 'The Resources page — a short intro plus four cards linking to Documents Checklist, Financial Calculators, Useful Links, and FAQ. Icon/link fields aren\'t offered here since they map to fixed pages.', rhBody));
 
     // Blog posts — each post is its own file, saved independently of the main Save button.
     area.appendChild(section('sec-blog', 'Blog Posts', 'Write, edit, or delete blog posts here. Each post publishes with its own "Publish"/"Save" button below — it does not use the main "Save Changes" button at the top. Remember: the Blog section itself still needs to be ticked "Show in menu" under "Pages: Hide & Headings" before visitors can find it.', blogEditor()));

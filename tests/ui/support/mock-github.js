@@ -55,6 +55,15 @@ function buildFixtureContent(overrides) {
     teamMembers: [],
     testimonials: [],
     usefulLinks: [{ name: 'IRD', url: 'https://ird.gov.np/', description: 'desc' }],
+    resourcesHub: {
+      intro: 'Resources intro',
+      tiles: [
+        { title: 'Documents Checklist', text: 'Checklist text', cta: 'View Documents Checklist', href: 'documents-needed.html', icon: 'upload' },
+        { title: 'Financial Calculators', text: 'Calculators text', cta: 'Use Financial Calculators', href: 'calculators.html', icon: 'percent' },
+        { title: 'Useful Links', text: 'Links text', cta: 'View Useful Links', href: 'useful-links.html', icon: 'globe' },
+        { title: 'FAQ', text: 'FAQ text', cta: 'Read FAQs', href: 'faq.html', icon: 'shield' },
+      ],
+    },
     whyChoose: [{ title: 'Reason', text: 'Text' }],
     process: [{ step: 1, title: 'Step', text: 'Text' }],
     faqs: [{ q: 'Question?', a: 'Answer.' }],

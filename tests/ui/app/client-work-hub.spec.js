@@ -169,4 +169,26 @@ test.describe('Client Work Hub (Task 25)', () => {
       await expect(page.getByText('Firm-only item, must never appear here')).not.toBeVisible();
     }
   });
+
+  // Real bug found during a full architecture audit: the bulk-reassign
+  // toolbar on All Work used to show for a reviewer too, but
+  // guard_work_item_update() only ever lets an admin reassign/rescope
+  // work -- a reviewer would have seen a "Select all eligible" checkbox
+  // that could never select anything. Now admin-only, matching what's
+  // actually usable.
+  test('bulk reassign toolbar on All Work is admin-only, not shown to a reviewer', async ({ page }) => {
+    const REVIEWER = { id: '55555555-5555-5555-5555-555555555555', email: 'reviewer@test.local', full_name: 'Reviewer One', role: 'reviewer', is_active: true };
+    await loginAs(page, REVIEWER, { profiles: [ADMIN, EMPLOYEE_A, REVIEWER], work_items: [ITEM_READY_FOR_REVIEW] });
+    await page.getByRole('button', { name: 'Client Work', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'All Work' })).toBeVisible();
+    await expect(page.getByText('Select all eligible')).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Reassign Selected' })).not.toBeVisible();
+  });
+
+  test('bulk reassign toolbar on All Work is visible to admin', async ({ page }) => {
+    await loginAs(page, ADMIN, { work_items: [ITEM_READY_FOR_REVIEW] });
+    await page.getByRole('button', { name: 'Client Work', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'All Work' })).toBeVisible();
+    await expect(page.getByText('Select all eligible')).toBeVisible();
+  });
 });

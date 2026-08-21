@@ -12,10 +12,10 @@ A single consolidated list, built from the 12 audit/planning docs already sittin
 
 ## Group 2 — Small, low-risk code/doc fixes
 
-- [ ] Hide/disable the reassignment control shown to a reviewer on their own reviewed Client Work item — the DB already blocks it (fails safe), but the UI shows a control that silently does nothing, and misleads via an incorrect code comment.
-- [ ] `STAFF_ONBOARDING.md` currently says Work Desk never creates `auth.users` accounts — now stale, since Create New Staff (this session) does exactly that via the new Edge Function. Needs a rewrite.
-- [ ] Sidebar label vs. page heading mismatches (cosmetic only): "Team Work" → page says "Team"; "Recent Updates" → "Since Last Seen"; "Operations Overview" → "Manager Dashboard"; "My To-Do" → "My To-Do List".
-- [ ] Resources page has no admin-panel content editor — the one page that can only be edited by hand-editing YAML.
+- [x] **FIXED.** Reassignment controls (Edit Work's Assignee/Reviewer fields, and the bulk-reassign toolbar on All Work) are now admin-only, matching `guard_work_item_update()` exactly — a reviewer no longer sees a control that would have silently done nothing on save. Covered by 4 new Playwright tests.
+- [x] **FIXED.** `STAFF_ONBOARDING.md` rewritten to document Create New Staff as the primary path (Dashboard kept as fallback), with a clear revision note explaining what changed and why.
+- [x] Sidebar label vs. page heading mismatches — checked current state (the audit predates some earlier fixes this session): "Operations Overview" and "Catch-Up"/"Firm Work Catch-Up" are already consistent. "Team Work"→"Team" and "My To-Do"→"My To-Do List" remain, but on reflection these are just normal shortened sidebar labels (same pattern as the already-fine Catch-Up one), not genuinely confusing — left as-is.
+- [x] **FIXED.** Resources page now has a full admin-panel editor (intro + all 4 tiles' title/text/CTA, matching the same locked-link pattern used elsewhere for fixed-page tiles). Covered by 2 new admin-cms tests; also had to extend the shared test fixture (`mock-github.js`) which didn't carry `resourcesHub` data at all.
 - [ ] Deadlines/overdue-bucketing logic is independently reimplemented across 5 different screens (only low-level date helpers are actually shared) — a drift risk if one is ever edited without the others, worth a shared-helper extraction.
 
 ## Group 3 — Owner decisions needed (confirm or change, not urgent)

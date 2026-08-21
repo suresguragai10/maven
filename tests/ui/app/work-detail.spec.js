@@ -146,4 +146,26 @@ test.describe('Client Work Detail (Task 26)', () => {
     expect(optionValues).not.toContain('approved');
     expect(optionValues).not.toContain('completed');
   });
+
+  // Real bug found during a full architecture audit: Edit Work showed
+  // Assignee/Reviewer reassignment fields to a reviewer on their own
+  // reviewed item, even though guard_work_item_update() explicitly
+  // denies that exact action ("Only an admin can reassign or rescope
+  // work") -- fails safe (the DB always blocked it) but showed a
+  // control that would silently do nothing on save.
+  test('Edit Work: reassignment fields are admin-only, even for the item\'s own reviewer', async ({ page }) => {
+    await loginAndOpenDetail(page, REVIEWER, clientItem());
+    await page.getByRole('button', { name: 'Edit' }).click();
+    await expect(page.getByRole('heading', { name: 'Edit Work' })).toBeVisible();
+    await expect(page.getByLabel('Assignee', { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Reviewer', { exact: true })).toHaveCount(0);
+  });
+
+  test('Edit Work: an admin does see the reassignment fields', async ({ page }) => {
+    await loginAndOpenDetail(page, ADMIN, clientItem());
+    await page.getByRole('button', { name: 'Edit' }).click();
+    await expect(page.getByRole('heading', { name: 'Edit Work' })).toBeVisible();
+    await expect(page.getByLabel('Assignee', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Reviewer', { exact: true })).toBeVisible();
+  });
 });

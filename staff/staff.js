@@ -1625,7 +1625,7 @@
     if (loading.parentNode) loading.parentNode.removeChild(loading);
 
     if (mode === 'all') renderWorkloadSummary(main, items);
-    renderFlatWorkList(main, items, mode === 'all' && isReviewerOrAdmin());
+    renderFlatWorkList(main, items, mode === 'all' && isAdmin());
   }
 
   // opts (Handbook Task 20, both optional, both default to the original
@@ -2124,12 +2124,11 @@
     main.appendChild(card);
   }
 
-  // enableBulkReassign is only ever true for mode==='all' + a reviewer/
-  // admin viewer (see renderWorkListView) -- staff never see this, and a
-  // plain reviewer only gets a checkbox on rows where they're ALREADY
-  // the reviewer (matches guard_work_item_update()'s own bypass
-  // condition exactly, so nothing selectable here could ever be
-  // rejected by the DB). Admin gets a checkbox on every row.
+  // enableBulkReassign is only ever true for mode==='all' + an admin
+  // viewer (see renderWorkListView) -- reassigning/rescoping is
+  // admin-only in guard_work_item_update(), even for a reviewer on their
+  // own reviewed item, so a reviewer viewer never gets this toolbar at
+  // all rather than one where nothing would ever be eligible.
   function renderFlatWorkList(main, items, enableBulkReassign) {
     if (!items.length) {
       var empty = el('div', 'empty-note'); empty.appendChild(icon('clipboard')); empty.appendChild(document.createTextNode('No work here yet.'));
@@ -2149,7 +2148,10 @@
     }
     var wrap = el('div', 'task-group');
     items.forEach(function (w) {
-      var eligible = enableBulkReassign && (isAdmin() || w.reviewer_id === state.user.id);
+      // Admin-only, matching guard_work_item_update() exactly -- see
+      // openEditWorkModal's own canReassign comment for why a reviewer,
+      // even on their own reviewed item, is never eligible here either.
+      var eligible = enableBulkReassign && isAdmin();
       if (!eligible) { wrap.appendChild(workRow(w)); return; }
       var rowWrap = el('div'); rowWrap.style.cssText = 'display:flex;align-items:center;gap:10px;';
       var cb = el('input'); cb.type = 'checkbox'; cb.style.cssText = 'width:auto;flex:0 0 auto;';
@@ -4276,14 +4278,16 @@
   // needs its dates filled in — see "Generate Period Work") be fixed
   // without recreating the work item.
   function openEditWorkModal(work) {
-    // Same reassignment boundary as guard_work_item_update() itself
-    // (admin, or this item's own reviewer) -- matches who the DB will
-    // actually let change assignee_id/reviewer_id, so this never shows a
-    // control that would just fail on save. Reassigning/adding a reviewer
-    // had no UI path at all before this — the only way to set one was at
-    // creation — which also meant "reassigned" could never appear in the
-    // audit trail below since nothing ever produced it.
-    var canReassign = isAdmin() || (state.profile.role === 'reviewer' && work.reviewer_id === state.user.id);
+    // Admin-only, matching guard_work_item_update() exactly: a reviewer
+    // may edit dates/status/notes on their own reviewed item, but
+    // reassigning/rescoping (assignee, reviewer, client, or service
+    // template) is explicitly admin-only there too -- "Only an admin can
+    // reassign or rescope work," raised even for the item's own assigned
+    // reviewer. An earlier version of this line incorrectly also granted
+    // it to that reviewer, showing a control that would silently fail on
+    // save (found via a full architecture audit, fails safe -- the DB
+    // always blocked it -- but was misleading).
+    var canReassign = isAdmin();
 
     var wrap = el('div');
     var head = el('div', 'modal-head');
