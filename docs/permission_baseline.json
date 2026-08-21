@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generatedAt": "2026-08-21T17:31:46.803Z",
-    "migrationCount": 34
+    "generatedAt": "2026-08-21T18:08:36.982Z",
+    "migrationCount": 35
   },
   "results": [
     {
@@ -39,6 +39,24 @@
       "expectedSecure": "deny",
       "secure": true,
       "note": "0 row(s) affected"
+    },
+    {
+      "area": "profiles",
+      "action": "UPDATE own is_active back to true (self-reactivation after offboarding)",
+      "identity": "inactive",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected"
+    },
+    {
+      "area": "profiles",
+      "action": "UPDATE own designation directly (bypassing update_my_profile()'s field scoping)",
+      "identity": "employeeA",
+      "allowed": false,
+      "expectedSecure": "deny",
+      "secure": true,
+      "note": "0 row(s) affected - only phone/photo_url should ever be self-editable, only via the RPC"
     },
     {
       "area": "profiles",
