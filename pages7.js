@@ -202,6 +202,19 @@ function internationalAccounting() {
   </section>
 
   <section class="section-pad">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'The Work Cycle', title: 'How a period of accounting work actually flows' })}
+      <div class="flow-diagram reveal-stagger">
+        ${[
+          'Client Accounting System', 'Bookkeeping & Reconciliation', 'Internal Review',
+          'Queries / Exception List', 'Reporting', 'Client Review',
+        ].map((step, i, arr) => `<div class="flow-step"><span>${esc(step)}</span></div>${i < arr.length - 1 ? `<span class="flow-arrow" aria-hidden="true">${icon('chevronRight')}</span>` : ''}`).join('')}
+      </div>
+      <p class="text-center tag-note" style="margin-top:20px">The same cycle repeats each period — work starts from your own accounting system and ends with you reviewing what was done, not with figures disappearing into a black box.</p>
+    </div>
+  </section>
+
+  <section class="section-pad">
     <div class="container two-col">
       <div class="reveal">
         ${sectionHead({ eyebrow: 'Support For Accounting Firms', title: 'Back-office capacity for your practice', align: 'left' })}

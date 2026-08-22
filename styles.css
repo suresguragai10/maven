@@ -901,6 +901,19 @@ strong { color: var(--navy-900); }
 .capability-chapter-links a { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.93rem; color: var(--navy-800); width: fit-content; }
 .capability-chapter-links a:hover { color: var(--gold-700); text-decoration: underline; }
 .capability-chapter-links .ic { width: 15px; height: 15px; color: var(--gold-600); flex-shrink: 0; }
+
+/* International Accounting's operational work-cycle pipeline -- a
+   compact chip sequence, deliberately not another numbered story like
+   the onboarding process list above it on the same page, so the two
+   don't read as conflicting step-1/2/3 orders. */
+.flow-diagram { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.flow-step { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 18px; font-weight: 700; font-size: 0.88rem; color: var(--navy-900); text-align: center; box-shadow: var(--shadow-sm); }
+.flow-arrow { color: var(--gold-500); flex-shrink: 0; }
+.flow-arrow .ic { width: 18px; height: 18px; }
+@media (max-width: 640px) {
+  .flow-diagram { flex-direction: column; }
+  .flow-arrow { transform: rotate(90deg); }
+}
 .capability-chapter-actions { margin-top: auto; }
 
 /* Establish & Comply — calm, structured, the smallest image of the three. */
