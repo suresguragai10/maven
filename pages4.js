@@ -46,7 +46,7 @@ function blogIndex(posts) {
           <p class="tag-note" style="margin-bottom:6px">${esc(p.dateDisplay)}</p>
           <h3 style="margin-bottom:10px">${esc(p.title)}</h3>
           <p class="service-tagline" style="flex:1">${esc(p.excerpt)}</p>
-          <a class="btn btn-outline" href="${internalHref(p.file)}">Read More ${icon('arrowRight')}</a>
+          <a class="btn btn-outline" href="${internalHref(p.file)}">Read More ${icon('arrowRight', 'btn-arrow')}</a>
         </article>`).join('')}
       </div>`
     : `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">No posts published yet — check back soon.</div>`;

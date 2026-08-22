@@ -157,6 +157,8 @@ section { position: relative; }
 @media (max-width: 380px) { .btn { white-space: normal; text-align: center; } }
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0) scale(0.985); }
+.btn-arrow { transition: transform 0.15s ease; }
+.btn:hover .btn-arrow, .btn:focus-visible .btn-arrow { transform: translateX(4px); }
 .btn-primary { background: var(--gold-500); color: var(--navy-950); box-shadow: var(--shadow-sm); }
 .btn-primary:hover { box-shadow: var(--shadow-md); }
 .btn-outline { background: transparent; border-color: var(--navy-800); color: var(--navy-900); }
@@ -507,6 +509,12 @@ body.nav-open { overflow: hidden; }
 .process-step:last-child { padding-bottom: 0; }
 .process-step-marker { width: 40px; height: 40px; border-radius: 50%; background: var(--navy-950); color: var(--gold-500); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; flex-shrink: 0; z-index: 1; }
 .process-step-line { position: absolute; left: 19.5px; top: 40px; bottom: -4px; width: 2px; background: var(--border); }
+/* Draws downward with the same reveal that fades each step in, rather
+   than the line just appearing at full length instantly -- gated behind
+   .reveal-enabled (JS-detected) so it fails open to a plain static line
+   if JS never runs, same convention as every other .reveal effect. */
+.reveal-enabled .process-step.reveal .process-step-line { transform: scaleY(0); transform-origin: top; transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal-enabled .process-step.reveal.is-visible .process-step-line { transform: scaleY(1); }
 .process-step-body h3 { font-size: 1.05rem; margin-bottom: 4px; }
 .process-step-body p { font-size: 0.93rem; margin: 0; }
 
