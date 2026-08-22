@@ -765,7 +765,6 @@
   }
 
   qs('#forgotPasswordLink').addEventListener('click', function (e) { e.preventDefault(); showOtpScreen('recovery'); });
-  qs('#activateAccountLink').addEventListener('click', function (e) { e.preventDefault(); showOtpScreen('invite'); });
 
   function msgBox(text, isError) {
     var d = el('div', 'msg ' + (isError ? 'msg-error' : 'msg-ok'));
@@ -8170,7 +8169,7 @@
     var cancel = el('button', 'btn btn-outline btn-sm'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.addEventListener('click', closeModal);
     head.appendChild(h2); head.appendChild(cancel); wrap.appendChild(head);
 
-    var note = el('p', 'f-hint'); note.textContent = 'Sends a real Supabase sign-in invite by email — the new hire sets their own password by clicking the link. No password is ever typed or stored here.'; wrap.appendChild(note);
+    var note = el('p', 'f-hint'); note.textContent = 'Sends a real Supabase sign-in invite by email containing a one-time code — send them to ' + location.origin + '/staff/#activate to enter it and set their own password. No password is ever typed or stored here.'; wrap.appendChild(note);
 
     var email = el('input'); email.type = 'email'; wrap.appendChild(field('Work email', email));
     var name = el('input'); wrap.appendChild(field('Full name', name));
@@ -8206,7 +8205,7 @@
       closeModal();
       await loadProfiles();
       render();
-      toast(body.warning || ('Invite sent to ' + emailValue + '.'), !!body.warning);
+      toast(body.warning || ('Invite sent to ' + emailValue + '. Point them to ' + location.origin + '/staff/#activate.'), !!body.warning);
     });
     actions.appendChild(send); wrap.appendChild(actions);
     openModal(wrap);
@@ -8219,7 +8218,7 @@
 
     var intro = el('div', 'card');
     var p = el('p', 'desc'); p.style.margin = '0 0 8px';
-    p.textContent = 'Create New Staff sends a real sign-in invite by email — the new hire clicks the link and sets their own password. Work Desk never asks for or stores a Supabase service-role key: the invite is sent by a small server-side function, not by this page directly, so it only works once that function has been deployed once (see the setup note this page\'s owner was given). Until then, create the login directly in the Supabase Dashboard instead (Authentication → Users → Add User). Once an account exists, a matching profile row is created automatically; manage their internal profile, role and active access here. Public website Team profiles remain separate.';
+    p.textContent = 'Create New Staff sends a real sign-in invite by email with a one-time code — the new hire enters it at /staff/#activate and sets their own password there. No self-service signup exists anywhere else; an account only ever gets created by an admin using this button. Work Desk never asks for or stores a Supabase service-role key: the invite is sent by a small server-side function, not by this page directly, so it only works once that function has been deployed once (see the setup note this page\'s owner was given). Until then, create the login directly in the Supabase Dashboard instead (Authentication → Users → Add User). Once an account exists, a matching profile row is created automatically; manage their internal profile, role and active access here. Public website Team profiles remain separate.';
     intro.appendChild(p);
     var roleLegend = el('p', 'f-hint');
     roleLegend.textContent = 'Employee: own work only. Reviewer: + can review/approve work where they\'re the assigned reviewer. Admin: full access, including Staff & Access itself.';
@@ -8436,6 +8435,13 @@
     var sessionRes = await sb.auth.getSession();
     if (sessionRes.data && sessionRes.data.session) {
       await enterApp();
+      return;
     }
+    // Deep link only, deliberately not a link on the login screen itself
+    // (see openCreateStaffModal()'s note -- an admin shares this URL
+    // directly with the new hire alongside their invite code). Keeps the
+    // login screen from advertising anything that looks like self-service
+    // signup, while the activation flow itself stays reachable.
+    if (location.hash.replace(/^#/, '') === 'activate') showOtpScreen('invite');
   })();
 })();

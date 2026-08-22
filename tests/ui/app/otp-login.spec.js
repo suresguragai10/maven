@@ -84,12 +84,19 @@ test.describe('OTP account activation / password reset', () => {
     expect(verifyCalls[0].token).toBe('12345678');
   });
 
-  test('activate account: no network call to "send" a code (already emailed by the admin invite), verifies with type=invite', async ({ page }) => {
+  test('the plain login screen has no public "activate account" link', async ({ page }) => {
+    await installSupabaseMock(page, { user: EMPLOYEE_A, tables: await baseTables() });
+    await page.goto('/staff/');
+    await expect(page.getByRole('link', { name: 'Activating a new account?' })).toHaveCount(0);
+  });
+
+  test('activate account: reachable via the #activate deep link, no network call to "send" a code (already emailed by the admin invite), verifies with type=invite', async ({ page }) => {
     await installSupabaseMock(page, { user: EMPLOYEE_A, tables: await baseTables() });
     const { verifyCalls, recoverCalls } = await mockOtpEndpoints(page);
-    await page.goto('/staff/');
-
-    await page.getByRole('link', { name: 'Activating a new account?' }).click();
+    // Navigating straight to the hash URL as the page's first and only
+    // load, matching what a real new hire gets from opening the deep
+    // link an admin shares with them (see openCreateStaffModal()'s note).
+    await page.goto('/staff/#activate');
     await expect(page.locator('#otpScreen')).toBeVisible();
     await expect(page.locator('#otpTitle')).toHaveText('Activate Your Account');
     await expect(page.locator('#otpResendBtn')).toBeHidden();
