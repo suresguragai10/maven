@@ -120,6 +120,20 @@ function contact() {
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/contact-hero-bg.jpg')}
 
+  <section class="section-pad-sm">
+    <div class="container" style="max-width:760px">
+      <div class="text-center reveal" style="margin-bottom:22px">
+        <span class="service-icon" style="margin:0 auto 12px">${icon('shield')}</span>
+        <h2 style="margin-bottom:8px">How document handling works</h2>
+        <p class="tag-note" style="max-width:52ch;margin:0 auto">Your financial information deserves careful handling — see the note by the message field below before you write anything sensitive.</p>
+      </div>
+      <div class="flow-diagram reveal-stagger">
+        ${['Initial Inquiry', 'Scope Confirmation', 'Appropriate Document Method Confirmed', 'Work Begins']
+          .map((step, i, arr) => `<div class="flow-step"><span>${esc(step)}</span></div>${i < arr.length - 1 ? `<span class="flow-arrow" aria-hidden="true">${icon('chevronRight')}</span>` : ''}`).join('')}
+      </div>
+    </div>
+  </section>
+
   <section class="section-pad">
     <div class="container two-col">
       <div class="reveal">
@@ -198,7 +212,7 @@ function contact() {
                 <textarea id="f-message" name="message" required placeholder="Briefly describe what you need help with..."></textarea>
               </div>
             </div>
-            <p class="form-hint">For your security, please don't attach financial records, IDs, or other sensitive documents to this form. Once we've connected, we'll confirm a secure way to share them.</p>
+            <p class="form-hint">Your financial information deserves careful handling. Please do not send sensitive financial records, identification documents, or confidential business information through this general inquiry form. After understanding your requirements, Maven will confirm the appropriate method for document exchange.</p>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">${icon('send')} Send Inquiry</button>
               <span class="form-hint">We typically respond within one business day.</span>

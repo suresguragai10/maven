@@ -149,6 +149,6 @@ test.describe('Contact form validation', () => {
 
   test('the privacy/security note about not attaching sensitive documents is visible', async ({ page }) => {
     await page.goto('/contact');
-    await expect(page.locator('.form-hint').first()).toContainText(/don't attach financial records/i);
+    await expect(page.locator('.form-hint').first()).toContainText(/do not send sensitive financial records/i);
   });
 });
