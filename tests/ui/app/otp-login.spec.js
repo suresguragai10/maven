@@ -68,8 +68,12 @@ test.describe('OTP account activation / password reset', () => {
     await expect(page.locator('#otpStepCode')).toBeVisible();
     expect(recoverCalls.length).toBe(1);
 
-    await page.locator('#otp-code').fill('123456');
+    // Supabase's actual token length is a project setting, not something
+    // this app should assume -- an 8-digit code (observed live) proves the
+    // input isn't truncating it (a real bug: it briefly had maxlength=6).
+    await page.locator('#otp-code').fill('12345678');
     await page.locator('#otp-newpassword').fill('a-real-new-password');
+    await page.locator('#otp-newpassword2').fill('a-real-new-password');
     await page.getByRole('button', { name: 'Verify & Set Password' }).click();
 
     await expect(page.locator('#app')).not.toHaveClass(/hidden/);
@@ -77,7 +81,7 @@ test.describe('OTP account activation / password reset', () => {
     expect(verifyCalls.length).toBe(1);
     expect(verifyCalls[0].type).toBe('recovery');
     expect(verifyCalls[0].email).toBe(EMPLOYEE_A.email);
-    expect(verifyCalls[0].token).toBe('123456');
+    expect(verifyCalls[0].token).toBe('12345678');
   });
 
   test('activate account: no network call to "send" a code (already emailed by the admin invite), verifies with type=invite', async ({ page }) => {
@@ -97,10 +101,28 @@ test.describe('OTP account activation / password reset', () => {
 
     await page.locator('#otp-code').fill('654321');
     await page.locator('#otp-newpassword').fill('a-real-new-password');
+    await page.locator('#otp-newpassword2').fill('a-real-new-password');
     await page.getByRole('button', { name: 'Verify & Set Password' }).click();
 
     await expect(page.locator('#app')).not.toHaveClass(/hidden/);
     expect(verifyCalls[0].type).toBe('invite');
+  });
+
+  test('mismatched passwords are rejected client-side before any verify call is made', async ({ page }) => {
+    await installSupabaseMock(page, { user: EMPLOYEE_A, tables: await baseTables() });
+    const { verifyCalls } = await mockOtpEndpoints(page);
+    await page.goto('/staff/');
+
+    await page.getByRole('link', { name: 'Forgot password?' }).click();
+    await page.locator('#otp-email').fill(EMPLOYEE_A.email);
+    await page.getByRole('button', { name: 'Send Code' }).click();
+    await page.locator('#otp-code').fill('123456');
+    await page.locator('#otp-newpassword').fill('a-real-new-password');
+    await page.locator('#otp-newpassword2').fill('a-different-password');
+    await page.getByRole('button', { name: 'Verify & Set Password' }).click();
+
+    await expect(page.locator('#otpMsg')).toContainText(/do not match/i);
+    expect(verifyCalls.length).toBe(0);
   });
 
   test('an invalid/expired code shows an error and does not leave the OTP screen', async ({ page }) => {
@@ -113,6 +135,7 @@ test.describe('OTP account activation / password reset', () => {
     await page.getByRole('button', { name: 'Send Code' }).click();
     await page.locator('#otp-code').fill('000000');
     await page.locator('#otp-newpassword').fill('a-real-new-password');
+    await page.locator('#otp-newpassword2').fill('a-real-new-password');
     await page.getByRole('button', { name: 'Verify & Set Password' }).click();
 
     await expect(page.locator('#otpScreen')).toBeVisible();

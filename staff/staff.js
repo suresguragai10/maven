@@ -642,8 +642,9 @@
     + '<button class="btn btn-block" id="otpSendBtn" type="button"></button>'
     + '</div>'
     + '<div id="otpStepCode" class="hidden">'
-    + '<div class="f"><label for="otp-code">6-digit code</label><input id="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>'
+    + '<div class="f"><label for="otp-code">Code from your email</label><input id="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12"></div>'
     + '<div class="f"><label for="otp-newpassword">New password</label><input id="otp-newpassword" type="password" autocomplete="new-password"></div>'
+    + '<div class="f"><label for="otp-newpassword2">Confirm new password</label><input id="otp-newpassword2" type="password" autocomplete="new-password"></div>'
     + '<button class="btn btn-block" id="otpVerifyBtn" type="button">Verify &amp; Set Password</button>'
     + '<button class="btn btn-outline btn-block" id="otpResendBtn" type="button" style="margin-top:10px">Resend code</button>'
     + '</div>'
@@ -670,6 +671,7 @@
     qs('#otp-email').value = '';
     qs('#otp-code').value = '';
     qs('#otp-newpassword').value = '';
+    qs('#otp-newpassword2').value = '';
     if (mode === 'invite') {
       qs('#otpTitle').textContent = 'Activate Your Account';
       qs('#otpSub').textContent = "Enter the email your admin invited, and the code from that invite email.";
@@ -731,10 +733,12 @@
   async function handleOtpVerify() {
     var code = qs('#otp-code').value.trim();
     var newPassword = qs('#otp-newpassword').value;
+    var newPassword2 = qs('#otp-newpassword2').value;
     var msgEl = qs('#otpMsg');
     clear(msgEl);
     if (!otpEmail || !code) { msgEl.appendChild(msgBox('Enter the code from your email.', true)); return; }
     if (newPassword.length < 8) { msgEl.appendChild(msgBox('Password must be at least 8 characters.', true)); return; }
+    if (newPassword !== newPassword2) { msgEl.appendChild(msgBox('Passwords do not match.', true)); return; }
     var btn = qs('#otpVerifyBtn');
     btn.disabled = true; btn.textContent = 'Verifying…';
     var verifyRes = await sb.auth.verifyOtp({ email: otpEmail, token: code, type: otpMode });
