@@ -602,6 +602,161 @@
     await enterApp();
   }
 
+  // ------------------------------------------------------------
+  // OTP account activation / password reset.
+  //
+  // Two entry points share one screen (#otpScreen), distinguished by
+  // otpMode:
+  //  - 'recovery': existing staff who forgot their password. Self-service
+  //    -- resetPasswordForEmail() is a public client call, no admin gate
+  //    needed since it can only ever act on the caller-supplied email's
+  //    own account.
+  //  - 'invite': a brand-new hire. The admin already triggered the invite
+  //    email (see openCreateStaffModal() -> create-staff-account Edge
+  //    Function -> inviteUserByEmail()) -- there is nothing to "send"
+  //    here client-side, this screen just collects the email + the code
+  //    already in their inbox.
+  // Both end the same way: verifyOtp() proves the code, then
+  // updateUser({password}) sets what they'll use for every normal
+  // sign-in afterward -- OTP itself never replaces day-to-day login.
+  var otpMode = 'recovery';
+  var otpEmail = '';
+
+  // Built and inserted into the DOM only when actually opened, not present
+  // in the shipped HTML at all -- tests (and any future code) across this
+  // app locate the login form's email/password fields with a generic
+  // input[type="email"]/input[type="password"] selector scoped to nothing
+  // in particular, which broke the moment a second, merely CSS-hidden set
+  // of email/password inputs existed permanently in the DOM (Playwright's
+  // strict mode correctly refuses to guess between two matches). Creating
+  // this screen on demand and removing it again on "back" means it simply
+  // doesn't exist during any normal login flow.
+  var OTP_SCREEN_HTML = '<div id="otpScreen">'
+    + '<div class="login-card">'
+    + '<div class="brand"><img src="/images/logo-icon.png" alt=""><span>Maven Consultancy</span></div>'
+    + '<h1 id="otpTitle"></h1>'
+    + '<p class="sub" id="otpSub"></p>'
+    + '<div id="otpMsg" role="alert"></div>'
+    + '<div id="otpStepEmail">'
+    + '<div class="f"><label for="otp-email">Email</label><input id="otp-email" type="email" autocomplete="username"></div>'
+    + '<button class="btn btn-block" id="otpSendBtn" type="button"></button>'
+    + '</div>'
+    + '<div id="otpStepCode" class="hidden">'
+    + '<div class="f"><label for="otp-code">6-digit code</label><input id="otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>'
+    + '<div class="f"><label for="otp-newpassword">New password</label><input id="otp-newpassword" type="password" autocomplete="new-password"></div>'
+    + '<button class="btn btn-block" id="otpVerifyBtn" type="button">Verify &amp; Set Password</button>'
+    + '<button class="btn btn-outline btn-block" id="otpResendBtn" type="button" style="margin-top:10px">Resend code</button>'
+    + '</div>'
+    + '<p class="f-hint" style="margin-top:14px;text-align:center"><a href="#" id="otpBackLink">Back to sign in</a></p>'
+    + '</div></div>';
+
+  function ensureOtpScreen() {
+    if (qs('#otpScreen')) return;
+    document.body.insertAdjacentHTML('beforeend', OTP_SCREEN_HTML);
+    qs('#otpSendBtn').addEventListener('click', handleOtpSendOrContinue);
+    qs('#otpResendBtn').addEventListener('click', handleOtpResend);
+    qs('#otpVerifyBtn').addEventListener('click', handleOtpVerify);
+    qs('#otpBackLink').addEventListener('click', function (e) { e.preventDefault(); hideOtpScreen(); });
+  }
+
+  function showOtpScreen(mode) {
+    ensureOtpScreen();
+    otpMode = mode;
+    otpEmail = '';
+    qs('#loginScreen').classList.add('hidden');
+    qs('#otpStepCode').classList.add('hidden');
+    qs('#otpStepEmail').classList.remove('hidden');
+    clear(qs('#otpMsg'));
+    qs('#otp-email').value = '';
+    qs('#otp-code').value = '';
+    qs('#otp-newpassword').value = '';
+    if (mode === 'invite') {
+      qs('#otpTitle').textContent = 'Activate Your Account';
+      qs('#otpSub').textContent = "Enter the email your admin invited, and the code from that invite email.";
+      qs('#otpSendBtn').textContent = 'I Have My Code — Continue';
+      qs('#otpResendBtn').classList.add('hidden');
+    } else {
+      qs('#otpTitle').textContent = 'Reset Your Password';
+      qs('#otpSub').textContent = "Enter your email and we'll send you a one-time code.";
+      qs('#otpSendBtn').textContent = 'Send Code';
+      qs('#otpResendBtn').classList.remove('hidden');
+      qs('#otpResendBtn').textContent = 'Resend code';
+    }
+    qs('#otp-email').focus();
+  }
+
+  function hideOtpScreen() {
+    var screen = qs('#otpScreen');
+    if (screen) screen.remove();
+    qs('#loginScreen').classList.remove('hidden');
+  }
+
+  async function handleOtpSendOrContinue() {
+    var email = qs('#otp-email').value.trim();
+    var msgEl = qs('#otpMsg');
+    clear(msgEl);
+    if (!email) { msgEl.appendChild(msgBox('Enter your email.', true)); return; }
+    otpEmail = email;
+    if (otpMode === 'invite') {
+      qs('#otpStepEmail').classList.add('hidden');
+      qs('#otpStepCode').classList.remove('hidden');
+      qs('#otp-code').focus();
+      return;
+    }
+    var btn = qs('#otpSendBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    var res = await sb.auth.resetPasswordForEmail(email);
+    btn.disabled = false; btn.textContent = 'Send Code';
+    if (res.error) {
+      msgEl.appendChild(msgBox(res.error.message || 'Could not send code.', true));
+      return;
+    }
+    qs('#otpStepEmail').classList.add('hidden');
+    qs('#otpStepCode').classList.remove('hidden');
+    msgEl.appendChild(msgBox('Code sent — check your email.', false));
+    qs('#otp-code').focus();
+  }
+
+  async function handleOtpResend() {
+    if (otpMode !== 'recovery' || !otpEmail) return;
+    var msgEl = qs('#otpMsg');
+    clear(msgEl);
+    var btn = qs('#otpResendBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    var res = await sb.auth.resetPasswordForEmail(otpEmail);
+    btn.disabled = false; btn.textContent = 'Resend code';
+    msgEl.appendChild(msgBox(res.error ? (res.error.message || 'Could not resend code.') : 'Code sent — check your email.', !!res.error));
+  }
+
+  async function handleOtpVerify() {
+    var code = qs('#otp-code').value.trim();
+    var newPassword = qs('#otp-newpassword').value;
+    var msgEl = qs('#otpMsg');
+    clear(msgEl);
+    if (!otpEmail || !code) { msgEl.appendChild(msgBox('Enter the code from your email.', true)); return; }
+    if (newPassword.length < 8) { msgEl.appendChild(msgBox('Password must be at least 8 characters.', true)); return; }
+    var btn = qs('#otpVerifyBtn');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    var verifyRes = await sb.auth.verifyOtp({ email: otpEmail, token: code, type: otpMode });
+    if (verifyRes.error) {
+      btn.disabled = false; btn.textContent = 'Verify & Set Password';
+      msgEl.appendChild(msgBox(verifyRes.error.message || 'Invalid or expired code.', true));
+      return;
+    }
+    var updateRes = await sb.auth.updateUser({ password: newPassword });
+    btn.disabled = false; btn.textContent = 'Verify & Set Password';
+    if (updateRes.error) {
+      msgEl.appendChild(msgBox(updateRes.error.message || 'Could not set password.', true));
+      return;
+    }
+    var screen = qs('#otpScreen');
+    if (screen) screen.remove();
+    await enterApp();
+  }
+
+  qs('#forgotPasswordLink').addEventListener('click', function (e) { e.preventDefault(); showOtpScreen('recovery'); });
+  qs('#activateAccountLink').addEventListener('click', function (e) { e.preventDefault(); showOtpScreen('invite'); });
+
   function msgBox(text, isError) {
     var d = el('div', 'msg ' + (isError ? 'msg-error' : 'msg-ok'));
     d.textContent = text;
