@@ -49,7 +49,7 @@ function services() {
   ${serviceChapterSection({
     variant: 'structured',
     id: 'establish-and-comply',
-    chapterLabel: 'Establish & Comply',
+    chapterLabel: '01 · Establish & Comply',
     title: 'A solid legal and compliance foundation',
     text: `${registration.tagline} ${tax.tagline} ${payroll.tagline}`,
     image: servicePhotoMeta(registration),
@@ -61,7 +61,7 @@ function services() {
     reverse: true,
     bg: 'bg-mist',
     id: 'run-your-finance-function',
-    chapterLabel: 'Run Your Finance Function',
+    chapterLabel: '02 · Run Your Finance Function',
     title: 'Outsourced accounting, run like an in-house finance team',
     text: `${bookkeeping.tagline} ${reporting.tagline}`,
     image: servicePhotoMeta(bookkeeping),
@@ -71,7 +71,7 @@ function services() {
   ${serviceChapterSection({
     variant: 'technical',
     id: 'advise-and-report-better',
-    chapterLabel: 'Advise & Report Better',
+    chapterLabel: '03 · Advise & Report Better',
     title: 'Guidance and reporting that grow with your business',
     text: `${advisory.tagline} And as reporting needs become more complex — for lenders, investors, or growth — structured NFRS / IFRS implementation support.`,
     image: servicePhotoMeta(advisory),

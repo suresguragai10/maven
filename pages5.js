@@ -66,6 +66,12 @@ const calcStyles = `<style>
 .emi-sched-table tbody tr:hover{background:var(--mist-dark);}
 .emi-sched-table td{border-bottom:1px solid var(--border);color:var(--navy-900);}
 .emi-sched-table tfoot td{font-weight:700;background:#fff;border-top:2px solid var(--border);color:var(--navy-900);}
+
+/* Brief highlight when a result value actually changes -- see setText()
+   in client.js, which only adds this class on a real text change. */
+@keyframes calc-pulse{0%{opacity:.5;transform:translateY(-2px);}100%{opacity:1;transform:translateY(0);}}
+.calc-pulse{animation:calc-pulse 300ms ease-out;}
+@media(prefers-reduced-motion:reduce){.calc-pulse{animation:none;}}
 </style>`;
 
 function incomeTaxPanel() {

@@ -144,8 +144,8 @@ function home() {
     <div class="container hero-inner">
       <div class="reveal-stagger">
         <p class="eyebrow eyebrow--on-dark">Business Consultancy · Kathmandu, Nepal</p>
-        <h1>Reliable Accounting, Tax, Compliance &amp; Financial Management Support for Businesses in Nepal</h1>
-        <p class="hero-sub">Maven Consultancy Services Pvt. Ltd. helps startups, SMEs, traders, service companies, and growing businesses maintain accurate records, manage cash flow, meet compliance requirements, and understand financial performance through practical consultancy and outsourced accounting support.</p>
+        <h1>Your Outsourced Finance Team in Nepal</h1>
+        <p class="hero-sub">Accounting, tax compliance, payroll, financial reporting, and management support for growing businesses — organized under one dependable team, for startups, SMEs, traders, and service companies alike.</p>
         <div class="hero-actions">
           ${button('Book Free Consultation', 'contact.html', 'primary')}
           ${button('View Services', 'services.html', 'ghost-light')}
@@ -199,7 +199,7 @@ function home() {
             chapters.push(capabilityChapter({
               variant: 'structured',
               id: 'establish-and-comply',
-              chapterLabel: 'Establish & Comply',
+              chapterLabel: '01 · Establish & Comply',
               title: 'A solid legal and compliance foundation',
               text: `${registration.tagline} ${tax.tagline} ${payroll.tagline}`,
               image: servicePhotoMeta(registration),
@@ -216,7 +216,7 @@ function home() {
               variant: 'feature',
               reverse: true,
               id: 'run-your-finance-function',
-              chapterLabel: 'Run Your Finance Function',
+              chapterLabel: '02 · Run Your Finance Function',
               title: 'Outsourced accounting, run like an in-house finance team',
               text: `${bookkeeping.tagline} ${reporting.tagline}`,
               image: servicePhotoMeta(bookkeeping),
@@ -231,7 +231,7 @@ function home() {
             chapters.push(capabilityChapter({
               variant: 'technical',
               id: 'advise-and-report-better',
-              chapterLabel: 'Advise & Report Better',
+              chapterLabel: '03 · Advise & Report Better',
               title: 'Guidance and reporting that grow with your business',
               text: `${advisory.tagline} And as reporting needs become more complex — for lenders, investors, or growth — structured NFRS / IFRS implementation support.`,
               image: servicePhotoMeta(advisory),
@@ -295,25 +295,49 @@ function home() {
 
   <section class="section-pad">
     <div class="container">
-      ${sectionHead({ eyebrow: 'How It Works', title: 'A clear, step-by-step process from inquiry to file closing' })}
-      <div class="process-list process-list--row">
+      ${sectionHead({ eyebrow: 'How Maven Works', title: 'A clear process from first conversation to ongoing support' })}
+      <div class="process-list process-list--row process-list--row-4">
         ${(() => {
-          // Homepage teaser: the full 9-step breakdown lives only in this data
-          // (there's no separate process page), so we hand-pick steps that still
-          // span the whole arc — inquiry, scoping, requirements, delivery, closing —
-          // rather than truncating to the first N and cutting off before any work
-          // actually gets done.
-          const teaserSteps = data.process.filter((p) => [1, 2, 3, 6, 8, 9].includes(p.step));
-          // Renumber 1-5 for display so the badges read as a clean sequence
-          // instead of showing the underlying step's real number (which would
-          // jump 1, 3, 4, 6, 9 and look like steps are missing).
-          return teaserSteps.map((p, i) => processStep({ ...p, step: i + 1 }, i === teaserSteps.length - 1)).join('');
+          // A client-facing 4-stage summary of the real 9-step operational
+          // process in content/site.yaml's process: array (Inquiry ->
+          // ... -> Final payment and file closing) -- that full list stays
+          // accurate and unchanged, it's just the wrong altitude for a
+          // homepage marketing section. Deliberately does not end on
+          // payment/closing (step 5 and step 9 in the real list) as the
+          // narrative's emotional conclusion -- "ongoing support" is.
+          const stages = [
+            { title: 'Understand', text: 'Understand the business, current records, requirements, priorities, and scope.' },
+            { title: 'Organize', text: 'Identify the accounting, tax, compliance, reporting, and document requirements.' },
+            { title: 'Manage', text: 'Prepare, coordinate, and internally review the agreed work.' },
+            { title: 'Report & Support', text: 'Deliver the agreed work, explain key points, and provide practical next steps or ongoing support within scope.' },
+          ];
+          return stages.map((p, i) => processStep({ ...p, step: String(i + 1).padStart(2, '0') }, i === stages.length - 1)).join('');
         })()}
       </div>
     </div>
   </section>
 
   <section class="section-pad bg-mist">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'What You Receive', title: 'Reporting that keeps you informed, not guessing', subtitle: 'Real deliverables from real service work — which of these apply to you depends on your engagement scope, not every client receives every item below.' })}
+      <div class="grid grid-3 deliverables-grid reveal-stagger">
+        ${[
+          { icon: 'barChart', title: 'Monthly Profit & Loss Summary', text: 'A clear read on income and expenses for the period, not just a raw transaction dump.' },
+          { icon: 'ledger', title: 'Balance Sheet Snapshot', text: 'What the business owns and owes as of a given date, kept current as records are updated.' },
+          { icon: 'trendUp', title: 'Cash-Flow Overview', text: 'Visibility into money moving in and out, so shortfalls are visible before they become a problem.' },
+          { icon: 'users', title: 'Payroll Summary', text: 'Salary processing records and payroll-related compliance kept organized month to month.' },
+          { icon: 'shield', title: 'Tax & Compliance Status', text: 'Where VAT, TDS, and other filing obligations stand, tracked against real deadlines.' },
+          { icon: 'compass', title: 'Management Reporting & Action Points', text: 'Reporting built for decisions, not just recordkeeping — with practical next steps, not raw numbers alone.' },
+        ].map((d) => `<div class="deliverable-card">
+          <span class="service-icon">${icon(d.icon)}</span>
+          <h3>${esc(d.title)}</h3>
+          <p>${esc(d.text)}</p>
+        </div>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'Frequently Asked', title: 'Quick answers before you reach out' })}
       <div class="accordion" style="max-width:760px;margin:0 auto">

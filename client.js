@@ -583,9 +583,17 @@
     var v = parseFloat(el.value);
     return isFinite(v) && v > 0 ? v : 0;
   };
+  // Brief (~300ms, CSS-driven, reduced-motion-safe) highlight on the
+  // result elements whenever a calculator recomputes a genuinely new
+  // value -- skipped when the text is unchanged (e.g. re-typing the same
+  // digit) so it never fires on every keystroke regardless of outcome.
   var setText = function (id, text) {
     var el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (!el || el.textContent === text) return;
+    el.textContent = text;
+    el.classList.remove('calc-pulse');
+    void el.offsetWidth;
+    el.classList.add('calc-pulse');
   };
   // Wire a segmented-control group: buttons inside get .active on click, then cb(value).
   var wireSeg = function (segId, attr, cb) {

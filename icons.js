@@ -29,6 +29,7 @@ const paths = {
   percent: '<circle cx="8.2" cy="8.2" r="2.4"/><circle cx="15.8" cy="15.8" r="2.4"/><path d="M17.5 6.5L6.5 17.5"/>',
   users: '<circle cx="9" cy="8.6" r="3"/><path d="M3.6 19c.6-3 2.7-4.6 5.4-4.6s4.8 1.6 5.4 4.6"/><circle cx="17" cy="9.4" r="2.3"/><path d="M15.8 14.6c2 .2 3.6 1.6 4.1 4"/>',
   barChart: '<path d="M4.5 20V10.5"/><path d="M11.3 20V4.5"/><path d="M18.1 20v-7.4"/><path d="M3.2 20h17.6"/>',
+  trendUp: '<path d="M4 16l5-5 4 4 7-8"/><path d="M15.5 6.5h4.5v4.5"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="M15.2 8.8l-2 4.4-4.4 2 2-4.4z"/>',
   link2: '<path d="M10 14.2l4-4.2"/><path d="M9.3 7.4l1.4-1.5a3.4 3.4 0 0 1 5 4.7l-1.5 1.6"/><path d="M14.7 16.6l-1.4 1.5a3.4 3.4 0 0 1-5-4.7l1.5-1.6"/>',
   // Industries

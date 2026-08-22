@@ -453,6 +453,15 @@ body.nav-open { overflow: hidden; }
 .value-card h3, .why-card h3 { font-size: 1.05rem; margin: 12px 0 8px; }
 .value-card p, .why-card p { font-size: 0.93rem; margin: 0; }
 
+/* "What You Receive" -- styled closer to a reporting workspace (a thin
+   top accent per item, like a report tab) than another plain marketing
+   card grid; deliberately no chart/number decoration beyond the single
+   restrained line icon -- this is describing real deliverables, not
+   simulating one with invented figures. */
+.deliverable-card { background: #fff; border: 1px solid var(--border); border-top: 3px solid var(--gold-500); border-radius: var(--radius); padding: 24px 26px; }
+.deliverable-card h3 { font-size: 1rem; margin: 14px 0 8px; }
+.deliverable-card p { font-size: 0.9rem; margin: 0; color: var(--ink-soft); }
+
 .industry-badge {
   display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 16px 18px; font-weight: 600; color: var(--navy-900); font-size: 0.96rem;
@@ -506,6 +515,9 @@ body.nav-open { overflow: hidden; }
   .process-list--row .process-step { flex: 0 0 calc(33.333% - 18px); flex-direction: column; padding-bottom: 30px; }
   .process-list--row .process-step-line { display: none; }
   .process-list--row .process-step-marker { margin-bottom: 14px; }
+  /* Home's 4-stage client journey -- a plain 3-per-row split leaves the
+     4th item orphaned alone on its own row. */
+  .process-list--row-4 .process-step { flex: 0 0 calc(25% - 21px); }
 }
 
 /* ---------- Accordion ---------- */

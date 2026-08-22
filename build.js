@@ -187,8 +187,8 @@ const pages = [
   },
   {
     file: 'calculators.html', activeKey: 'calculators', bodyHtml: calculators(),
-    title: 'Free Financial Calculators — EMI, Salary Tax & VAT Nepal | Maven Consultancy',
-    description: 'Free online calculators for Nepal: loan EMI calculator, salary income tax calculator with FY 2082/83 and 2083/84 slabs, and 13% VAT calculator.',
+    title: 'Free Financial Calculators — EMI, Salary Tax, VAT & TDS Nepal | Maven Consultancy',
+    description: 'Free online calculators for Nepal: loan EMI calculator, salary income tax calculator with FY 2082/83 and 2083/84 slabs, 13% VAT calculator, and TDS rate calculator.',
     breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Financial Calculators', href: 'calculators.html' }],
     heroImage: '/images/calculators-hero-bg.jpg',
   },
