@@ -4,7 +4,7 @@
   "private": true,
   "description": "Static website for Maven Consultancy Services Pvt. Ltd. Content lives in content/site.yaml; run 'npm run build' to regenerate the HTML pages in dist/.",
   "scripts": {
-    "build": "node build.js",
+    "build": "node build.js && node scripts/generate-responsive-images.js",
     "test": "node --test",
     "test:syntax": "node scripts/check-syntax.js",
     "test:ui": "playwright test --project=chromium",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "embedded-postgres": "^18.4.0-beta.17",
+    "sharp": "^0.35.3",
     "wrangler": "4.119.0"
   },
   "overrides": {

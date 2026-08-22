@@ -338,14 +338,23 @@ function renderPage({ activeKey, file, title, description, bodyHtml, cssFile, js
   const robotsTag = noindex ? '<meta name="robots" content="noindex, nofollow">' : '';
   // Task 18: measured (Playwright + CDP, throttled mobile) that every page's
   // hero background photo is the actual LCP element -- Home via the
-  // external stylesheet's .hero rule, sub-pages via pageHero()'s inline
-  // style. Neither is discoverable by the browser as "high priority" by
+  // external stylesheet's .hero rule, sub-pages via pageHero()'s <style>
+  // block. Neither is discoverable by the browser as "high priority" by
   // default the way a plain <img fetchpriority=high> would be, so a
   // same-URL preload hint closes that gap without moving the image out of
   // CSS (which works and isn't being changed). Only emitted when the
   // caller actually knows this page's hero image (see heroImage in each
-  // build.js pages[] entry).
-  const heroPreloadTag = heroImage ? `<link rel="preload" as="image" href="${esc(heroImage)}" fetchpriority="high">` : '';
+  // build.js pages[] entry). Three media-scoped links, not one, matching
+  // the same 640w/960w/original tiers and 768px/1280px breakpoints the CSS
+  // itself swaps on (.hero in styles.css, .page-hero--photo in ui.js's
+  // pageHero()) -- a single unconditional preload of the full-resolution
+  // file would defeat the point of the responsive images by always
+  // fetching the largest variant regardless of viewport.
+  const heroPreloadTag = heroImage ? [
+    { media: '(max-width: 767px)', href: heroImage.replace(/\.jpg$/, '-640w.jpg') },
+    { media: '(min-width: 768px) and (max-width: 1279px)', href: heroImage.replace(/\.jpg$/, '-960w.jpg') },
+    { media: '(min-width: 1280px)', href: heroImage },
+  ].map((v) => `<link rel="preload" as="image" href="${esc(v.href)}" media="${v.media}" fetchpriority="high">`).join('\n') : '';
   // Social share preview image — only emitted once a site URL is set, since
   // og:image/twitter:image need a real absolute URL to be fetchable.
   const ogImageUrl = base ? `${base}/images/og-image.png` : '';

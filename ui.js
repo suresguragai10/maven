@@ -37,16 +37,38 @@ function sectionHead({ eyebrow: eb, title, subtitle, align = 'center' }) {
   </div>`;
 }
 
+// Matches WIDTHS in scripts/generate-responsive-images.js -- keep in sync.
+// Two generated tiers (mobile/tablet); the original file is the third,
+// largest tier for wide desktop viewports.
+const RESPONSIVE_WIDTHS = [640, 960];
+
+// bgImage is a /images/<file>.jpg path -- inserts a "-<width>w" suffix
+// before the extension to reach the resized variant scripts/generate-
+// responsive-images.js produces at build time.
+function responsiveVariant(bgImage, width) {
+  return bgImage.replace(/\.jpg$/, `-${width}w.jpg`);
+}
+
 // bgImage is an optional /images/... path — omitted, every page renders
 // exactly as before (plain navy). Being rolled out one page at a time (see
 // the homepage .hero for the same gradient-over-photo technique); when
-// supplied, the gradient is inlined here since each page's photo differs, so
-// there's no reason to add a new CSS class per page as more get one.
+// supplied, a small scoped <style> block (not an inline style attribute,
+// since only <style>/external CSS can hold @media queries) swaps in a
+// smaller image on narrower viewports -- safe to scope by the shared
+// .page-hero--photo class since each page is its own HTML document, so
+// there's only ever one of these per document. Each page's photo differs,
+// so the gradient+image declaration is generated per call rather than
+// living in a shared CSS class.
 function pageHero(kicker, title, sub, bgImage) {
-  const style = bgImage
-    ? ` style="background-image: linear-gradient(180deg, rgba(10,31,58,0.6) 0%, rgba(16,42,76,0.72) 100%), url('${esc(bgImage)}')"`
+  const gradient = 'linear-gradient(180deg, rgba(10,31,58,0.6) 0%, rgba(16,42,76,0.72) 100%)';
+  const responsiveStyle = bgImage
+    ? `<style>
+      .page-hero--photo{background-image:${gradient},url('${esc(responsiveVariant(bgImage, 640))}')}
+      @media (min-width:768px){.page-hero--photo{background-image:${gradient},url('${esc(responsiveVariant(bgImage, 960))}')}}
+      @media (min-width:1280px){.page-hero--photo{background-image:${gradient},url('${esc(bgImage)}')}}
+    </style>`
     : '';
-  return `<section class="page-hero${bgImage ? ' page-hero--photo' : ''}"${style}>
+  return `${responsiveStyle}<section class="page-hero${bgImage ? ' page-hero--photo' : ''}">
     <div class="container">
       <p class="eyebrow eyebrow--on-dark">${esc(kicker)}</p>
       <h1>${esc(title)}</h1>
@@ -120,7 +142,7 @@ function capabilityChapter({
     : '';
   return `<article class="capability-chapter reveal${modifier}${reverseClass}"${idAttr}>
     <div class="capability-chapter-photo">
-      <img src="/images/${esc(image.file)}.jpg" alt="${esc(image.alt)}" loading="lazy" decoding="async">
+      <img src="/images/${esc(image.file)}.jpg" srcset="${RESPONSIVE_WIDTHS.map((w) => `/images/${esc(image.file)}-${w}w.jpg ${w}w`).join(', ')}" sizes="(min-width: 780px) 40vw, 100vw" alt="${esc(image.alt)}" loading="lazy" decoding="async">
       <span class="capability-chapter-photo-shade" aria-hidden="true"></span>
     </div>
     <div class="capability-chapter-body">

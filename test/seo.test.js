@@ -491,7 +491,13 @@ test('favicon is referenced and the referenced file, plus the root favicon.ico f
 // it improved LCP 29-45% with zero added bytes (see docs/PERFORMANCE_AUDIT.md).
 // This protects the fix from silently regressing, and confirms every
 // referenced hero image actually exists in the build output.
-test('every page with a hero photo (per build.js heroImage) gets a matching high-priority preload hint, and the referenced file exists', () => {
+//
+// Group 6 (responsive images): the single preload hint became three
+// media-scoped hints (mobile/tablet/desktop, matching the 640w/960w/
+// original tiers scripts/generate-responsive-images.js generates) so the
+// browser doesn't preload a bigger file than the viewport will actually
+// use -- see the heroPreloadTag comment in layout.js.
+test('every page with a hero photo (per build.js heroImage) gets matching high-priority preload hints for all 3 responsive tiers, and every referenced file exists', () => {
   const indexablePages = listTopLevelHtmlFiles().filter((f) => !HIDDEN_FILES.includes(f) && !SYSTEM_FILES.includes(f));
   const PAGES_WITH_HERO_PHOTO = new Set([
     'index.html', 'about.html', 'services.html', 'outsourced-accounting.html', 'global-outsourcing.html',
@@ -501,13 +507,15 @@ test('every page with a hero photo (per build.js heroImage) gets a matching high
   ]);
   indexablePages.forEach((file) => {
     const html = readDist(file);
-    const m = html.match(/<link rel="preload" as="image" href="([^"]+)" fetchpriority="high">/);
+    const matches = [...html.matchAll(/<link rel="preload" as="image" href="([^"]+)" media="[^"]+" fetchpriority="high">/g)];
     if (PAGES_WITH_HERO_PHOTO.has(file)) {
-      assert.ok(m, `${file} should have a hero-image preload hint`);
-      const imgPath = m[1].replace(/^\//, '');
-      assert.ok(fs.existsSync(path.join(DIST, imgPath)), `${file}'s preloaded image ${m[1]} does not exist in dist/`);
+      assert.equal(matches.length, 3, `${file} should have 3 hero-image preload hints (mobile/tablet/desktop), found ${matches.length}`);
+      matches.forEach((m) => {
+        const imgPath = m[1].replace(/^\//, '');
+        assert.ok(fs.existsSync(path.join(DIST, imgPath)), `${file}'s preloaded image ${m[1]} does not exist in dist/`);
+      });
     } else {
-      assert.ok(!m, `${file} has no photo hero and should not emit an image preload hint`);
+      assert.equal(matches.length, 0, `${file} has no photo hero and should not emit an image preload hint`);
     }
   });
 });

@@ -8,7 +8,7 @@ A single consolidated list, built from the 12 audit/planning docs already sittin
 - [x] **FIXED (2026-08-21, live + committed as part of the same migration).** The live `clients` table only ever had a SELECT policy — `clients_insert_admin`/`clients_update_admin` (defined in the original migration) never actually existed live. Nobody, not even admin, could add or edit a client through Work Desk. Restored both; already covered by existing local regression tests (which is exactly why this was invisible locally — the repo's own migrations were always correct, only live had drifted).
 - [x] `activity_log` table — confirmed does not exist live. Nothing to do.
 - [x] `rls_auto_enable()` — confirmed live and active (event trigger `ensure_rls`, auto-enables RLS on any new `public` table). Genuinely useful safety net, no action needed.
-- [x] **FIXED.** `guard_task_update()` — confirmed fully orphaned (no live trigger references it, no `tasks` table exists). Cleanup migration written (`20260907090000_drop_orphaned_guard_task_update.sql`), local harness still 289/289 clean. Needs the one-line SQL run live.
+- [x] **FIXED (2026-08-21, confirmed live).** `guard_task_update()` — confirmed fully orphaned (no live trigger references it, no `tasks` table exists). Cleanup migration `20260907090000_drop_orphaned_guard_task_update.sql`, local harness 289/289 clean, and now run live by the owner.
 
 ## Group 2 — Small, low-risk code/doc fixes
 
@@ -30,7 +30,7 @@ A single consolidated list, built from the 12 audit/planning docs already sittin
 ## Group 4 — Content/legal verification (the owner's or a professional's call, not code)
 
 **Highest priority — before FY 2083/84 becomes the active filing year:**
-- [ ] FY 2083/84 income tax slabs — currently sourced from the Budget, not yet confirmed against the gazetted Finance Act.
+- [x] **Confirmed by owner (2026-08-21).** FY 2083/84 income tax slabs verified against the gazetted Finance Act — matches what the calculator currently publishes.
 
 **Also open, lower urgency:**
 - [ ] FY 2082/83 income tax slabs (single/couple bands).
@@ -51,9 +51,9 @@ A single consolidated list, built from the 12 audit/planning docs already sittin
 ## Group 6 — Larger future work (not urgent, real scope)
 
 - [x] **Re-scoped (2026-08-21, full public-site audit — see `docs/PUBLIC_SITE_AUDIT_2026_08.md`).** The premise here was wrong: checked every non-Home/Services page directly — none of them ever had a photo-per-category grid to begin with (they use a single hero photo + icon-based cards). There's no old pattern left to "consolidate." If a capability-chapter treatment is wanted on other pages, that's a fresh design decision needing new photography, not a continuation of started work — genuinely optional, not queued.
-- [ ] Responsive image `srcset`/`sizes` pipeline — every image currently ships full-resolution to every device; needs an image-processing dependency (e.g. `sharp`), a real architectural addition, not a quick fix.
+- [x] **FIXED (2026-08-21).** Responsive image pipeline shipped: `scripts/generate-responsive-images.js` (using `sharp`, now an explicit devDependency) generates 640w/960w JPEG variants of every hero-bg and card photo at build time. `pageHero()`/`.hero` background photos swap via `@media` breakpoints (768px/1280px); `capabilityChapter()`'s `<img>` uses real `srcset`/`sizes`; the LCP preload hint became 3 media-scoped links matching the same tiers. Mobile now downloads ~16-25KB per photo instead of ~76-155KB. Covered by an updated `test/seo.test.js` check plus the full Playwright suite (478/478).
 - [ ] Blog content: 6 flagship briefs are planning-ready (`CONTENT_AUTHORITY_BRIEFS.md`), nothing drafted or published, blog stays hidden until real content exists. Brief 6 (outsourcing from Nepal) needs real sourcing research before it can even be drafted safely.
-- [ ] OTP-based account creation/reset (in place of the email-link invite) — the user's own idea, explicitly deferred earlier this session.
+- [ ] OTP-based login (in addition to account creation/reset) — the user's own idea, scope confirmed 2026-08-21 to also cover sign-in, not just the invite/reset flow. Still marked pending per owner ("pending") — not started, needs its own scoping pass (Supabase Auth supports email/phone OTP via `signInWithOtp()`; decide whether this replaces password login or sits alongside it) before implementation begins.
 
 ## Group 7 — From the 2026-08-21 full public-site + Work Desk audits
 
