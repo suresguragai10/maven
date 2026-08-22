@@ -172,7 +172,7 @@ function renderFooter() {
     <div class="container footer-grid">
       <div class="footer-brand">
         <div class="brand">
-          <img class="brand-mark" src="/images/logo-icon.png" alt="" width="40" height="40">
+          <img class="brand-mark" src="/images/logo-icon.png" alt="" width="40" height="40" loading="lazy">
           <span class="brand-text"><span class="brand-name" style="color:#fff">${esc(b.shortName)}</span></span>
         </div>
         <p>${esc(b.legalName)} A practical consultancy and outsourced accounting/compliance partner for businesses across Nepal.</p>
