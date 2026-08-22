@@ -57,8 +57,8 @@ A single consolidated list, built from the 12 audit/planning docs already sittin
   - [x] Resend account + `send.mavennepal.com.np` subdomain added (avoids any conflict with Lark's apex SPF — confirmed via direct DNS lookup, apex SPF/MX untouched), DKIM/SPF/MX all verified live.
   - [x] Supabase custom SMTP connected to Resend, test send confirmed delivered.
   - [x] Reset Password email template updated to show `{{ .Token }}`.
-  - [ ] Invite user email template — same edit, not yet confirmed done.
-  - [ ] **Separate bug found and fixed along the way**: `create-staff-account` Edge Function had zero CORS handling (no OPTIONS preflight response, no `Access-Control-*` headers) — every "Create New Staff" call from Work Desk failed client-side with "Failed to fetch" before ever reaching the function. Fixed in the repo (`5fa84d3`), but discovered while testing that the function was **never actually deployed live at all** (Supabase Edge Functions page showed "Deploy your first edge function" — an empty project). Owner was mid-way through a fresh deploy (Via Editor → name `create-staff-account` → paste corrected code → Deploy) when this session paused; needs finishing + a real "Create New Staff" test to confirm both the missing-deploy and CORS issues are resolved.
+  - [x] Invite user email template — confirmed done by owner (2026-08-22).
+  - [x] **Confirmed live and working (2026-08-22).** `create-staff-account` Edge Function was never actually deployed live (Supabase Edge Functions page showed "Deploy your first edge function" — an empty project); also had zero CORS handling in the repo code, fixed in `5fa84d3`. Owner deployed the corrected code fresh and confirmed "Create New Staff" now works end-to-end via the real UI.
 
 ## Group 7 — From the 2026-08-21 full public-site + Work Desk audits
 
