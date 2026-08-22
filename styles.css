@@ -524,18 +524,35 @@ body.nav-open { overflow: hidden; }
   .process-list--row .process-step-line { display: none; }
   .process-list--row .process-step-marker { margin-bottom: 14px; }
   /* Home's 4-stage client journey -- a plain 3-per-row split leaves the
-     4th item orphaned alone on its own row. */
-  .process-list--row-4 .process-step { flex: 0 0 calc(25% - 21px); }
+     4th item orphaned alone on its own row. justify-content:space-between
+     is required here (the row has no gap of its own, so without it the
+     4 columns pack tight against the left edge instead of spreading
+     across the full row -- confirmed via real computed marker positions,
+     not assumed -- which also broke the connector line's alignment
+     below, since that math assumes an evenly-spread row). */
+  .process-list--row-4 { justify-content: space-between; }
+  .process-list--row-4 .process-step { flex: 0 0 auto; width: calc(25% - 21px); }
+  /* The marker is a fixed 40px box inside a much wider column and
+     defaults to sitting at the column's left edge (align-items:stretch
+     has no effect on an item with an explicit width) -- confirmed via
+     real computed positions, not assumed. Centering it is what makes the
+     connector line below actually land on 12.5/37.5/62.5/87.5%; the body
+     text (title/description) is deliberately left unaffected so it stays
+     left-aligned, only the marker itself is centered. */
+  .process-list--row-4 .process-step-marker { align-self: center; }
   /* .process-list--row hides the vertical connector line entirely on
      desktop (it only makes sense in the mobile stacked layout) -- for
      this specific 4-stage journey that left the numbered circles reading
      as 4 disconnected boxes instead of a sequence. A single horizontal
-     line from the first marker's center to the last (12.5% / 87.5%, the
-     midpoints of 4 equal-width columns) sits behind the markers to tie
-     them together, same restrained border color as the existing line. */
+     line from the first marker's center to the last sits behind the
+     markers to tie them together, same restrained border color as the
+     existing line. 11.5%/88.5% matches the real computed marker centers
+     (measured directly, not assumed -- the naive 25%-column-midpoint math
+     was off by ~1% once justify-content:space-between and the marker's
+     own align-self:center above were both accounted for). */
   .process-list--connected { position: relative; }
   .process-list--connected::before {
-    content: ''; position: absolute; top: 20px; left: 12.5%; right: 12.5%; height: 2px;
+    content: ''; position: absolute; top: 20px; left: 11.5%; right: 11.5%; height: 2px;
     background: var(--border); z-index: 0;
   }
   .process-list--connected .process-step-marker { position: relative; }
