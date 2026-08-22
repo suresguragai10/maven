@@ -320,7 +320,7 @@ function home() {
   <section class="section-pad bg-mist">
     <div class="container">
       ${sectionHead({ eyebrow: 'What You Receive', title: 'Reporting that keeps you informed, not guessing', subtitle: 'Real deliverables from real service work — which of these apply to you depends on your engagement scope, not every client receives every item below.' })}
-      <div class="grid grid-3 deliverables-grid reveal-stagger">
+      <div class="grid grid-3 reveal-stagger">
         ${[
           { icon: 'barChart', title: 'Monthly Profit & Loss Summary', text: 'A clear read on income and expenses for the period, not just a raw transaction dump.' },
           { icon: 'ledger', title: 'Balance Sheet Snapshot', text: 'What the business owns and owes as of a given date, kept current as records are updated.' },
