@@ -217,6 +217,11 @@ function jsonLd() {
     // (bookkeeping/tax/compliance, not statutory audit).
     '@type': 'AccountingService',
     name: b.legalName,
+    // A specific legal name + founding year + Nepal address together are
+    // real, verifiable disambiguating facts -- "Maven" alone is a common
+    // word other, unrelated organizations also use; this ties search
+    // engines' understanding of the entity to the one concrete Nepal
+    // business those facts actually describe, not a generic label.
     description: 'Accounting, tax, business registration, payroll, financial management and reporting, and compliance consultancy services for startups, SMEs, and growing businesses across Nepal.',
     // Task 13: streetAddress now also carries addressNote (the real
     // landmark shown on the actual Contact page, e.g. "Eyeplex Mall") —
@@ -232,6 +237,7 @@ function jsonLd() {
     areaServed: 'Nepal',
     telephone: b.mobile,
     email: b.email,
+    ...(b.foundedYear ? { foundingDate: String(b.foundedYear) } : {}),
     // Matches brand.hours ("Sunday – Friday · 10:00 AM – 5:00 PM (Saturday
     // closed)") — this is hand-written, not parsed from that free-text field,
     // so if hours ever change via the admin panel, update this too.
@@ -249,6 +255,21 @@ function jsonLd() {
   // across the whole site instead of independent per-page graphs.
   if (base) { obj['@id'] = base + '/#organization'; obj.url = base + '/'; obj.image = base + '/images/og-image.png'; }
   if (sameAs.length) obj.sameAs = sameAs;
+  // Service-level schema for the real 7 service categories, using only
+  // their already-published title/tagline (same source Services and the
+  // homepage capability chapters already render) -- nothing invented, no
+  // pricing/Offer availability claims, just a structured list of what
+  // AccountingService actually covers.
+  if ((data.serviceCategories || []).length) {
+    obj.hasOfferCatalog = {
+      '@type': 'OfferCatalog',
+      name: 'Accounting, Tax, and Compliance Services',
+      itemListElement: data.serviceCategories.map((c) => ({
+        '@type': 'Offer',
+        itemOffered: { '@type': 'Service', name: c.title, description: c.tagline },
+      })),
+    };
+  }
   // Every value here ultimately traces back to admin-entered CMS text (brand
   // name, address, social URLs). A value containing "</script>" would close
   // this tag early and let anything after it run as HTML/script — escaping
