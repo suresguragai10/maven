@@ -231,12 +231,21 @@ function industryDetail(ind, i) {
   </section>`;
 }
 
+// No "most popular"/highlight treatment -- all three packages serve
+// genuinely different, equally valid situations (new setup / ongoing
+// compliance / growth), not a tiered "better choice" ladder, and there's
+// no real usage data behind a "most chosen" claim to justify singling
+// one out visually. .package-price is a deliberately isolated, single-
+// purpose slot ("Quote after review") so a real starting-price figure
+// could replace just that one line cleanly if Maven ever publishes one --
+// nothing else in the card structure would need to change.
 function packageCard(pkg, i) {
-  const highlight = i === 1;
-  return `<article class="package-card reveal${highlight ? ' package-card--highlight' : ''}">
+  return `<article class="package-card reveal">
     <span class="package-index">0${i + 1}</span>
     <h2>${esc(pkg.name)}</h2>
-    <p class="package-audience">${esc(pkg.audience)}</p>
+    ${pkg.tagline ? `<p class="package-tagline">${esc(pkg.tagline)}</p>` : ''}
+    <p class="package-audience"><strong>Best suited for:</strong> ${esc(pkg.audience)}</p>
+    ${pkg.situation ? `<p class="package-situation"><strong>Typical situation:</strong> ${esc(pkg.situation)}</p>` : ''}
     <p class="package-price">Quote after review</p>
     ${bulletList(pkg.items, 'stamp-list stamp-list--pkg')}
     <a class="btn btn-outline btn-block" href="${internalHref('contact.html')}">Enquire About This Package</a>

@@ -495,11 +495,11 @@ body.nav-open { overflow: hidden; }
   position: relative; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;
 }
 .package-index { position: absolute; top: 26px; right: 28px; font-family: var(--font-display); font-size: 1.6rem; color: var(--mist-dark); font-weight: 700; }
-.package-card h3 { font-size: 1.25rem; max-width: 80%; }
-.package-audience { font-size: 0.92rem; margin: 8px 0 0; }
+.package-card h2 { font-size: 1.25rem; max-width: 80%; }
+.package-tagline { font-size: 0.9rem; color: var(--gold-700); font-weight: 600; margin: 6px 0 0; }
+.package-audience { font-size: 0.92rem; margin: 12px 0 0; }
+.package-situation { font-size: 0.88rem; color: var(--ink-soft); margin: 8px 0 0; line-height: 1.5; }
 .package-price { font-weight: 700; color: var(--gold-700); font-size: 0.92rem; margin: 16px 0 0; text-transform: uppercase; letter-spacing: 0.04em; }
-.package-card--highlight { border-color: var(--gold-500); box-shadow: var(--shadow-md); }
-.package-card--highlight::after { content: 'Most chosen'; position: absolute; top: -13px; left: 28px; background: var(--gold-500); color: var(--navy-950); font-size: 0.72rem; font-weight: 700; padding: 5px 12px; border-radius: 999px; letter-spacing: 0.03em; }
 
 /* ---------- Process ---------- */
 .process-list { display: flex; flex-direction: column; }

@@ -768,7 +768,11 @@ resourcesHub:
       icon: shield
 packages:
   - name: Startup Setup Package
+    tagline: Getting legally set up and compliant from day one.
     audience: For new entrepreneurs and newly registered businesses.
+    situation: >-
+      You're registering a new business, or recently registered, and need the first-month
+      groundwork — registration, tax setup, and initial compliance — done correctly from the start.
     items:
       - Registration guidance
       - PAN/VAT guidance
@@ -776,7 +780,11 @@ packages:
       - Bank account document checklist
       - First-month compliance guidance
   - name: Monthly Compliance Package
+    tagline: Staying compliant and organized, month after month.
     audience: For running businesses needing regular support.
+    situation: >-
+      Your business is operating and generating regular transactions, and you need bookkeeping and
+      compliance handled reliably every month instead of catching up at deadline time.
     items:
       - Bookkeeping
       - VAT/TDS support
@@ -785,7 +793,11 @@ packages:
       - Receivable/payable schedule
       - Tax query support
   - name: Business Growth Package
+    tagline: Scaling with real financial visibility, not just compliance.
     audience: For growing companies needing deeper support.
+    situation: >-
+      Your business has grown past basic bookkeeping — you need payroll, management reporting, and
+      advisory support to make informed decisions as you scale.
     items:
       - Complete accounting support
       - Payroll support
@@ -796,9 +808,10 @@ packages:
       - Advisory discussion
       - Compliance tracking
 packagesFeeNote: >-
-  Fees depend on business size, transaction volume, document condition, urgency, and scope of work.
-  Government fees, penalties, official charges, and third-party professional charges are billed
-  separately.
+  Fees depend on factors such as transaction volume, employee count, number of accounts or
+  entities, record quality, reporting complexity, urgency, and overall scope of work — only the
+  factors relevant to your situation apply. Government fees, penalties, official charges, and
+  third-party professional charges are billed separately.
 documentsTopNote: >-
   Document requirements may vary depending on business type, ownership structure, location,
   government office requirements, and service scope. Please contact Maven before submitting

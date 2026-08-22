@@ -348,7 +348,9 @@
         head.appendChild(strong); head.appendChild(moveButtons(arr, idx, render)); head.appendChild(rm);
         card.appendChild(head);
         card.appendChild(textField('Package Name', function () { return pkg.name; }, function (v) { pkg.name = v; }));
+        card.appendChild(textField('Tagline (one-line use case, shown under the name)', function () { return pkg.tagline; }, function (v) { pkg.tagline = v; }));
         card.appendChild(textField('Audience (who it\'s for)', function () { return pkg.audience; }, function (v) { pkg.audience = v; }));
+        card.appendChild(textField('Typical Situation', function () { return pkg.situation; }, function (v) { pkg.situation = v; }, { multiline: true, rows: 2 }));
         var itemsWrap = el('div', 'f-field');
         var itemsLabel = el('label'); itemsLabel.textContent = 'What\'s included'; itemsWrap.appendChild(itemsLabel);
         itemsWrap.appendChild(stringListEditor(pkg.items, 'inclusion'));
@@ -356,7 +358,7 @@
         wrap.appendChild(card);
       });
       var add = el('button', 'btn-add'); add.type = 'button'; add.textContent = '+ Add Package';
-      add.addEventListener('click', function () { arr.push({ name: '', audience: '', items: [] }); markDirty(); render(); });
+      add.addEventListener('click', function () { arr.push({ name: '', tagline: '', audience: '', situation: '', items: [] }); markDirty(); render(); });
       wrap.appendChild(add);
     }
     render();
