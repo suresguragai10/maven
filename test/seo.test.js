@@ -72,8 +72,12 @@ function extractHrefs(html) {
 
 before(() => {
   // Always test what build.js produces RIGHT NOW, not whatever a prior
-  // `npm run build` happened to leave on disk.
+  // `npm run build` happened to leave on disk. Also runs the responsive-
+  // image step (not just build.js) so dist/images/ matches what a real
+  // `npm run build` produces -- the hero-photo preload test below checks
+  // that the -640w/-960w variants it generates actually exist.
   execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { cwd: ROOT, stdio: 'ignore' });
+  execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'generate-responsive-images.js')], { cwd: ROOT, stdio: 'ignore' });
 });
 
 test('sitemap.xml exists, is well-formed, and contains only the intended indexable canonical routes', () => {
