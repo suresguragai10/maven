@@ -22,14 +22,30 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Work Desk (mavennepal.com.np) calls this function from the browser, a
+// different origin than *.supabase.co -- that makes every call a CORS
+// request. Without these headers and explicit OPTIONS handling, the
+// browser's preflight silently fails and the real POST never even goes
+// out, surfacing in staff.js as a generic "Failed to fetch" with no
+// server-side error to debug (this function's own logs stay empty,
+// because the request never arrives). Scoped to the one real origin that
+// calls this, not "*" -- same restrictive-by-default posture as this
+// project's CSP.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': 'https://mavennepal.com.np',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   const authHeader = req.headers.get('Authorization') || '';
