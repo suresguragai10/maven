@@ -23,7 +23,7 @@ function usefulLinks() {
   <section class="section-pad">
     <div class="container" style="max-width:960px">
       <div class="info-note reveal" style="margin-bottom:32px">These are official third-party government websites — Maven doesn't operate or control them. Always double check current requirements directly on the relevant portal, or contact us and we'll help confirm what applies to your case.</div>
-      <div class="grid grid-3">
+      <div class="grid grid-3 reveal-stagger">
         ${links.map(usefulLinksCard).join('')}
       </div>
     </div>

@@ -167,7 +167,7 @@ function globalOutsourcing() {
   <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'Choose The Support You Need', title: 'Two ways to work with Maven internationally' })}
-      <div class="grid grid-2">
+      <div class="grid grid-2 reveal-stagger">
         ${(hub.tiles || []).map(internationalTile).join('')}
       </div>
       <p class="text-center reveal" style="max-width:760px;margin:32px auto 0">Remote Accounting Support covers the day-to-day work of keeping your books accurate — bookkeeping, reconciliations, and monthly reporting. Virtual CFO support builds on that foundation with higher-skill, knowledge-process (KPO) work — turning accounting records into budgets, forecasts, and management reporting for decisions, not just compliance. Most engagements start with Remote Accounting Support and expand into Virtual CFO support once the accounting foundation is reliable.</p>
@@ -190,7 +190,7 @@ function packages() {
 
   <section class="section-pad">
     <div class="container">
-      <div class="grid grid-3">
+      <div class="grid grid-3 reveal-stagger">
         ${data.packages.map((p, i) => packageCard(p, i)).join('')}
       </div>
       <div class="info-note reveal" style="margin-top:40px">${esc(data.packagesFeeNote)}</div>

@@ -146,7 +146,7 @@ function nfrsIfrs() {
   <section class="section-pad bg-mist">
     <div class="container">
       ${sectionHead({ eyebrow: 'Related Services', title: 'Often paired with NFRS / IFRS support' })}
-      <div class="grid grid-3">
+      <div class="grid grid-3 reveal-stagger">
         ${relatedCategories.map(relatedServiceCard).join('')}
       </div>
     </div>
@@ -185,7 +185,7 @@ function internationalAccounting() {
   <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'Why Businesses Outsource To Maven', title: 'Built for reliable remote finance capacity' })}
-      <div class="grid grid-4">
+      <div class="grid grid-4 reveal-stagger">
         ${(a.benefits || []).map(whyCard).join('')}
       </div>
     </div>
@@ -353,7 +353,7 @@ function resources() {
 
   <section class="section-pad">
     <div class="container">
-      <div class="grid grid-2">
+      <div class="grid grid-2 reveal-stagger">
         ${tiles.map(resourceTile).join('')}
       </div>
     </div>

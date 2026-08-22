@@ -252,7 +252,7 @@ function home() {
   <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'Packages', title: 'Choose the level of support your business needs', subtitle: 'Every package is scoped to your business after a short review — no fixed one-size-fits-all pricing.' })}
-      <div class="grid grid-3">
+      <div class="grid grid-3 reveal-stagger">
         ${data.packages.map(homePackageCard).join('')}
       </div>
       <div class="text-center" style="margin-top:36px">${button('Compare All Packages', 'packages.html', 'outline')}</div>
@@ -262,7 +262,7 @@ function home() {
   <section class="section-pad bg-mist">
     <div class="container">
       ${sectionHead({ eyebrow: 'Why Choose Maven', title: 'Practical support, clearly communicated' })}
-      <div class="grid grid-4">
+      <div class="grid grid-4 reveal-stagger">
         ${data.whyChoose.slice(0, 6).map(whyCard).join('')}
       </div>
     </div>
@@ -271,7 +271,7 @@ function home() {
   <section class="section-pad home-industries-section">
     <div class="container">
       ${sectionHead({ eyebrow: 'Industries We Serve', title: 'Built for the businesses that keep Nepal running' })}
-      <div class="grid grid-4">
+      <div class="grid grid-4 reveal-stagger">
         ${data.industries.slice(0, 8).map(industryBadge).join('')}
       </div>
       <div class="text-center" style="margin-top:36px">${button('See All Industries', 'industries.html', 'outline')}</div>
@@ -359,7 +359,7 @@ function about() {
   <section class="section-pad bg-mist">
     <div class="container">
       ${sectionHead({ eyebrow: 'What We Value', title: 'The principles behind every engagement' })}
-      <div class="grid grid-3">
+      <div class="grid grid-3 reveal-stagger">
         ${data.values.map(valueCard).join('')}
       </div>
     </div>
@@ -368,7 +368,7 @@ function about() {
   <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'Where We Work', title: 'Kathmandu-based, working with clients across Nepal' })}
-      <div class="grid grid-4">
+      <div class="grid grid-4 reveal-stagger">
         ${data.industries.slice(0, 8).map(industryBadge).join('')}
       </div>
     </div>

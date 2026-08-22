@@ -4656,6 +4656,16 @@
   // ============================================================
   // Admin: Clients
   // ============================================================
+  // Shared by the Clients list card and Client Detail's own toggle -- was
+  // byte-for-byte duplicated in both places, differing only in what
+  // re-renders afterward (found during a Work Desk audit).
+  async function toggleClientActive(c, onDone) {
+    var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
+    if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
+    await loadClients();
+    onDone();
+  }
+
   async function renderClients(main) {
     var head = el('div', 'page-head');
     var h1 = el('h1'); h1.textContent = 'Clients'; head.appendChild(h1);
@@ -4731,12 +4741,7 @@
       if (isAdmin()) {
         var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
         toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
-        toggleBtn.addEventListener('click', async function () {
-          var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
-          if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-          await loadClients();
-          render();
-        });
+        toggleBtn.addEventListener('click', function () { toggleClientActive(c, render); });
         actions.appendChild(toggleBtn);
       }
       card.appendChild(actions);
@@ -4857,12 +4862,7 @@
     if (isAdmin()) {
       var toggleBtn = el('button', 'btn btn-outline btn-sm'); toggleBtn.type = 'button';
       toggleBtn.textContent = c.is_active ? 'Deactivate' : 'Reactivate';
-      toggleBtn.addEventListener('click', async function () {
-        var res = await sb.from('clients').update({ is_active: !c.is_active }).eq('id', c.id);
-        if (res.error) { toast('Could not update: ' + res.error.message, true); return; }
-        await loadClients();
-        renderClientDetail(id);
-      });
+      toggleBtn.addEventListener('click', function () { toggleClientActive(c, function () { renderClientDetail(id); }); });
       headActions.appendChild(toggleBtn);
     }
     card.appendChild(headActions);
