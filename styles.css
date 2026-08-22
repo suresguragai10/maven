@@ -526,6 +526,19 @@ body.nav-open { overflow: hidden; }
   /* Home's 4-stage client journey -- a plain 3-per-row split leaves the
      4th item orphaned alone on its own row. */
   .process-list--row-4 .process-step { flex: 0 0 calc(25% - 21px); }
+  /* .process-list--row hides the vertical connector line entirely on
+     desktop (it only makes sense in the mobile stacked layout) -- for
+     this specific 4-stage journey that left the numbered circles reading
+     as 4 disconnected boxes instead of a sequence. A single horizontal
+     line from the first marker's center to the last (12.5% / 87.5%, the
+     midpoints of 4 equal-width columns) sits behind the markers to tie
+     them together, same restrained border color as the existing line. */
+  .process-list--connected { position: relative; }
+  .process-list--connected::before {
+    content: ''; position: absolute; top: 20px; left: 12.5%; right: 12.5%; height: 2px;
+    background: var(--border); z-index: 0;
+  }
+  .process-list--connected .process-step-marker { position: relative; }
 }
 
 /* ---------- Accordion ---------- */

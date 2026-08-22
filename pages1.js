@@ -296,7 +296,7 @@ function home() {
   <section class="section-pad">
     <div class="container">
       ${sectionHead({ eyebrow: 'How Maven Works', title: 'A clear process from first conversation to ongoing support' })}
-      <div class="process-list process-list--row process-list--row-4">
+      <div class="process-list process-list--row process-list--row-4 process-list--connected">
         ${(() => {
           // A client-facing 4-stage summary of the real 9-step operational
           // process in content/site.yaml's process: array (Inquiry ->
