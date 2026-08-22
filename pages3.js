@@ -38,7 +38,7 @@ function documentsNeeded() {
     eyebrow: 'Custom Checklist',
     title: 'Get a document checklist made for your exact case',
     subtitle: 'Tell us your business type and what you need — we will confirm the exact list before you send anything.',
-    buttons: [button('Get a Customized Document Checklist', 'contact.html', 'primary'), button(`${icon('whatsapp')} Ask on WhatsApp`, data.whatsappHref('Hello Maven, I would like a customized document checklist for my business.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Get a Customized Document Checklist', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like a customized document checklist for my business.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }
@@ -107,7 +107,7 @@ function faq() {
     eyebrow: 'Still Have Questions?',
     title: "We're happy to talk it through",
     subtitle: 'Book a free consultation or send us a message on WhatsApp.',
-    buttons: [button('Contact Maven Today', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I have a question about your services.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I have a question about your services.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

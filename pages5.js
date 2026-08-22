@@ -323,7 +323,7 @@ function calculators() {
     eyebrow: 'Beyond Estimates',
     title: 'Need exact figures for your taxes, payroll, or loan file?',
     subtitle: 'We prepare precise computations, salary sheets, and bank-ready project reports.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} Ask on WhatsApp`, data.whatsappHref('Hello Maven, I used your calculator and would like exact figures for my situation.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I used your calculator and would like exact figures for my situation.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

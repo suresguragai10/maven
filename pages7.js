@@ -71,7 +71,7 @@ function nfrsIfrs() {
   <section class="section-pad-sm">
     <div class="container text-center" style="max-width:820px">
       <p class="reveal">${esc(n.intro)}</p>
-      <div style="margin-top:24px">${button('Book an Initial Consultation', 'contact.html', 'primary')}</div>
+      <div style="margin-top:24px">${button('Book a Free Initial Consultation', 'contact.html', 'primary')}</div>
     </div>
   </section>
 
@@ -156,7 +156,7 @@ function nfrsIfrs() {
     eyebrow: 'Improve Your Financial Reporting Before Year-End',
     title: 'Build a practical NFRS / IFRS implementation plan',
     subtitle: n.cta,
-    buttons: [button('Book an NFRS / IFRS Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} Talk to Maven`, data.whatsappHref('Hello Maven, I would like to talk about NFRS / IFRS implementation support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Book an NFRS / IFRS Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about NFRS / IFRS implementation support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }
@@ -258,7 +258,7 @@ function internationalAccounting() {
     eyebrow: 'International Bookkeeping & Reconciliation',
     title: 'Ready to hand off your bookkeeping?',
     subtitle: a.cta,
-    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about outsourcing our bookkeeping.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about outsourcing our bookkeeping.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }
@@ -273,7 +273,7 @@ function virtualCfo() {
   <section class="section-pad-sm">
     <div class="container text-center" style="max-width:820px">
       <p class="reveal">${esc(v.intro)}</p>
-      <div style="margin-top:24px">${button('Book a Free Discovery Call', 'contact.html', 'primary')}</div>
+      <div style="margin-top:24px">${button('Book a Free Initial Consultation', 'contact.html', 'primary')}</div>
     </div>
   </section>
 
@@ -315,7 +315,7 @@ function virtualCfo() {
     eyebrow: 'Virtual CFO & Management Reporting',
     title: 'Build the right finance support for your business',
     subtitle: v.cta,
-    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about Virtual CFO and management reporting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about Virtual CFO and management reporting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

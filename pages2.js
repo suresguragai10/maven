@@ -178,7 +178,7 @@ function globalOutsourcing() {
     eyebrow: 'Global Finance Delivery',
     title: 'Ready to build the right finance support for your business?',
     subtitle: hub.cta,
-    buttons: [button('Book a Free Discovery Call', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about international accounting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to talk about international accounting support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

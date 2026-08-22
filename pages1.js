@@ -147,7 +147,7 @@ function home() {
         <h1>Your Outsourced Finance Team in Nepal</h1>
         <p class="hero-sub">Accounting, tax compliance, payroll, financial reporting, and management support for growing businesses — organized under one dependable team, for startups, SMEs, traders, and service companies alike.</p>
         <div class="hero-actions">
-          ${button('Book Free Consultation', 'contact.html', 'primary')}
+          ${button('Book a Free Initial Consultation', 'contact.html', 'primary')}
           ${button('View Services', 'services.html', 'ghost-light')}
         </div>
       </div>
@@ -353,7 +353,7 @@ function home() {
     subtitle: 'Book a free initial consultation and we will confirm exactly what your business needs.',
     buttons: [
       button('Book a Free Initial Consultation', 'contact.html', 'primary'),
-      button(`${icon('whatsapp')} Contact Maven Today`, data.whatsappHref('Hello Maven, I would like to book a free consultation.'), 'whatsapp', 'target="_blank" rel="noopener"'),
+      button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I would like to book a free consultation.'), 'whatsapp', 'target="_blank" rel="noopener"'),
     ],
   })}
   `;
@@ -402,7 +402,7 @@ function about() {
     eyebrow: 'Talk To Maven',
     title: 'Have a question about how we can help your business?',
     subtitle: 'Book a free initial consultation — no obligation, just clear next steps.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button('Contact Maven Today', 'contact.html', 'ghost-light')],
+    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I have a question about how you can help my business.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }
