@@ -138,6 +138,12 @@
     settings: Object.assign({}, WORKFLOW_SETTING_DEFAULTS),
     view: 'today',
     workId: null,
+    // userId -> 'online' | 'idle'. Ephemeral only -- populated from a
+    // Supabase Realtime Presence channel (see setupPresence()), never
+    // written to a table, never queryable after the fact. Someone not in
+    // this map at all just isn't connected right now; there is no
+    // "offline since" record kept anywhere.
+    teamPresence: {},
   };
 
   // ============================================================
@@ -808,6 +814,7 @@
       routeFromHash();
       if (isAdmin()) runAutoGenerateOnOpen();
       initNotifications();
+      setupPresence();
     } catch (err) {
       toast('Something went wrong loading the portal: ' + err.message, true);
       var main = qs('#main');
@@ -816,6 +823,70 @@
       errBox.textContent = 'The page hit an error and couldn\'t finish loading. Try refreshing — if it keeps happening, tell your admin what you were doing when it happened.';
       main.appendChild(errBox);
     }
+  }
+
+  // ------------------------------------------------------------
+  // Team presence — a live "who's connected right now" indicator on the
+  // Team page (green = active, amber = idle 5+ min). Explicit, per-owner
+  // request, overriding this project's usual no-surveillance-attendance
+  // stance for this one case. Kept as non-invasive as that request allows:
+  // Supabase Realtime Presence only, not a DB table -- nothing is ever
+  // written, logged, or queryable after the fact. It's purely an in-memory
+  // broadcast that exists only while people are actually connected, and
+  // disappears the instant a tab closes (Realtime's own disconnect
+  // handling, not anything this app tracks itself).
+  var presenceChannel = null;
+  var presenceStatus = 'online';
+  var lastActivityAt = Date.now();
+  var PRESENCE_IDLE_MS = 5 * 60 * 1000;
+
+  function refreshPresenceDots() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-presence-user]'), function (dot) {
+      var uid = dot.getAttribute('data-presence-user');
+      var entries = state.teamPresence[uid];
+      var status = 'offline';
+      if (entries && entries.length) status = entries.indexOf('online') !== -1 ? 'online' : 'idle';
+      var label = status === 'online' ? 'Online now' : status === 'idle' ? 'Idle (5+ min)' : 'Not connected';
+      dot.className = 'presence-dot presence-dot-' + status;
+      dot.title = label;
+      dot.setAttribute('aria-label', label);
+    });
+  }
+
+  function setupPresence() {
+    if (presenceChannel || !state.user) return;
+    presenceChannel = sb.channel('team-presence', { config: { presence: { key: state.user.id } } });
+    presenceChannel.on('presence', { event: 'sync' }, function () {
+      var raw = presenceChannel.presenceState();
+      var next = {};
+      Object.keys(raw).forEach(function (uid) {
+        next[uid] = raw[uid].map(function (entry) { return entry.status; });
+      });
+      state.teamPresence = next;
+      refreshPresenceDots();
+    });
+    presenceChannel.subscribe(function (status) {
+      if (status === 'SUBSCRIBED') {
+        presenceChannel.track({ full_name: state.profile.full_name, status: presenceStatus });
+      }
+    });
+
+    function markActive() {
+      lastActivityAt = Date.now();
+      if (presenceStatus !== 'online') {
+        presenceStatus = 'online';
+        presenceChannel.track({ full_name: state.profile.full_name, status: presenceStatus });
+      }
+    }
+    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(function (evt) {
+      document.addEventListener(evt, markActive, { passive: true });
+    });
+    setInterval(function () {
+      if (Date.now() - lastActivityAt >= PRESENCE_IDLE_MS && presenceStatus !== 'idle') {
+        presenceStatus = 'idle';
+        presenceChannel.track({ full_name: state.profile.full_name, status: presenceStatus });
+      }
+    }, 30000);
   }
 
   // ============================================================
@@ -2056,6 +2127,11 @@
         personHead.appendChild(avatarFor(p.id));
         var nameEl = el('div'); nameEl.style.cssText = 'font-weight:700;font-size:1.02rem;color:var(--navy-950);'; nameEl.textContent = p.full_name;
         personHead.appendChild(nameEl);
+        var presenceDot = el('span', 'presence-dot presence-dot-offline');
+        presenceDot.setAttribute('data-presence-user', p.id);
+        presenceDot.setAttribute('role', 'img');
+        presenceDot.setAttribute('aria-label', 'Not connected');
+        personHead.appendChild(presenceDot);
         card.appendChild(personHead);
 
         if (scope !== 'firm') {
@@ -2094,6 +2170,7 @@
 
         resultsWrap.appendChild(card);
       });
+      refreshPresenceDots();
     }
     personSel.addEventListener('change', apply);
     scopeSel.addEventListener('change', apply);

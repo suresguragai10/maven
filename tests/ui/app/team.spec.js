@@ -2,7 +2,15 @@
 // screen — multiple users' Client + Firm Work shown side by side, empty
 // sections rendering as an explicit message (not disappearing), many
 // items, completed-work filtering, mobile/tablet layout, and no
-// productivity/ranking/presence content anywhere on the page.
+// productivity/ranking content anywhere on the page.
+//
+// Presence dots (2026-08-22): an explicit, owner-requested exception to
+// this project's usual no-surveillance-attendance stance -- a live
+// online/idle indicator via Supabase Realtime Presence, purely ephemeral
+// (nothing written to a table, nothing queryable after the fact). See the
+// setupPresence() comment in staff.js. Deliberately scoped narrower than
+// what was rejected before: a colored dot + accessible name, not a
+// productivity/ranking/hours-worked surface -- those stay forbidden.
 const { test, expect } = require('@playwright/test');
 const { installSupabaseMock } = require('../support/mock-supabase');
 
@@ -156,14 +164,33 @@ test.describe('Team screen (Handbook Task 21)', () => {
     }
   });
 
-  test('no productivity score, ranking, hours-worked, or presence content anywhere on the page', async ({ page }) => {
+  test('no productivity score, ranking, hours-worked, or utilization content anywhere on the page', async ({ page }) => {
     await loginToTeam(page, {
       work_items: [firmItem('w1', 'Firm task', EMPLOYEE_A.id)],
     });
     const bodyText = (await page.locator('#main').innerText()).toLowerCase();
-    ['productivity', 'score', 'ranking', 'ranked', 'hours worked', 'online', 'offline', 'utilization', 'time zone', 'timezone'].forEach((term) => {
+    ['productivity', 'score', 'ranking', 'ranked', 'hours worked', 'utilization', 'time zone', 'timezone'].forEach((term) => {
       expect(bodyText, `found forbidden term "${term}" on the Team page`).not.toContain(term);
     });
+  });
+
+  test('each person has a presence dot with an accessible status name, defaulting to "Not connected" until a real presence event arrives', async ({ page }) => {
+    await loginToTeam(page, {
+      work_items: [firmItem('w1', 'Firm task', EMPLOYEE_A.id)],
+    });
+    const dots = page.locator('[data-presence-user]');
+    // ADMIN, EMPLOYEE_A, EMPLOYEE_B are all active -> one dot per card.
+    await expect(dots).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
+      await expect(dots.nth(i)).toHaveClass(/presence-dot-offline/);
+      await expect(dots.nth(i)).toHaveAttribute('aria-label', 'Not connected');
+    }
+    // Not raw "online"/"offline" text sprinkled into the page -- the
+    // status is only ever exposed via the dot's accessible name, never
+    // as a headline claim like "Employee A is online".
+    const bodyText = (await page.locator('#main').innerText()).toLowerCase();
+    expect(bodyText).not.toContain('online');
+    expect(bodyText).not.toContain('offline');
   });
 
   test('Task 28: a stale, open Firm Work item shows a "may need a handoff" note; a recently-updated one does not', async ({ page }) => {

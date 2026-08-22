@@ -393,7 +393,11 @@ const staffCsp = [
   "script-src 'self' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https://moqmgyniwytwmlcdthzy.supabase.co",
-  "connect-src 'self' https://moqmgyniwytwmlcdthzy.supabase.co https://cloudflareinsights.com",
+  // wss:// alongside https:// -- CSP connect-src treats scheme-qualified
+  // sources as scheme-specific, so the https entry alone does not also
+  // permit the WebSocket connection Supabase Realtime Presence needs
+  // (team presence dots on the Team page).
+  "connect-src 'self' https://moqmgyniwytwmlcdthzy.supabase.co wss://moqmgyniwytwmlcdthzy.supabase.co https://cloudflareinsights.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
