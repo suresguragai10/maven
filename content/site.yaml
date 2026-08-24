@@ -1354,7 +1354,7 @@ teamMembers:
   - name: CA Midash Adhikari
     role: Senior Advisor
     location: Kathmandu, Nepal
-    photo: ''
+    photo: /images/midash-adhikari.jpg
     bio: >-
       CA Midash Adhikari is a qualified Chartered Accountant from the Institute of Chartered
       Accountants of India (ICAI), with extensive experience in banking, auditing, and financial
@@ -1370,7 +1370,7 @@ teamMembers:
   - name: Sures Guragai
     role: Founder & Lead Consultant
     location: Kathmandu, Nepal
-    photo: ''
+    photo: /images/sures-guragai.jpg
     bio: >-
       Sures leads Maven's day-to-day client work, with hands-on experience in bookkeeping, tax
       return preparation, financial reporting, and compliance support across engineering,
