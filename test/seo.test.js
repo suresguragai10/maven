@@ -18,7 +18,7 @@ const DIST = path.join(ROOT, 'dist');
 // content/site.yaml `pages[].hidden`) — real content not written yet.
 // If this ever changes, update this list deliberately; it is the
 // intentional "what's hidden right now" record this suite checks against.
-const HIDDEN_FILES = ['testimonials.html', 'blog.html'];
+const HIDDEN_FILES = ['blog.html'];
 const SYSTEM_FILES = ['404.html']; // never indexable, not part of the sitemap contract either
 
 function readDist(file) {
@@ -137,7 +137,7 @@ test('every indexable page has an extensionless canonical URL matching its own f
   });
 });
 
-test('hidden Blog/Testimonials pages stay noindexed and excluded from the sitemap until deliberately enabled', () => {
+test('hidden Blog page stays noindexed and excluded from the sitemap until deliberately enabled', () => {
   HIDDEN_FILES.forEach((file) => {
     const html = readDist(file);
     const robots = extractRobotsMeta(html);

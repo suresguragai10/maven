@@ -1244,7 +1244,7 @@ pages:
   - key: testimonials
     label: Testimonials
     href: testimonials.html
-    hidden: true
+    hidden: false
   - key: faq
     label: FAQ
     href: faq.html
