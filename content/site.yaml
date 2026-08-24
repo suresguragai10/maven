@@ -1409,11 +1409,18 @@ teamMembers:
       required timelines.
     hidden: false
 testimonials:
-  - quote: Add approved client feedback here once you have permission to publish it.
-    name: Client Name
-    role: Business Owner
-    business: Company Name
-    hidden: true
+  - quote: >-
+      Maven Consultancy has been a reliable partner in supporting our accounting, tax, and
+      financial management requirements. As an online gifting business, we deal with regular sales
+      transactions, product deliveries, and day-to-day financial activities, so accurate and
+      timely financial management is very important to us. The Maven team has been professional,
+      responsive, and practical in their approach. Their support has helped us manage our
+      financial and compliance responsibilities more efficiently, allowing us to stay focused on
+      growing our gifting business and serving our customers better.
+    name: Anil Nepal
+    role: Director
+    business: Uphaar Nepal Pvt. Ltd.
+    hidden: false
 privacyLastReviewed: August 2026
 privacyIntro: >-
   This Privacy Policy explains how Maven Consultancy Services Pvt. Ltd. ("Maven", "we", "us")
