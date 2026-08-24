@@ -1421,6 +1421,18 @@ testimonials:
     role: Director
     business: Uphaar Nepal Pvt. Ltd.
     hidden: false
+  - quote: >-
+      Maven Consultancy has provided us with reliable support in accounting, tax compliance, and
+      financial management. As an environmental engineering consultancy involved in EIA and
+      related technical projects, maintaining proper financial records and meeting compliance
+      requirements is essential to our operations. The Maven team has been professional,
+      responsive, and timely in handling our financial and compliance matters. Their practical
+      guidance allows us to focus more on delivering quality environmental consulting and
+      engineering services to our clients.
+    name: Laxman Khadka
+    role: Director
+    business: Adhika Consultancy Pvt. Ltd.
+    hidden: false
 privacyLastReviewed: August 2026
 privacyIntro: >-
   This Privacy Policy explains how Maven Consultancy Services Pvt. Ltd. ("Maven", "we", "us")
