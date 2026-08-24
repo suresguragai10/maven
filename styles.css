@@ -836,6 +836,11 @@ strong { color: var(--navy-900); }
 
 /* ===================== Testimonials page ===================== */
 .testimonial-grid { align-items: stretch; }
+/* Task: layout adapts to actual testimonial count (see testimonialGridFor()
+   in pages6.js), mirroring the Team page's teamGridFor() fix. */
+.testimonial-grid--solo { display: flex; justify-content: center; }
+.testimonial-grid--solo .testimonial-card { max-width: 460px; width: 100%; }
+.testimonial-grid--pair { max-width: 780px; margin: 0 auto; }
 .testimonial-card {
   position: relative;
   background: #fff;

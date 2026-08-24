@@ -90,12 +90,26 @@ function testimonialCard(t) {
   </figure>`;
 }
 
+// Same reasoning as teamGridFor() (pages6.js Task 08): a fixed 3-column
+// grid leaves an awkward empty gap when there are fewer than 3 real
+// testimonials. Layout adapts to the actual count instead.
+function testimonialGridFor(items) {
+  if (items.length === 0) {
+    return `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">Client stories are on the way — we publish feedback only with client permission.</div>`;
+  }
+  if (items.length === 1) {
+    return `<div class="testimonial-grid testimonial-grid--solo">${testimonialCard(items[0])}</div>`;
+  }
+  if (items.length === 2) {
+    return `<div class="grid grid-2 testimonial-grid testimonial-grid--pair">${items.map(testimonialCard).join('')}</div>`;
+  }
+  return `<div class="grid grid-3 testimonial-grid">${items.map(testimonialCard).join('')}</div>`;
+}
+
 function testimonials() {
   const h = data.pageHeader('testimonials');
   const items = data.testimonials || [];
-  const grid = items.length
-    ? `<div class="grid grid-3 testimonial-grid">${items.map(testimonialCard).join('')}</div>`
-    : `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">Client stories are on the way — we publish feedback only with client permission.</div>`;
+  const grid = testimonialGridFor(items);
 
   return `
   ${pageHero(h.eyebrow, h.title, h.subtitle)}
