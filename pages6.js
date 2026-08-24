@@ -46,12 +46,12 @@ function teamGridFor(members) {
     return `<div class="info-note text-center reveal" style="max-width:520px;margin:0 auto">Team profiles are being prepared — check back soon.</div>`;
   }
   if (members.length === 1) {
-    return `<div class="team-grid team-grid--solo">${teamCard(members[0])}</div>`;
+    return `<div class="team-grid team-grid--solo reveal-stagger">${teamCard(members[0])}</div>`;
   }
   if (members.length === 2) {
-    return `<div class="grid grid-2 team-grid team-grid--pair">${members.map(teamCard).join('')}</div>`;
+    return `<div class="grid grid-2 team-grid team-grid--pair reveal-stagger">${members.map(teamCard).join('')}</div>`;
   }
-  return `<div class="grid grid-3 team-grid">${members.map(teamCard).join('')}</div>`;
+  return `<div class="grid grid-3 team-grid reveal-stagger">${members.map(teamCard).join('')}</div>`;
 }
 
 function team() {
