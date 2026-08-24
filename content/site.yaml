@@ -1408,6 +1408,17 @@ teamMembers:
       helps ensure that accounting and compliance assignments are completed accurately and within
       required timelines.
     hidden: false
+  - name: Purnima Budhathoki, ACCA
+    role: Business Consultant
+    location: Kathmandu, Nepal
+    photo: ''
+    bio: >-
+      Purnima is an ACCA-qualified professional with experience in accounting, finance, internal
+      audit, and risk management. She has worked across banking, audit, and healthcare sectors,
+      with expertise in financial reporting, regulatory compliance, internal controls, and
+      business analysis. She brings strong analytical, problem-solving, and communication skills
+      to support clients and organizations in making sound business and financial decisions.
+    hidden: false
 testimonials:
   - quote: >-
       Maven Consultancy has been a reliable partner in supporting our accounting, tax, and
