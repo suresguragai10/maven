@@ -56,17 +56,9 @@ self.addEventListener('fetch', function (event) {
   // unreachable, so nothing about the "never serves stale/authenticated
   // data from a cache" guarantee changes.
   if (event.request.mode === 'navigate') {
-    console.log('[sw-debug] navigate fetch for', event.request.url);
     event.respondWith(
-      fetch(event.request).then(function (r) {
-        console.log('[sw-debug] network fetch succeeded', r.status);
-        return r;
-      }).catch(function (err) {
-        console.log('[sw-debug] network fetch failed, falling back:', err && err.message);
-        return caches.match(OFFLINE_URL).then(function (cached) {
-          console.log('[sw-debug] cache match result:', !!cached, cached && cached.status);
-          return cached;
-        });
+      fetch(event.request).catch(function () {
+        return caches.match(OFFLINE_URL);
       })
     );
     return;
