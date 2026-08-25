@@ -1381,7 +1381,7 @@ teamMembers:
   - name: Nirmal Kumar Sharma
     role: Advisor
     location: Kathmandu, Nepal
-    photo: ''
+    photo: /images/nirmal-kumar-sharma.jpg
     bio: >-
       Nirmal Kumar Sharma is a semi-qualified Chartered Accountant with over seven years of
       professional experience in banking, audit, manufacturing, and trading sectors. He has
@@ -1396,7 +1396,7 @@ teamMembers:
   - name: Sushil Guragain
     role: Accountant
     location: Kathmandu, Nepal
-    photo: ''
+    photo: /images/sushil-guragain.jpg
     bio: >-
       Sushil Guragain is an accounting professional with more than three years of experience in
       accounting, auditing, taxation, and financial reporting. He is currently pursuing a Master of
