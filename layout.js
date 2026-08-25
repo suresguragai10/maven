@@ -166,6 +166,7 @@ function renderFooter() {
     { href: 'documents-needed.html', label: 'Documents Checklist' },
     { href: 'faq.html', label: 'FAQ' },
     { href: 'privacy.html', label: 'Privacy Policy' },
+    { href: 'terms.html', label: 'Terms of Service' },
   ];
 
   return `<footer class="site-footer">

@@ -155,6 +155,34 @@ function privacy() {
   `;
 }
 
+function terms() {
+  const h = data.pageHeader('terms');
+  const intro = data.termsIntro
+    ? `<p class="privacy-intro">${esc(data.termsIntro)}</p>`
+    : '';
+  const sections = (data.termsSections || []).map((s) => `
+    <div class="privacy-section reveal">
+      <h2>${esc(s.title)}</h2>
+      <p>${esc(s.text)}</p>
+    </div>`).join('');
+
+  return `
+  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/privacy-hero-bg.jpg')}
+  <section class="section-pad">
+    <div class="container" style="max-width:760px">
+      ${intro}
+      ${sections}
+      ${data.termsLastReviewed ? `<p class="tag-note" style="margin-top:28px">Last reviewed: ${esc(data.termsLastReviewed)}.</p>` : ''}
+    </div>
+  </section>
+  ${ctaBand({
+    eyebrow: 'Questions?',
+    title: 'Have a question about these terms?',
+    buttons: [button('Contact Maven', 'contact.html', 'primary')],
+  })}
+  `;
+}
+
 function notFound() {
   return `
   <section class="page-hero">
@@ -177,4 +205,4 @@ function notFound() {
   `;
 }
 
-module.exports = { team, testimonials, privacy, notFound };
+module.exports = { team, testimonials, privacy, terms, notFound };

@@ -4,7 +4,7 @@ const INDEXABLE_PAGES = [
   '/', '/about', '/services', '/outsourced-accounting', '/global-outsourcing',
   '/international-accounting', '/virtual-cfo', '/nfrs-ifrs', '/packages',
   '/documents-needed', '/industries', '/resources', '/useful-links',
-  '/calculators', '/faq', '/contact', '/team', '/privacy',
+  '/calculators', '/faq', '/contact', '/team', '/privacy', '/terms',
 ];
 
 test.describe('Professional public-site quality pass', () => {

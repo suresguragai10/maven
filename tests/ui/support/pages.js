@@ -21,6 +21,7 @@ const PUBLIC_QA_PAGES = [
   '/team',
   '/testimonials',
   '/privacy',
+  '/terms',
   '/blog',
 ];
 

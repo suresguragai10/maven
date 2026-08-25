@@ -507,7 +507,7 @@ test('every page with a hero photo (per build.js heroImage) gets matching high-p
     'index.html', 'about.html', 'services.html', 'outsourced-accounting.html', 'global-outsourcing.html',
     'international-accounting.html', 'virtual-cfo.html', 'nfrs-ifrs.html', 'packages.html',
     'documents-needed.html', 'industries.html', 'useful-links.html', 'calculators.html', 'faq.html',
-    'contact.html', 'team.html', 'privacy.html',
+    'contact.html', 'team.html', 'privacy.html', 'terms.html',
   ]);
   indexablePages.forEach((file) => {
     const html = readDist(file);

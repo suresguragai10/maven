@@ -11,7 +11,7 @@ const { nfrsIfrs, internationalAccounting, virtualCfo, resources } = require('./
 const { documentsNeeded, industries, faq, contact } = require('./pages3');
 const { usefulLinks, blogIndex, blogPost } = require('./pages4');
 const { calculators } = require('./pages5');
-const { team, testimonials, privacy, notFound } = require('./pages6');
+const { team, testimonials, privacy, terms, notFound } = require('./pages6');
 const { loadPosts } = require('./blog');
 
 // Task 15: breadcrumb chains for pages genuinely nested under a hub in the
@@ -229,6 +229,12 @@ const pages = [
     title: 'Privacy Policy | Maven Consultancy Services Nepal',
     description: 'How Maven Consultancy Services Pvt. Ltd. collects, uses, and protects the information you share through this website.',
     heroImage: '/images/privacy-hero-bg.jpg',
+  },
+  {
+    file: 'terms.html', activeKey: 'terms', bodyHtml: terms(),
+    title: 'Terms of Service | Maven Consultancy Services Nepal',
+    description: 'The terms that apply when you use the Maven Consultancy Services Pvt. Ltd. website or engage us for accounting, tax, and compliance services.',
+    heroImage: '/images/privacy-hero-bg.jpg', // shared with the Privacy Policy page -- deliberate, same "legal page" treatment
   },
 ];
 

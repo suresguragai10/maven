@@ -1257,6 +1257,10 @@ pages:
     label: Privacy Policy
     href: privacy.html
     hidden: false
+  - key: terms
+    label: Terms of Service
+    href: terms.html
+    hidden: false
   - key: blog
     label: Blog
     href: blog.html
@@ -1350,6 +1354,10 @@ pageHeaders:
     eyebrow: Legal
     title: Privacy Policy
     subtitle: How Maven Consultancy collects, uses, and protects the information you share with us.
+  terms:
+    eyebrow: Legal
+    title: Terms of Service
+    subtitle: The terms that apply when you use this website or engage Maven Consultancy for services.
 teamMembers:
   - name: CA Midash Adhikari
     role: Senior Advisor
@@ -1483,6 +1491,65 @@ privacySections:
     text: >-
       For any questions about this policy or your information, contact us using the details on our
       Contact page. We will respond as promptly as we can.
+termsLastReviewed: August 2026
+termsIntro: >-
+  These Terms of Service explain the basis on which Maven Consultancy Services Pvt. Ltd. ("Maven",
+  "we", "us") provides this website and its services. By using this website or engaging us for
+  services, you agree to the terms below.
+termsSections:
+  - title: About Maven Consultancy
+    text: >-
+      Maven Consultancy Services Pvt. Ltd. is a business consultancy based in Kathmandu, Nepal,
+      providing outsourced accounting, tax, payroll, financial management, and reporting support.
+      Maven is not a licensed audit firm, bank, lender, or investment adviser, and does not provide
+      statutory audit, legal, certification, or investment advice. Where such services are required,
+      Maven helps clients coordinate with independent licensed professionals.
+  - title: Services described on this website
+    text: >-
+      The services, packages, and pricing information described on this website are general in
+      nature and are meant to help you understand what we offer. They are not a binding offer or
+      quotation. The exact scope, deliverables, timeline, and fees for your specific engagement are
+      confirmed individually before any work begins.
+  - title: Engagement and fees
+    text: >-
+      Work begins only after we have agreed the scope of services and fees with you in writing,
+      whether by email, a signed proposal, or another written confirmation. Payment terms are set
+      out in that confirmation rather than on this website, since they vary by client and service.
+  - title: Client responsibilities
+    text: >-
+      Our work depends on the information, documents, and records you provide. You agree to give us
+      accurate and timely information, and to let us know promptly if anything changes. We are not
+      responsible for outcomes that result from incomplete or incorrect information you provided to
+      us.
+  - title: Confidentiality
+    text: >-
+      We treat your financial and business information as confidential, in line with our Privacy
+      Policy. Your records are accessed only by the team members working on your engagement and are
+      never shared with unrelated third parties.
+  - title: Limitations of our services
+    text: >-
+      Our services are provided based on our professional judgment and the information available to
+      us at the time. Nepal's tax and regulatory requirements can change, and where a matter falls
+      outside our scope — such as statutory audit, legal proceedings, or licensed investment advice —
+      we will tell you and help you coordinate with an appropriately licensed professional rather
+      than advise on it ourselves.
+  - title: Website use
+    text: >-
+      The content on this website — including articles, calculators, and guides — is provided for
+      general information only and is not a substitute for advice specific to your business. Figures
+      shown in our calculators are estimates; please confirm anything that affects a filing or
+      payment with us directly before relying on it.
+  - title: Changes to these terms
+    text: >-
+      We may update these terms from time to time as our services or the law change. The current
+      version will always be posted on this page with the date it was last reviewed.
+  - title: Governing law
+    text: >-
+      These terms are governed by the laws of Nepal. If a disagreement arises, we will first try to
+      resolve it directly with you before any other course of action.
+  - title: Contact about these terms
+    text: >-
+      For any questions about these terms, contact us using the details on our Contact page.
 calculators:
   vatRate: 13
   vatNote: >-

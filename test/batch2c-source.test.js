@@ -12,7 +12,7 @@ const EXPECTED_PUBLIC_QA_PAGES = [
   '/', '/about', '/services', '/outsourced-accounting', '/global-outsourcing',
   '/international-accounting', '/virtual-cfo', '/nfrs-ifrs', '/packages',
   '/documents-needed', '/industries', '/resources', '/useful-links',
-  '/calculators', '/faq', '/contact', '/team', '/testimonials', '/privacy', '/blog',
+  '/calculators', '/faq', '/contact', '/team', '/testimonials', '/privacy', '/terms', '/blog',
 ];
 const EXPECTED_WIDTHS = [320, 360, 390, 430, 768, 1024, 1280, 1440];
 
