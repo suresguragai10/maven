@@ -123,6 +123,28 @@
     onScrollTop();
   }
 
+  // ---- Cookie notice ----
+  // The notice ships visible in the server-rendered HTML (no `hidden`
+  // attribute) so it's never gated behind JS running -- this script's only
+  // job is to hide it once a visitor has already dismissed it.
+  var cookieNotice = document.getElementById('cookie-notice');
+  if (cookieNotice) {
+    var COOKIE_NOTICE_KEY = 'maven-cookie-notice-dismissed';
+    var cookieNoticeDismissed = false;
+    try { cookieNoticeDismissed = window.localStorage.getItem(COOKIE_NOTICE_KEY) === '1'; } catch (e) {}
+    if (cookieNoticeDismissed) {
+      cookieNotice.hidden = true;
+    } else {
+      var cookieNoticeAccept = document.getElementById('cookie-notice-accept');
+      if (cookieNoticeAccept) {
+        cookieNoticeAccept.addEventListener('click', function () {
+          cookieNotice.hidden = true;
+          try { window.localStorage.setItem(COOKIE_NOTICE_KEY, '1'); } catch (e) {}
+        });
+      }
+    }
+  }
+
   // ---- Floating-action / footer collision guard ----
   // The controls are useful while reading the page, but fixed buttons should
   // not sit on top of footer links/disclaimer text. As the footer enters the

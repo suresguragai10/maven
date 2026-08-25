@@ -30,6 +30,63 @@ test.describe('PWA V1 (install-first, online-first only)', () => {
     expect(manifest.icons.length).toBeGreaterThan(0);
   });
 
+  test('manifest icons cover the sizes installability actually needs, including a maskable variant', async ({ page }) => {
+    await page.goto('/staff/');
+    const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
+    const manifest = await page.evaluate(async (href) => {
+      const res = await fetch(href);
+      return res.json();
+    }, manifestHref);
+
+    const anyIcons = manifest.icons.filter((i) => (i.purpose || 'any') === 'any');
+    expect(anyIcons.some((i) => i.sizes === '192x192')).toBe(true);
+    expect(anyIcons.some((i) => i.sizes === '512x512')).toBe(true);
+    const maskable = manifest.icons.find((i) => i.purpose === 'maskable');
+    expect(maskable).toBeTruthy();
+    expect(maskable.sizes).toBe('512x512');
+
+    // Every icon the manifest points at must actually exist and load.
+    for (const icon of manifest.icons) {
+      const res = await page.request.get(icon.src);
+      expect(res.status(), `${icon.src} should exist`).toBe(200);
+    }
+  });
+
+  test('the custom "Install App" button appears only after the browser signals installability, and triggers the real prompt', async ({ page }) => {
+    await installSupabaseMock(page, {
+      user: ADMIN,
+      tables: {
+        profiles: [ADMIN], clients: [CLIENT_ALPHA], service_templates: [], deadline_rules: [], app_settings: [],
+        projects: [], work_comments: [], work_checklist_items: [], work_activity: [], notifications: [],
+        personal_todos: [], work_items: [CLIENT_ITEM], attendance_entries: [], attendance_corrections: [],
+      },
+    });
+    await page.goto('/staff/');
+    await page.locator('input[type="email"], input[name="email"]').fill(ADMIN.email);
+    await page.locator('input[type="password"]').fill('irrelevant-mocked-password');
+    await page.getByRole('button', { name: /sign in/i }).click();
+    await expect(page.locator('#app')).not.toHaveClass(/hidden/);
+
+    const installBtn = page.locator('#installAppBtn');
+    await expect(installBtn).toBeHidden();
+
+    // Simulate the browser deciding the app is installable -- real Chrome
+    // fires this natively; there's no way to force that heuristic in a
+    // test, so this dispatches the same event shape staff.js listens for.
+    await page.evaluate(() => {
+      const evt = new Event('beforeinstallprompt', { cancelable: true });
+      window.__installPromptCalled = false;
+      evt.prompt = () => { window.__installPromptCalled = true; return Promise.resolve(); };
+      evt.userChoice = Promise.resolve({ outcome: 'accepted' });
+      window.dispatchEvent(evt);
+    });
+    await expect(installBtn).toBeVisible();
+
+    await installBtn.click();
+    await expect(installBtn).toBeHidden();
+    expect(await page.evaluate(() => window.__installPromptCalled)).toBe(true);
+  });
+
   test('the service worker registers successfully, scoped to /staff/', async ({ page }) => {
     await page.goto('/staff/');
     const registered = await page.evaluate(async () => {
@@ -40,7 +97,7 @@ test.describe('PWA V1 (install-first, online-first only)', () => {
     expect(registered.scope).toContain('/staff/');
   });
 
-  test('after real app use (login, load work items), zero Cache Storage entries exist -- nothing is cached, authenticated or otherwise', async ({ page }) => {
+  test('after real app use (login, load work items), the only Cache Storage entry is the static offline fallback page -- nothing authenticated or dynamic is ever cached', async ({ page }) => {
     await installSupabaseMock(page, {
       user: ADMIN,
       tables: {
@@ -62,7 +119,51 @@ test.describe('PWA V1 (install-first, online-first only)', () => {
     });
 
     const cacheNames = await page.evaluate(() => caches.keys());
-    expect(cacheNames, `expected zero Cache Storage entries, found: ${JSON.stringify(cacheNames)}`).toEqual([]);
+    expect(cacheNames).toEqual(['maven-work-desk-offline-v1']);
+    const cachedUrls = await page.evaluate(async () => {
+      const cache = await caches.open('maven-work-desk-offline-v1');
+      const reqs = await cache.keys();
+      return reqs.map((r) => new URL(r.url).pathname);
+    });
+    expect(cachedUrls).toEqual(['/staff/offline.html']);
+  });
+
+  test('losing the connection shows the friendly offline page, not a browser error, and reconnecting recovers normally', async ({ page, context, browserName }) => {
+    // Playwright's context.setOffline() combined with a service-worker-
+    // intercepted navigation is only reliable in Chromium -- Firefox's
+    // offline simulation never reaches the SW fetch handler at all (the
+    // navigation just fails with no offline.html shown), and WebKit's
+    // automation layer throws its own internal error mid-navigation. Both
+    // are limitations of each browser's Playwright driver, not of the
+    // feature itself -- real Safari/Firefox users hitting a genuine
+    // network failure go through the actual OS network stack, which does
+    // invoke the service worker normally. Chromium is also the one engine
+    // that matters most here in practice, since beforeinstallprompt (the
+    // custom install button above) is Chromium-only too.
+    test.skip(browserName !== 'chromium', 'context.setOffline() + SW-intercepted navigation is only reliably testable in Chromium — see comment above');
+    // First visit online so the service worker installs and caches
+    // offline.html -- the fallback can only exist once that has happened.
+    await page.goto('/staff/');
+    await page.waitForFunction(async () => {
+      const reg = await navigator.serviceWorker.getRegistration('/staff/');
+      return !!(reg && reg.active);
+    });
+    await page.waitForFunction(async () => {
+      const cache = await caches.open('maven-work-desk-offline-v1');
+      return !!(await cache.match('/staff/offline.html'));
+    });
+
+    await context.setOffline(true);
+    await page.goto('/staff/');
+    await expect(page.getByRole('heading', { name: "You're offline" })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible();
+
+    // Reconnecting and retrying reaches the real app again, not a stuck
+    // offline page -- confirms this is a fallback for one failed
+    // navigation, not a trap.
+    await context.setOffline(false);
+    await page.getByRole('button', { name: 'Try Again' }).click();
+    await expect(page.locator('#loginScreen')).toBeVisible();
   });
 
   test('a Supabase API request during real use is never intercepted from a service-worker cache -- it always reaches the mocked network layer', async ({ page }) => {
@@ -145,14 +246,18 @@ test.describe('PWA on mobile', () => {
     await page.getByRole('button', { name: 'Open menu' }).click();
     await page.getByRole('button', { name: 'My Work', exact: true }).click();
     await expect(page.locator('.task-row').first()).toBeVisible();
+    await page.waitForFunction(async () => {
+      const reg = await navigator.serviceWorker.getRegistration('/staff/');
+      return !!(reg && reg.active);
+    });
     const cacheNames = await page.evaluate(() => caches.keys());
-    expect(cacheNames).toEqual([]);
+    expect(cacheNames).toEqual(['maven-work-desk-offline-v1']);
   });
 
   test('iOS: the apple-mobile-web-app meta tags Safari actually reads for "Add to Home Screen" are present', async ({ page }) => {
     await page.goto('/staff/');
     await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
-    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/images/logo-icon.png');
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/images/apple-touch-icon.png');
     await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Work Desk');
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0A1F3A');
   });

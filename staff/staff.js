@@ -25,6 +25,38 @@
     });
   }
 
+  // Custom "Install App" button, in place of relying on staff finding the
+  // browser's own (easy to miss) install affordance. beforeinstallprompt
+  // only fires on browsers that support it (Chromium-based) and only once
+  // the browser's own installability criteria are already met -- iOS
+  // Safari never fires it (no such API), so the button there simply never
+  // appears, same as if this code didn't exist. That's an acceptable gap:
+  // it degrades to "no custom button" on Safari, not to a broken one.
+  (function () {
+    var installBtn = document.getElementById('installAppBtn');
+    if (!installBtn) return;
+    var deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      installBtn.classList.remove('hidden');
+    });
+
+    installBtn.addEventListener('click', function () {
+      if (!deferredInstallPrompt) return;
+      var promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      installBtn.classList.add('hidden');
+      promptEvent.prompt();
+    });
+
+    window.addEventListener('appinstalled', function () {
+      deferredInstallPrompt = null;
+      installBtn.classList.add('hidden');
+    });
+  })();
+
   var STATUS_LABELS = {
     to_do: 'To Do',
     in_progress: 'In Progress',

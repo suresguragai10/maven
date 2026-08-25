@@ -15,3 +15,9 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Private config/secrets — defensive exclusion; none currently exist in
+# this repo, but any future .env file must never be committed.
+.env
+.env.*
+!.env.example

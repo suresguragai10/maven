@@ -125,6 +125,14 @@ availability. A future PWA version may extend this; V1 does not attempt
 it, and no task should build offline mutation without this document
 being updated first.
 
+One narrow, deliberate exception: `staff/sw.js` caches a single static,
+unauthenticated page (`staff/offline.html`) and serves it only when a
+page navigation fails while offline, so a lost connection shows a
+friendly message instead of the browser's own error page. This adds no
+offline functionality, data, or navigation beyond that one page -- it
+is a UX nicety on top of the failure case, not a step toward offline
+mutation, and should not be read as license to cache anything else.
+
 ## What this document does not cover
 
 Who can perform which specific action on which specific field —

@@ -1,22 +1,42 @@
 // Maven Work Desk — PWA V1 service worker (see docs/PRODUCT_BOUNDARIES.md
-// "PWA V1 scope"): install-first and online-first only. This worker
-// deliberately caches NOTHING -- every request, including Supabase API
-// calls, static assets, and the app shell itself, passes straight through
-// to the network unmodified. Offline editing, offline mutation, background
-// sync, and any caching of authenticated Supabase/client/attendance/Work
-// Desk data are explicitly out of V1 scope and must not be added here
-// without that document being updated first.
-//
-// The only reason this file exists at all is that browsers require a
-// registered service worker with a fetch handler before they'll offer to
-// install the app to a home screen/desktop -- it exists to satisfy that
-// requirement, not to provide offline behavior.
+// "PWA V1 scope"): install-first and online-first only. Every request,
+// including Supabase API calls, static assets, and the app shell itself,
+// still passes straight through to the network unmodified -- the one
+// deliberate exception is offline.html, a single static, unauthenticated
+// page cached solely so a lost connection shows a friendly message
+// instead of the browser's own offline error page. This does not make the
+// app usable offline (no data, no navigation beyond that one page); it
+// only replaces a broken-feeling failure with an honest one. Offline
+// editing, offline mutation, background sync, and any caching of
+// authenticated Supabase/client/attendance/Work Desk data remain
+// explicitly out of V1 scope and must not be added here without that
+// document being updated first.
+
+var CACHE_NAME = 'maven-work-desk-offline-v1';
+var OFFLINE_URL = '/staff/offline.html';
 
 self.addEventListener('install', function (event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function (cache) {
+      return cache.add(OFFLINE_URL);
+    })
+  );
   // Move to "activated" immediately rather than waiting for every open tab
-  // to close first -- there is no cached app state to protect by waiting,
-  // since this worker never caches anything.
+  // to close first -- there is no other cached app state to protect by
+  // waiting.
   self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+  // Drop any cache from a previous service-worker version so an edited
+  // offline.html can never be served stale indefinitely.
+  event.waitUntil(
+    caches.keys().then(function (names) {
+      return Promise.all(
+        names.filter(function (name) { return name !== CACHE_NAME; }).map(function (name) { return caches.delete(name); })
+      );
+    })
+  );
 });
 
 // Deliberately NOT calling clients.claim() here. A service worker only
@@ -31,9 +51,20 @@ self.addEventListener('install', function (event) {
 // new service worker version taking over underneath it.
 
 self.addEventListener('fetch', function (event) {
-  // Explicit network passthrough -- never served from a cache, so this
-  // can never accidentally return stale app code or stale/authenticated
-  // API data. If this handler were removed entirely, Chrome would refuse
-  // to consider the app installable; that is its only job.
+  // Only page navigations get the offline fallback -- API calls, scripts,
+  // and other sub-resources still fail exactly as before if the network is
+  // unreachable, so nothing about the "never serves stale/authenticated
+  // data from a cache" guarantee changes.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(function () {
+        return caches.match(OFFLINE_URL);
+      })
+    );
+    return;
+  }
+  // Explicit network passthrough for everything else -- never served from
+  // a cache, so this can never accidentally return stale app code or
+  // stale/authenticated API data.
   event.respondWith(fetch(event.request));
 });
