@@ -54,8 +54,12 @@ function icon(name, cls) {
 // a recurring bullet / watermark motif (see styles.css .stamp / .bullet-stamp).
 function stampMark(cls) {
   return `<svg class="stamp${cls ? ' ' + cls : ''}" viewBox="0 0 40 40" fill="none" aria-hidden="true" focusable="false">
-    <circle cx="20" cy="20" r="16.4" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3.2 3.4" opacity="0.75"/>
-    <circle cx="20" cy="20" r="12.4" stroke="currentColor" stroke-width="1.1" opacity="0.5"/>
+    <!-- Audit issue 11: were 0.75 / 0.5. On the old gold-100 tile those
+         rendered at 2.32:1 and 1.71:1, both under the 3:1 floor for
+         non-text graphics (WCAG 1.4.11). At 0.9 / 0.72 on the navy tile
+         they measure 5.42:1 and 3.92:1. -->
+    <circle cx="20" cy="20" r="16.4" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3.2 3.4" opacity="0.9"/>
+    <circle cx="20" cy="20" r="12.4" stroke="currentColor" stroke-width="1.1" opacity="0.72"/>
     <path d="M13.6 20.6l4.3 4.3 8.4-9.4" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
