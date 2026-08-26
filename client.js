@@ -337,10 +337,16 @@
   });
 
   // ---- Hero mockup card (Registration/Accounting/Tax/Payroll/Reports) ----
-  // Purely decorative: auto-cycles through the tabs, and clicking a tab jumps
-  // there and stops the auto-cycle (once a visitor engages, don't yank their
-  // choice away). Each tab reveals its own panel of 3 real service items
-  // (rendered server-side from content/site.yaml — see pages1.js docCardArt).
+  // Each tab reveals its own panel of 3 real service items (rendered
+  // server-side from content/site.yaml — see pages1.js docCardArt).
+  //
+  // Audit issue 9: this used aria-pressed, which announces five independent
+  // toggles when the behaviour is mutually-exclusive selection — it is now a
+  // real tablist (role=tab/tabpanel, aria-selected, roving tabindex, arrow /
+  // Home / End keys). The 3s auto-cycle also changed content unprompted,
+  // which is both what made the tabs look like a live page-level filter and
+  // a WCAG 2.2.2 (Pause, Stop, Hide) problem: it now pauses on hover/focus,
+  // stops for good on interaction, and stops itself after one full pass.
   var docCard = document.querySelector('.doc-card');
   if (docCard) {
     var docTabs = docCard.querySelectorAll('.doc-card-tab');
@@ -348,14 +354,18 @@
     var docActiveIndex = 0;
     var docCycleTimer = null;
 
-    var setActiveDocTab = function (idx) {
+    var setActiveDocTab = function (idx, moveFocus) {
       docActiveIndex = idx;
       docTabs.forEach(function (tab, i) {
-        tab.classList.toggle('is-active', i === idx);
-        tab.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
+        var on = i === idx;
+        tab.classList.toggle('is-active', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+        if (on && moveFocus) tab.focus();
       });
       docPanels.forEach(function (panel, i) {
         panel.classList.toggle('is-active', i === idx);
+        panel.hidden = i !== idx;
       });
     };
 
@@ -368,12 +378,30 @@
         stopDocCycle();
         setActiveDocTab(i);
       });
+      tab.addEventListener('keydown', function (e) {
+        var n = docTabs.length, next = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % n;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + n) % n;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = n - 1;
+        if (next === null) return;
+        e.preventDefault();
+        stopDocCycle();
+        setActiveDocTab(next, true);
+      });
     });
+
+    // WCAG 2.2.2: a mechanism to pause auto-updating content.
+    docCard.addEventListener('mouseenter', stopDocCycle);
+    docCard.addEventListener('focusin', stopDocCycle);
 
     setActiveDocTab(0);
     if (!motionReduced() && docTabs.length) {
+      var docPasses = 0;
       docCycleTimer = setInterval(function () {
-        setActiveDocTab((docActiveIndex + 1) % docTabs.length);
+        var next = (docActiveIndex + 1) % docTabs.length;
+        setActiveDocTab(next);
+        if (next === 0 && ++docPasses >= 1) stopDocCycle();
       }, 3000);
     }
   }
