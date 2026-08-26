@@ -20,13 +20,21 @@
     --red:#B3261E;--red-soft:#FBEAE9;--green:#1E7B3E;--green-soft:#E9F6ED;--amber:#9A6B00;--amber-soft:#FBF1DC;
     --teal:#0F766E;--teal-soft:#E6F5F3;
     --font:'Segoe UI',-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    /* Login audit issue 5: .btn was a 999px pill carried over from the
+       public marketing stylesheet, where a button never sits beside a text
+       input. In the Work Desk it does, constantly — and four other
+       components already agreed on a tight radius. One scale, named. */
+    --r-sm:8px;     /* controls: inputs, buttons, messages */
+    --r-md:12px;    /* raised surfaces: panels, popovers */
+    --r-lg:14px;    /* cards */
+    --r-pill:999px; /* badges and status chips only */
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:var(--font);color:var(--ink);background:var(--mist);}
   h1,h2,h3{font-family:var(--font);color:var(--navy-950);margin:0;}
   a{color:var(--gold-700);}
   button{font:inherit;cursor:pointer;}
-  input,textarea,select{font:inherit;width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--ink);}
+  input,textarea,select{font:inherit;width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--ink);}
   input:disabled,textarea:disabled,select:disabled{background:var(--mist-dark);color:var(--ink-soft);}
   input:focus,textarea:focus,select:focus{outline:2px solid var(--gold-500);outline-offset:1px;border-color:var(--gold-500);}
   /* Handbook Task 26: every other interactive element (buttons, links,
@@ -43,7 +51,7 @@
 
   /* ---- Login screen ---- */
   #loginScreen,#otpScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-  .login-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:36px;max-width:400px;width:100%;box-shadow:0 20px 40px -20px rgba(16,42,76,.3);}
+  .login-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:36px;max-width:400px;width:100%;box-shadow:0 20px 40px -20px rgba(16,42,76,.3);}
   .login-card .brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
   .login-card .brand img{width:36px;height:36px;}
   .login-card .brand span{font-weight:700;color:var(--navy-950);font-size:1.05rem;}
@@ -52,7 +60,23 @@
   .f{margin-bottom:14px;}
   .f label{display:block;font-size:.82rem;font-weight:700;color:var(--navy-900);margin-bottom:5px;}
   .f-hint{display:block;font-size:.76rem;color:var(--ink-soft);margin-top:4px;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;padding:12px 20px;border-radius:999px;border:2px solid transparent;background:var(--gold-500);color:var(--navy-950);}
+  /* Login audit issues 1-2: the footer text was centred by two inline
+     style attributes, the only things on the card off the left axis.
+     Alignment belongs in CSS where it can be seen and overridden. */
+  .login-foot{margin-top:18px;}
+  .login-foot .f-hint{margin-top:0;}
+  .login-foot .f-hint + .f-hint{margin-top:6px;}
+  /* Login audit issue 3: "Forgot password?" now sits with the password
+     field it recovers, not after the submit button. .f-hint's colour (a
+     class) would beat the bare `a` rule, so the link needs its own. */
+  .f-link{display:inline-block;margin-top:6px;font-size:.82rem;font-weight:600;color:var(--gold-700);}
+  .f-link:hover{text-decoration:underline;}
+  /* Login audit issue 4: every gap in the form was .f's 14px, but between
+     two field groups the reader also sees the next label (~22px), so the
+     group gap read as ~36px and this one as 14px. The action that closes
+     the form gets its own separation rather than inheriting a field's. */
+  .login-card .btn-block{margin-top:24px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;padding:12px 20px;border-radius:var(--r-sm);border:2px solid transparent;background:var(--gold-500);color:var(--navy-950);}
   .btn:hover{background:var(--gold-600);}
   .btn:disabled{opacity:.55;cursor:not-allowed;}
   .btn-block{width:100%;}
@@ -61,7 +85,16 @@
   .btn-sm{padding:8px 14px;font-size:.85rem;}
   .btn-danger{background:transparent;border-color:var(--red);color:var(--red);}
   .btn-danger:hover{background:var(--red-soft);}
-  .msg{padding:10px 14px;border-radius:8px;font-size:.88rem;margin-bottom:14px;}
+  /* Shell audit issue 1: Search, Notifications and the drawer toggle are
+     icon-only but wore .btn-outline's bordered pill, and Install App (a
+     PWA prompt) outweighed both. Two named treatments replace the
+     `#topbar .btn-outline` context override that used to patch this. */
+  .btn-icon{padding:0;min-width:38px;min-height:38px;background:none;border-color:transparent;color:inherit;}
+  .btn-icon:hover{background:rgba(255,255,255,.12);}
+  /* Shell audit issue 5 */
+  .btn-quiet{background:none;border-color:transparent;color:inherit;font-weight:600;padding:8px 10px;text-decoration:underline;text-underline-offset:3px;}
+  .btn-quiet:hover{background:rgba(255,255,255,.10);}
+  .msg{padding:10px 14px;border-radius:var(--r-sm);font-size:.88rem;margin-bottom:14px;}
   .msg-error{background:var(--red-soft);color:var(--red);border:1px solid #F1BEBA;}
   .msg-ok{background:var(--green-soft);color:var(--green);border:1px solid #BCE3C7;}
 
@@ -80,19 +113,17 @@
   #topbar .brand{display:flex;align-items:center;gap:9px;font-weight:700;flex-shrink:0;background:none;border:none;padding:4px;margin:-4px;border-radius:8px;color:#fff;cursor:pointer;transition:background .12s ease;}
   #topbar .brand:hover{background:rgba(255,255,255,.1);}
   #topbar .brand img{width:28px;height:28px;}
-  /* .btn-outline's default colors (dark navy text/border on transparent)
-     are meant for the light card backgrounds it's used on everywhere else
-     in the app -- inside the topbar itself (also dark navy), that made
-     the Global Search, Notifications and Sign Out buttons nearly
-     invisible: dark text/icon on a dark background. */
-  #topbar .btn-outline{border-color:rgba(255,255,255,.35);color:#fff;}
-  #topbar .btn-outline:hover{background:rgba(255,255,255,.12);}
+  /* The `#topbar .btn-outline` override that used to live here (dark
+     navy text on a dark navy bar, patched by descendant selector) is
+     gone: .btn-outline now means one thing again, and the topbar uses
+     .btn-icon / .btn-quiet, both of which inherit the bar's own colour.
+     See the shell audit, issue 1. */
   #topbar .spacer{flex:1;}
   #topbar .who{font-size:.84rem;color:rgba(255,255,255,.75);text-align:right;line-height:1.3;}
   #topbar .who strong{color:#fff;display:block;}
   #notifBellBtn{position:relative;}
-  .notif-badge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:.62rem;font-weight:700;min-width:15px;height:15px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;}
-  .notif-panel{position:fixed;top:57px;right:20px;width:340px;max-width:calc(100vw - 40px);max-height:70vh;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.22);z-index:35;}
+  .notif-badge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:.62rem;font-weight:700;min-width:15px;height:15px;border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;}
+  .notif-panel{position:fixed;top:57px;right:20px;width:340px;max-width:calc(100vw - 40px);max-height:70vh;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 16px 40px rgba(0,0,0,.22);z-index:35;}
   .notif-panel .notif-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);}
   .notif-panel .notif-head strong{font-size:.88rem;color:var(--navy-950);}
   /* Task 29: explicit scope note under the panel header -- see that
@@ -108,13 +139,20 @@
   .notif-row .notif-dismiss:hover{color:var(--red);}
   .notif-empty{padding:20px 14px;text-align:center;font-size:.85rem;color:var(--ink-soft);}
   #layout{display:flex;max-width:1300px;margin:0 auto;}
-  #sidebar{width:220px;flex-shrink:0;padding:22px 10px;position:sticky;top:57px;align-self:flex-start;height:calc(100vh - 57px);overflow-y:auto;}
-  #sidebar button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;border-radius:8px;color:var(--ink-soft);font-size:.9rem;font-weight:600;background:none;border:none;margin-bottom:2px;transition:background .12s ease,color .12s ease;}
-  #sidebar button .ic{color:var(--ink-soft);opacity:.8;}
-  #sidebar button:hover{background:#fff;color:var(--navy-900);}
-  #sidebar button.is-active{background:var(--navy-950);color:#fff;}
-  #sidebar button.is-active .ic{color:var(--gold-500);opacity:1;}
-  #sidebar .sidebar-group{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:14px 12px 6px;}
+  #sidebar{width:220px;flex-shrink:0;padding:4px 10px 22px;position:sticky;top:57px;align-self:flex-start;height:calc(100vh - 57px);overflow-y:auto;}
+  /* Shell audit issue 1: was `#sidebar button`, an id-level selector an
+     <a> could not join -- which is why .admin-link-btn needed five
+     !important declarations to style the one external nav row. A class
+     base lets both element types share it. min-height keeps the row
+     rhythm even if a label ever wraps (issue 7). */
+  #sidebar .nav-item{display:flex;align-items:center;gap:11px;width:100%;min-height:40px;text-align:left;padding:10px 12px;border-radius:var(--r-sm);color:var(--ink-soft);font:inherit;font-size:.9rem;font-weight:600;background:none;border:none;text-decoration:none;margin-bottom:2px;transition:background .12s ease,color .12s ease;}
+  #sidebar .nav-item .ic{color:var(--ink-soft);opacity:.8;}
+  #sidebar .nav-item:hover{background:#fff;color:var(--navy-900);}
+  #sidebar .nav-item.is-active{background:var(--navy-950);color:#fff;}
+  #sidebar .nav-item.is-active .ic{color:var(--gold-500);opacity:1;}
+  #sidebar .nav-item > .nav-item-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .nav-item-external{margin-left:auto;width:13px;height:13px;opacity:.6;}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
   #main{flex:1;padding:26px 26px 90px;min-width:0;}
 
   /* ---- Page-level sub-navigation (Task 22): a small horizontal tab row
@@ -145,11 +183,11 @@
     body.nav-drawer-open{overflow:hidden;}
     #sidebar{position:fixed;inset:0;z-index:200;width:100%;height:100vh;background:var(--navy-950);padding:64px 18px 24px;overflow-y:auto;display:none;}
     body.nav-drawer-open #sidebar{display:block;}
-    #sidebar button{color:#fff;padding:13px 12px;font-size:1rem;}
-    #sidebar button .ic{color:rgba(255,255,255,.7);}
-    #sidebar button:hover{background:rgba(255,255,255,.08);color:#fff;}
-    #sidebar button.is-active{background:var(--gold-500);color:var(--navy-950);}
-    #sidebar button.is-active .ic{color:var(--navy-950);}
+    #sidebar .nav-item{color:#fff;padding:13px 12px;font-size:1rem;}
+    #sidebar .nav-item .ic{color:rgba(255,255,255,.7);}
+    #sidebar .nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+    #sidebar .nav-item.is-active{background:var(--gold-500);color:var(--navy-950);}
+    #sidebar .nav-item.is-active .ic{color:var(--navy-950);}
     #sidebar .sidebar-group{color:rgba(255,255,255,.5);}
   }
 
@@ -232,12 +270,29 @@
   /* Task 23: compact punch in/out status — an action-driving widget (not
      decorative analytics), so it stays a single quiet row rather than the
      full Attendance page's card treatment. */
-  .today-attendance-bar{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:20px;font-size:.85rem;flex-wrap:wrap;}
+  /* Shell audit issue 4: .state-text used to be flex:1, so the status text
+     absorbed every spare pixel of a ~1030px column and shoved the button
+     to the far edge -- state and remedy ~800px apart. The bar now shrinks
+     to its content, which is what its own comment above always described.
+     Issue 8: the padding is deliberately asymmetric. A stroked icon 16px
+     from the left edge reads as ~18px; a filled button's background
+     reaches its own box edge, so the same 16px reads as ~14px. */
+  .today-attendance-bar{display:flex;align-items:center;gap:12px;width:fit-content;max-width:100%;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 20px 10px 16px;margin-bottom:20px;font-size:.85rem;flex-wrap:wrap;}
   .today-attendance-bar .ic{color:var(--gold-600);flex-shrink:0;}
-  .today-attendance-bar .state-text{flex:1;color:var(--ink-soft);min-width:160px;}
+  .today-attendance-bar .state-text{color:var(--ink-soft);min-width:160px;}
   .today-attendance-bar .state-text strong{color:var(--navy-950);}
   .today-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:26px;}
-  .today-stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  /* Shell audit issue 3: .today-stat wears the same chrome as .card and is
+     one pixel of radius from .task-row -- which IS clickable, with a hover
+     lift. It inherited the app's interactive vocabulary without the
+     behaviour. Each stat now drills into the section that lists it (see
+     stat() in staff.js); the .is-drilldown class is only applied when the
+     count is non-zero, so the affordance appears exactly when there is
+     something behind it. */
+  .today-stat{position:relative;width:100%;text-align:left;font:inherit;color:inherit;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .today-stat.is-drilldown{cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease;}
+  .today-stat.is-drilldown:hover{border-color:var(--navy-800);box-shadow:0 2px 8px rgba(16,42,76,.10);}
+  .today-stat-go{position:absolute;top:14px;right:12px;color:var(--ink-soft);opacity:.7;}
   .today-stat .n{font-size:1.7rem;font-weight:800;color:var(--navy-950);line-height:1;}
   .today-stat .n.n-red{color:var(--red);}
   .today-stat .n.n-amber{color:var(--amber);}
@@ -383,14 +438,21 @@
 
   /* ---- Modal (used for new task/client/engagement forms) ---- */
   #modalOverlay{position:fixed;inset:0;background:rgba(10,31,58,.55);z-index:40;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
-  #modalCard{background:#fff;border-radius:14px;padding:28px;max-width:520px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,.3);}
+  #modalCard{background:#fff;border-radius:var(--r-lg);padding:28px;max-width:520px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,.3);}
   #modalCard .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
   #modalCard .modal-actions{display:flex;gap:10px;margin-top:20px;}
 
 
   /* ---- 2026 workspace IA / staff profile / attendance ---- */
-  #sidebar .sidebar-group{padding-top:18px;color:#708095;}
-  #sidebar .sidebar-group:first-child{padding-top:6px;}
+  /* Shell audit issue 2: the space BELOW every group heading was already
+     identical (6px) -- what differed was above. Every heading got 18px,
+     a 3:1 asymmetry that visibly binds a label to the items under it,
+     except the first, which an explicit :first-child exception cut to
+     6px, leaving "Workspace" equidistant between the sidebar edge and
+     "Today" and belonging to neither. The exception is gone; the first
+     heading's clearance now comes from #sidebar's own 4px top padding
+     (4 + 18 = the original 22px, so nothing shifts). */
+  #sidebar .sidebar-group{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#708095;padding:18px 12px 8px;}
   .workspace-intro{font-size:.88rem;color:var(--ink-soft);margin:-10px 0 20px;max-width:760px;}
   .page-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   .my-tasks-filter{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:14px 16px;flex-wrap:wrap;}
@@ -447,8 +509,6 @@
   .attendance-status-pill{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-size:.72rem;font-weight:700;background:var(--mist-dark);color:var(--navy-800);}
   .attendance-status-pill.complete{background:var(--green-soft);color:var(--green);}
   .attendance-status-pill.open{background:var(--amber-soft);color:var(--amber);}
-  .admin-link-btn{display:flex!important;align-items:center;gap:11px;width:100%;padding:10px 12px!important;border-radius:8px;color:var(--ink-soft)!important;font-size:.9rem!important;font-weight:600!important;text-decoration:none!important;}
-  .admin-link-btn:hover{background:#fff;color:var(--navy-900)!important;}
   @media(max-width:1050px){.directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:720px){.my-tasks-filter{align-items:flex-start;flex-direction:column}.scope-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.scope-tab{padding:9px 6px}.scope-section-head{align-items:flex-start;flex-direction:column;gap:3px}.scope-section-head p{text-align:left}.attendance-punch-card{grid-template-columns:1fr}.attendance-controls{grid-template-columns:1fr}.directory-grid{grid-template-columns:1fr}.profile-grid{grid-template-columns:1fr}.attendance-calendar{gap:4px}.cal-day{min-height:62px;padding:6px}.cal-day .day-status{font-size:.62rem;margin-top:6px}}
 
@@ -459,7 +519,7 @@
      transform specifically, the one property here that's actual motion
      rather than a colour/shadow fade. */
   @media (prefers-reduced-motion: reduce) {
-    #sidebar button, .task-row, .hub-stat { transition: none; }
+    #sidebar .nav-item, .task-row, .hub-stat { transition: none; }
     .task-row:hover { transform: none; }
   }
 
@@ -482,30 +542,32 @@
     <div class="f">
       <label for="in-password">Password</label>
       <input id="in-password" type="password" autocomplete="current-password">
+      <a class="f-link" href="#" id="forgotPasswordLink">Forgot password?</a>
     </div>
     <button class="btn btn-block" id="loginBtn" type="button">Sign In</button>
-    <p class="f-hint" style="margin-top:14px;text-align:center">Don't have an account? Ask your admin to invite you.</p>
-    <p class="f-hint" style="text-align:center"><a href="#" id="forgotPasswordLink">Forgot password?</a></p>
+    <div class="login-foot">
+      <p class="f-hint">Don't have an account? Ask your admin to invite you.</p>
+    </div>
   </div>
 </div>
 
 <div id="app" class="hidden">
   <header id="topbar">
-    <button class="btn btn-outline btn-sm drawer-toggle" id="navToggleBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+    <button class="btn btn-icon drawer-toggle" id="navToggleBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
       <span id="menuIconSlot"></span>
     </button>
     <button class="brand" id="brandHomeBtn" type="button"><img src="/images/logo-icon.png" alt=""><span>Maven Work Desk</span></button>
     <div class="spacer"></div>
-    <button class="btn btn-outline btn-sm hidden" id="installAppBtn" type="button">Install App</button>
-    <button class="btn btn-outline btn-sm" id="globalSearchBtn" type="button" title="Global Search" aria-label="Global Search">
+    <button class="btn btn-quiet btn-sm hidden" id="installAppBtn" type="button">Install App</button>
+    <button class="btn btn-icon" id="globalSearchBtn" type="button" title="Global Search" aria-label="Global Search">
       <span id="searchIconSlot"></span>
     </button>
-    <button class="btn btn-outline btn-sm" id="notifBellBtn" type="button" title="Notifications (Client Work only)" aria-label="Notifications (Client Work only)">
+    <button class="btn btn-icon" id="notifBellBtn" type="button" title="Notifications (Client Work only)" aria-label="Notifications (Client Work only)">
       <span id="notifBellIconSlot"></span>
       <span id="notifBadge" class="notif-badge hidden">0</span>
     </button>
     <div class="who"><strong id="whoName">—</strong><span id="whoRole">—</span></div>
-    <button class="btn btn-outline btn-sm" id="logoutBtn" type="button">Sign Out</button>
+    <button class="btn btn-quiet btn-sm" id="logoutBtn" type="button">Sign Out</button>
   </header>
   <button class="drawer-close" id="navCloseBtn" type="button" aria-label="Close menu">
     <span id="closeIconSlot"></span>
