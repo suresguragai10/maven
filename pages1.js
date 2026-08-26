@@ -3,7 +3,7 @@ const { esc, internalHref } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, valueCard, whyCard, processStep, ctaBand, trustBar, accordionItem, industryBadge,
-  statRow, servicePhotoMeta, capabilityChapter,
+  statRow, servicePhotoMeta, capabilityChapter, panelLabel, eyebrowOnDark,
 } = require('./ui');
 
 // Decorative Kathmandu skyline: generic building silhouettes plus three
@@ -110,16 +110,24 @@ function docCardArt() {
   // instruction rules out. The number still appears, just once, where a
   // visitor reaches it in the actual reading order instead of before
   // they've read anything else.
+  // Audit issue 9: these tabs are real (client.js switches the panels), but
+  // they read as a page-level service filter because nothing said what they
+  // controlled, and aria-pressed described five independent toggles when the
+  // behaviour is mutually-exclusive selection. Now a captioned tablist:
+  // role=tab/tabpanel, roving tabindex, arrow-key support in client.js.
   return `<div class="hero-art reveal">
     <div class="doc-card">
-      <div class="doc-card-tabs">
-        ${tabs.map((t, i) => `<button type="button" class="doc-card-tab${i === 0 ? ' is-active' : ''}" aria-pressed="${i === 0}">${esc(t.label)}</button>`).join('')}
+      <p class="doc-card-caption" id="doc-card-caption">What we handle in each area</p>
+      <div class="doc-card-tabs" role="tablist" aria-labelledby="doc-card-caption">
+        ${tabs.map((t, i) => `<button type="button" class="doc-card-tab${i === 0 ? ' is-active' : ''}" role="tab" id="doc-tab-${i}" aria-controls="doc-panel-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? '0' : '-1'}">${esc(t.label)}</button>`).join('')}
       </div>
       <div class="doc-card-panels">
         ${tabs.map((t, i) => `
-        <ul class="doc-card-panel${i === 0 ? ' is-active' : ''}">
-          ${t.cat.items.slice(0, 3).map((item) => `<li>${stampMark('stamp-sm')}<span>${esc(item)}</span></li>`).join('')}
-        </ul>`).join('')}
+        <div class="doc-card-panel${i === 0 ? ' is-active' : ''}" role="tabpanel" id="doc-panel-${i}" aria-labelledby="doc-tab-${i}"${i === 0 ? '' : ' hidden'}>
+          <ul class="doc-card-list">
+            ${t.cat.items.slice(0, 3).map((item) => `<li>${stampMark('stamp-sm')}<span>${esc(item)}</span></li>`).join('')}
+          </ul>
+        </div>`).join('')}
       </div>
       <div class="doc-card-stamp">${stampMark()}</div>
     </div>
@@ -143,7 +151,7 @@ function home() {
   <section class="hero">
     <div class="container hero-inner">
       <div class="reveal-stagger">
-        <p class="eyebrow eyebrow--on-dark">Business Consultancy · Kathmandu, Nepal</p>
+        ${eyebrowOnDark('Business consultancy · Kathmandu, Nepal')}
         <h1>Your Outsourced Finance Team in Nepal</h1>
         <p class="hero-sub">Accounting, tax compliance, payroll, financial reporting, and management support for growing businesses — organized under one dependable team, for startups, SMEs, traders, and service companies alike.</p>
         <div class="hero-actions">
@@ -164,8 +172,8 @@ function home() {
         <p>${esc(data.aboutText)}</p>
         <div style="margin-top:22px">${button('Learn More About Us', 'about.html', 'outline')}</div>
       </div>
-      <aside class="proof-panel reveal" aria-label="Maven at a glance">
-        <span class="service-letter">Maven at a glance</span>
+      <aside class="proof-panel reveal" aria-labelledby="maven-glance-label">
+        ${panelLabel('Maven at a glance', ' id="maven-glance-label"')}
         <ul class="stamp-list">
           ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
         </ul>
@@ -201,12 +209,16 @@ function home() {
               id: 'establish-and-comply',
               chapterLabel: '01 · Establish & Comply',
               title: 'A solid legal and compliance foundation',
-              text: `${registration.tagline} ${tax.tagline} ${payroll.tagline}`,
+              // Audit issue 13: this was the three taglines below joined
+              // into one 183-character paragraph, describing the same three
+              // services listed directly under it. Each link now carries its
+              // own line instead.
+              text: 'Three linked services that get a business registered and keep it compliant.',
               image: servicePhotoMeta(registration),
               links: [
-                { label: registration.title, href: `services.html#${registration.key}` },
-                { label: tax.title, href: `services.html#${tax.key}` },
-                { label: payroll.title, href: `services.html#${payroll.key}` },
+                { label: registration.title, href: `services.html#${registration.key}`, note: registration.tagline },
+                { label: tax.title, href: `services.html#${tax.key}`, note: tax.tagline },
+                { label: payroll.title, href: `services.html#${payroll.key}`, note: payroll.tagline },
               ],
               cta: { label: 'Discuss Your Compliance Needs', href: 'contact.html' },
             }));
@@ -218,11 +230,11 @@ function home() {
               id: 'run-your-finance-function',
               chapterLabel: '02 · Run Your Finance Function',
               title: 'Outsourced accounting, run like an in-house finance team',
-              text: `${bookkeeping.tagline} ${reporting.tagline}`,
+              text: 'Your day-to-day finance function, handled end to end.',
               image: servicePhotoMeta(bookkeeping),
               links: [
-                { label: bookkeeping.title, href: 'outsourced-accounting.html' },
-                { label: reporting.title, href: `services.html#${reporting.key}` },
+                { label: bookkeeping.title, href: 'outsourced-accounting.html', note: bookkeeping.tagline },
+                { label: reporting.title, href: `services.html#${reporting.key}`, note: reporting.tagline },
               ],
               cta: { label: 'Explore Outsourced Accounting', href: 'outsourced-accounting.html' },
             }));
@@ -233,11 +245,11 @@ function home() {
               id: 'advise-and-report-better',
               chapterLabel: '03 · Advise & Report Better',
               title: 'Guidance and reporting that grow with your business',
-              text: `${advisory.tagline} And as reporting needs become more complex — for lenders, investors, or growth — structured NFRS / IFRS implementation support.`,
+              text: 'Support that scales as reporting gets more demanding.',
               image: servicePhotoMeta(advisory),
               links: [
-                { label: advisory.title, href: `services.html#${advisory.key}` },
-                { label: nfrsIfrs.title, href: 'nfrs-ifrs.html' },
+                { label: advisory.title, href: `services.html#${advisory.key}`, note: advisory.tagline },
+                { label: nfrsIfrs.title, href: 'nfrs-ifrs.html', note: nfrsIfrs.tagline },
               ],
               cta: { label: 'Discuss Advisory & Reporting Needs', href: 'contact.html' },
             }));
@@ -281,7 +293,7 @@ function home() {
   <section class="section-pad bg-navy skyline-section international-showcase">
     <div class="container international-showcase-grid">
       <div class="reveal international-showcase-copy">
-        <p class="eyebrow eyebrow--on-dark">Global Finance Delivery from Nepal</p>
+        ${eyebrowOnDark('Global finance delivery from Nepal')}
         <h2>${esc(data.pageHeader('global-outsourcing').title)}</h2>
         <p style="margin-top:14px">${esc(data.internationalHub.intro)}</p>
         <div style="margin-top:26px">${button(esc(data.internationalHub.cta), 'global-outsourcing.html', 'primary')}</div>
@@ -371,8 +383,8 @@ function about() {
         <p>${esc(data.aboutClosing)}</p>
         <div style="margin-top:22px">${button('Meet Our Team', 'team.html', 'outline')}</div>
       </div>
-      <aside class="proof-panel reveal" aria-label="Maven facts">
-        <span class="service-letter">Maven facts</span>
+      <aside class="proof-panel reveal" aria-labelledby="maven-facts-label">
+        ${panelLabel('Maven facts', ' id="maven-facts-label"')}
         <ul class="stamp-list">
           ${data.aboutFacts.map((f) => `<li>${stampMark('stamp-sm')}<span>${esc(f)}</span></li>`).join('')}
         </ul>
