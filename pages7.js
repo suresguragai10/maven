@@ -1,13 +1,13 @@
 const data = require('./data');
 const { icon } = require('./icons');
 const {
-  button, sectionHead, pageHero, bulletList, whyCard, processStep, accordionItem, ctaBand,
+  button, sectionHead, pageHero, bulletList, whyCard, processStep, accordionItem, ctaBand, panelLabel,
 } = require('./ui');
 const { esc, internalHref } = require('./escape');
 
 function supportAreaAccordion(area, i) {
   const output = area.output && area.output.length
-    ? `<p class="service-letter" style="margin-top:18px;display:block">Typical Output</p>${bulletList(area.output, 'stamp-list stamp-list--pkg')}`
+    ? `<p class="panel-label panel-label--caps" style="margin-top:18px;display:block">Typical Output</p>${bulletList(area.output, 'stamp-list stamp-list--pkg')}`
     : '';
   const note = area.note ? `<p class="tag-note" style="margin-top:14px">${esc(area.note)}</p>` : '';
   return accordionItem({
