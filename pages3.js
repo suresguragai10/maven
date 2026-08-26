@@ -2,7 +2,7 @@ const data = require('./data');
 const { esc, safeUrl } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
-  button, sectionHead, pageHero, accordionItem, industryCard, industryDetail, ctaBand, bulletList,
+  button, sectionHead, pageHero, accordionItem, industryCard, industryDetail, ctaBand, bulletList, panelLabel,
 } = require('./ui');
 
 function documentsNeeded() {
@@ -62,7 +62,7 @@ function industries() {
         </ul>
         <div class="industry-detail-stage" id="industry-detail-stage" aria-live="polite">
           <div class="industry-detail-placeholder" id="industry-detail-placeholder">
-            <span class="service-letter">Explore by industry</span>
+            ${panelLabel('Explore by industry')}
             <h2>Select an industry to see common needs and how Maven can help.</h2>
             <p>The list stays compact and scannable; detailed guidance opens here without pushing the page around.</p>
           </div>
@@ -157,7 +157,7 @@ function contact() {
           </div>
         </div>
         <div class="contact-whatsapp-cta">
-          <span class="service-letter">Fastest response</span>
+          ${panelLabel('Fastest response')}
           <a class="btn btn-whatsapp" href="${data.whatsappHref('Hello Maven, I would like to send an inquiry.')}" target="_blank" rel="noopener">${icon('whatsapp')} Chat on WhatsApp</a>
         </div>
         <div class="contact-map" style="margin-top:28px">
