@@ -25,8 +25,29 @@ function button(label, href, variant = 'primary', extra = '') {
   return `<a class="btn btn-${variant}" href="${internalHref(href)}" ${extra}>${label}</a>`;
 }
 
+// Audit issues 6-8: uppercase is a label treatment, not a paragraph
+// treatment. Rather than copy-editing 50 eyebrow strings (30 of which are
+// 16+ characters, the longest 48), the helper decides by length: short
+// tags keep the uppercase kicker, phrase-length labels fall back to bold
+// gold sentence case. See .eyebrow / .eyebrow--caps in styles.css.
+const LABEL_CAPS_MAX = 15; // beyond this, uppercase costs more than it signals
+
 function eyebrow(text) {
-  return `<p class="eyebrow">${esc(text)}</p>`;
+  const cls = String(text).length <= LABEL_CAPS_MAX ? 'eyebrow eyebrow--caps' : 'eyebrow';
+  return `<p class="${cls}">${esc(text)}</p>`;
+}
+
+// Same rule for the small panel labels previously written inline as
+// <span class="service-letter">. That class was built for a single
+// category letter ("Category A") and is now carrying phrases.
+function eyebrowOnDark(text) {
+  const caps = String(text).length <= LABEL_CAPS_MAX ? ' eyebrow--caps' : '';
+  return `<p class="eyebrow eyebrow--on-dark${caps}">${esc(text)}</p>`;
+}
+
+function panelLabel(text, extra = '') {
+  const cls = String(text).length <= LABEL_CAPS_MAX ? 'panel-label panel-label--caps' : 'panel-label';
+  return `<span class="${cls}"${extra}>${esc(text)}</span>`;
 }
 
 function sectionHead({ eyebrow: eb, title, subtitle, align = 'center' }) {
@@ -70,7 +91,7 @@ function pageHero(kicker, title, sub, bgImage) {
     : '';
   return `${responsiveStyle}<section class="page-hero${bgImage ? ' page-hero--photo' : ''}">
     <div class="container">
-      <p class="eyebrow eyebrow--on-dark">${esc(kicker)}</p>
+      ${eyebrowOnDark(kicker)}
       <h1>${esc(title)}</h1>
       ${sub ? `<p class="page-hero-sub">${esc(sub)}</p>` : ''}
     </div>
@@ -100,7 +121,7 @@ function serviceEntry(cat, opts = {}) {
     <div class="service-card-head">
       <span class="service-icon">${icon(cat.icon)}</span>
       <div>
-        <span class="service-letter">Category ${esc(cat.letter)}</span>
+        ${panelLabel('Category ' + cat.letter)}
         <h3>${esc(cat.title)}</h3>
       </div>
     </div>
@@ -134,8 +155,13 @@ function capabilityChapter({
   const modifier = variant ? ` capability-chapter--${esc(variant)}` : '';
   const reverseClass = reverse ? ' capability-chapter--reverse' : '';
   const idAttr = id ? ` id="${esc(id)}"` : '';
+  // Audit issue 13: `text` used to be several service taglines joined into
+  // one string, describing the same services listed immediately below it.
+  // A link may now carry its own one-line `note` instead, which removes
+  // both the wall of text and the duplication. `text` stays supported for
+  // chapters that genuinely need a lead sentence.
   const linksHtml = links.length
-    ? `<ul class="capability-chapter-links">${links.map((l) => `<li><a href="${internalHref(l.href)}">${icon('chevronRight')}<span>${esc(l.label)}</span></a></li>`).join('')}</ul>`
+    ? `<ul class="capability-chapter-links">${links.map((l) => `<li><a href="${internalHref(l.href)}">${icon('chevronRight')}<span>${esc(l.label)}</span></a>${l.note ? `<p class="capability-chapter-note">${esc(l.note)}</p>` : ''}</li>`).join('')}</ul>`
     : '';
   const ctaHtml = cta
     ? `<div class="capability-chapter-actions">${button(cta.label, cta.href, 'outline', 'aria-label="' + esc(cta.label + ' — ' + title) + '"')}</div>`
@@ -211,7 +237,7 @@ function industryDetail(ind, i) {
   return `<section class="industry-detail-panel" id="detail-${id}" data-industry-detail="${i}" hidden aria-labelledby="detail-title-${id}">
     <div class="industry-detail-heading">
       <span class="industry-detail-icon">${icon(ind.icon)}</span>
-      <div><span class="service-letter">Industry support</span><h2 id="detail-title-${id}">${esc(ind.name)}</h2></div>
+      <div>${panelLabel('Industry support')}<h2 id="detail-title-${id}">${esc(ind.name)}</h2></div>
     </div>
     ${ind.description ? `<p class="industry-detail-intro">${esc(ind.description)}</p>` : ''}
     <div class="industry-detail-grid">
@@ -331,7 +357,7 @@ function accordionItem({
 function ctaBand({ eyebrow: eb, title, subtitle, buttons }) {
   return `<section class="cta-band">
     <div class="container cta-band-inner reveal">
-      ${eb ? `<p class="eyebrow eyebrow--on-dark">${esc(eb)}</p>` : ''}
+      ${eb ? eyebrowOnDark(eb) : ''}
       <h2>${esc(title)}</h2>
       ${subtitle ? `<p>${esc(subtitle)}</p>` : ''}
       <div class="cta-band-actions">${buttons.join('')}</div>
@@ -346,6 +372,6 @@ function trustBar(points) {
 }
 
 module.exports = {
-  button, eyebrow, sectionHead, pageHero, bulletList, serviceEntry, capabilityChapter, valueCard, whyCard,
+  button, eyebrow, eyebrowOnDark, panelLabel, sectionHead, pageHero, bulletList, serviceEntry, capabilityChapter, valueCard, whyCard,
   industryBadge, industryCard, industryDetail, packageCard, processStep, accordionItem, ctaBand, trustBar, statRow, servicePhotoMeta,
 };
