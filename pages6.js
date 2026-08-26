@@ -1,6 +1,6 @@
 const data = require('./data');
 const { icon, stampMark } = require('./icons');
-const { button, sectionHead, pageHero, ctaBand } = require('./ui');
+const { button, sectionHead, pageHero, ctaBand, eyebrowOnDark } = require('./ui');
 const { esc, safeUrl } = require('./escape');
 
 // Build initials (max 2) from a name for the avatar placeholder.
@@ -187,7 +187,7 @@ function notFound() {
   return `
   <section class="page-hero">
     <div class="container">
-      <p class="eyebrow eyebrow--on-dark">Error 404</p>
+      ${eyebrowOnDark('Error 404')}
       <h1>Page not found</h1>
       <p class="page-hero-sub">The page you were looking for doesn't exist, may have moved, or is not yet published.</p>
     </div>
