@@ -64,7 +64,7 @@ function renderMobileNav(activeKey) {
   return `<nav class="mobile-nav" id="mobileNav" aria-label="Mobile">
     <div class="mobile-nav-top">
       <span class="brand-name" style="color:#fff">${esc(data.brand.shortName)}</span>
-      <button type="button" class="mobile-nav-close" aria-label="Close menu">${icon('close')}</button>
+      <button type="button" class="icon-btn mobile-nav-close" aria-label="Close menu">${icon('close')}</button>
     </div>
     <ul>${items}</ul>
     <div class="mobile-nav-cta">
@@ -98,7 +98,7 @@ function renderHeader(activeKey) {
       <div class="header-cta">
         <a class="btn btn-primary btn-sm" href="${internalHref('contact.html')}">Book Free Consultation</a>
       </div>
-      <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">${icon('menu')}</button>
+      <button type="button" class="icon-btn nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">${icon('menu')}</button>
     </div>
   </header>
   ${renderMobileNav(activeKey)}`;
@@ -201,7 +201,7 @@ function renderFooter() {
     </div>
   </footer>
   <a class="whatsapp-float" href="${data.whatsappHref('Hello Maven, I would like to ask about your services.')}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">${icon('whatsapp')}</a>
-  <button type="button" class="back-to-top" aria-label="Back to top">${icon('arrowUp')}</button>
+  <button type="button" class="icon-btn back-to-top" aria-label="Back to top">${icon('arrowUp')}</button>
   <div class="cookie-notice" id="cookie-notice" role="region" aria-label="Cookie notice">
     <p>This site uses a few essential third-party services (Google Fonts, our contact form, and the map on our Contact page). See our <a href="${internalHref('privacy.html')}">Privacy Policy</a> for details.</p>
     <button type="button" class="btn btn-primary btn-sm" id="cookie-notice-accept">Got it</button>
