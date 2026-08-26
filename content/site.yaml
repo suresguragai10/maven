@@ -13,10 +13,14 @@ usefulLinks:
     description: Nepal central bank, banking regulation and foreign exchange rules.
   - name: Institute of Chartered Accountants of Nepal (ICAN)
     url: https://en.ican.org.np/en/
-    description: Nepal's professional accounting regulatory body — standards, member directory, and public guidance on the chartered accountancy profession.
+    description: >-
+      Nepal's professional accounting regulatory body — standards, member directory, and public
+      guidance on the chartered accountancy profession.
   - name: Department of Industry (DOI)
     url: https://doind.gov.np/
-    description: Registration and approval authority for industrial enterprises and foreign investment in Nepal, relevant for internationally connected businesses.
+    description: >-
+      Registration and approval authority for industrial enterprises and foreign investment in
+      Nepal, relevant for internationally connected businesses.
   - name: Nepal Government National Portal
     url: https://nepal.gov.np/
     description: Directory of Nepal government ministries, departments, and public services.
@@ -53,9 +57,9 @@ trustPoints:
 aboutText: >-
   Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy company providing business
   setup, accounting, tax, compliance, financial management and reporting, payroll, project report,
-  and advisory services. We help business owners maintain organized records, meet routine
-  compliance obligations, understand their financial performance, and plan ahead with
-  straightforward guidance and clear communication.
+  and advisory services. We help business owners maintain organized records, meet routine compliance
+  obligations, understand their financial performance, and plan ahead with straightforward guidance
+  and clear communication.
 aboutFacts:
   - Based in New Baneshwor, Kathmandu
   - Established in 2022 — 100+ clients served to date
@@ -133,7 +137,9 @@ serviceCategories:
   - key: reporting
     letter: E
     title: Financial Management & Reporting
-    tagline: Cash-flow visibility, management reports, and statements for decisions, loans, and stakeholders.
+    tagline: >-
+      Cash-flow visibility, management reports, and statements for decisions, loans, and
+      stakeholders.
     icon: barChart
     items:
       - Monthly management summary reports
@@ -200,8 +206,8 @@ nfrsIfrs:
     schedules, documentation, disclosures, internal processes, and the way financial information is
     collected throughout the year. Maven helps businesses approach this work in a structured and
     practical way. Our role is to support management with implementation, accounting analysis,
-    documentation, financial statement preparation, and reporting readiness while keeping the process
-    understandable for the people responsible for maintaining the accounts.
+    documentation, financial statement preparation, and reporting readiness while keeping the
+    process understandable for the people responsible for maintaining the accounts.
   supportAreas:
     - title: NFRS / IFRS Applicability & Readiness Assessment
       intro: >-
@@ -212,7 +218,9 @@ nfrsIfrs:
         - Reviewing the existing chart of accounts and reporting structure
         - Identifying significant accounting and disclosure areas
         - Assessing the availability of supporting records and schedules
-        - Identifying differences between current accounting practices and applicable reporting requirements
+        - >-
+          Identifying differences between current accounting practices and applicable reporting
+          requirements
         - Preparing a practical implementation roadmap
         - Prioritizing high-impact areas for management attention
       output:
@@ -384,7 +392,9 @@ nfrsIfrs:
     - Management reporting templates
     - Audit document tracker
     - Staff implementation guidance
-  deliverablesNote: Deliverables are customized according to the agreed scope and reporting requirements of each client.
+  deliverablesNote: >-
+    Deliverables are customized according to the agreed scope and reporting requirements of each
+    client.
   whoFor:
     - Growing private companies
     - Companies improving their financial reporting
@@ -408,9 +418,13 @@ nfrsIfrs:
         Important calculations and adjustments should be understandable and traceable instead of
         existing as unexplained year-end entries.
     - title: Finance-Team Support
-      text: We can work alongside an existing accountant or finance department rather than replacing the internal team.
+      text: >-
+        We can work alongside an existing accountant or finance department rather than replacing the
+        internal team.
     - title: Clear Communication
-      text: Significant accounting issues are explained in practical language so management understands what is changing and why.
+      text: >-
+        Significant accounting issues are explained in practical language so management understands
+        what is changing and why.
     - title: Connected Reporting
       text: >-
         Where appropriate, we help connect year-end financial reporting with better monthly
@@ -433,9 +447,13 @@ nfrsIfrs:
         The exact work required depends on the quality of existing records and applicable reporting
         requirements.
     - q: Can Maven help if we already have an internal accountant?
-      a: Yes. This service can be provided as additional technical and reporting support to an existing finance or accounting team.
+      a: >-
+        Yes. This service can be provided as additional technical and reporting support to an
+        existing finance or accounting team.
     - q: Can you help prepare supporting schedules for our auditor?
-      a: Yes. We can help organize reconciliations, schedules, workings, financial statement support files, and requested documentation.
+      a: >-
+        Yes. We can help organize reconciliations, schedules, workings, financial statement support
+        files, and requested documentation.
     - q: Does Maven provide statutory audit or certification?
       a: >-
         No. Maven provides accounting, implementation, financial reporting and documentation
@@ -456,7 +474,9 @@ internationalHub:
     support your business actually requires.
   tiles:
     - title: Outsourced Accounting & Bookkeeping
-      tagline: Reliable day-to-day accounting support for businesses and accounting firms that need additional finance capacity.
+      tagline: >-
+        Reliable day-to-day accounting support for businesses and accounting firms that need
+        additional finance capacity.
       text: >-
         Best suited for businesses that need help maintaining books, reconciliations, transaction
         records, accounts payable and receivable, monthly reporting, or cleanup work.
@@ -500,19 +520,33 @@ internationalAccounting:
     team, reporting requirements and internal review process.
   benefits:
     - title: Direct Communication
-      text: You communicate with the people responsible for your work rather than working through unnecessary call-center or account-management layers.
+      text: >-
+        You communicate with the people responsible for your work rather than working through
+        unnecessary call-center or account-management layers.
     - title: Clear Written Communication
-      text: Our team works in English and is comfortable with structured written communication, task tracking and remote collaboration.
+      text: >-
+        Our team works in English and is comfortable with structured written communication, task
+        tracking and remote collaboration.
     - title: Flexible Remote Support
-      text: Work can be organized asynchronously across time zones, with responsibilities and deadlines agreed in advance.
+      text: >-
+        Work can be organized asynchronously across time zones, with responsibilities and deadlines
+        agreed in advance.
     - title: Work Within Your Existing Systems
-      text: Where practical, we work inside the accounting and cloud tools your business already uses rather than requiring unnecessary migration.
+      text: >-
+        Where practical, we work inside the accounting and cloud tools your business already uses
+        rather than requiring unnecessary migration.
     - title: Start With a Defined Scope
-      text: New relationships can begin with a limited engagement or trial scope before expanding into ongoing support.
+      text: >-
+        New relationships can begin with a limited engagement or trial scope before expanding into
+        ongoing support.
     - title: Scalable Capacity
-      text: Support can grow from individual bookkeeping tasks to recurring monthly accounting and reporting as your requirements increase.
+      text: >-
+        Support can grow from individual bookkeeping tasks to recurring monthly accounting and
+        reporting as your requirements increase.
     - title: Cost-Efficient Finance Capacity
-      text: Remote support can provide additional accounting capacity without the same fixed employment structure as building every finance function internally.
+      text: >-
+        Remote support can provide additional accounting capacity without the same fixed employment
+        structure as building every finance function internally.
     - title: Responsible Outsourcing
       text: >-
         We believe international outsourcing should create value for the client while maintaining
@@ -534,7 +568,9 @@ internationalAccounting:
         processes — commonly used accounting platforms, spreadsheets, cloud storage, communication
         tools, or task-management systems.
     - title: Ongoing Accounting Work
-      text: Recurring work may include bookkeeping, reconciliations, account schedules, reporting and agreed month-end activities.
+      text: >-
+        Recurring work may include bookkeeping, reconciliations, account schedules, reporting and
+        agreed month-end activities.
     - title: Review & Communication
       text: >-
         Questions, exceptions, missing documents and completed work are communicated through the
@@ -557,7 +593,9 @@ internationalAccounting:
       - Monthly reporting support
       - Defined month-end tasks
       - Busy-season overflow capacity
-    note: Your firm maintains the client relationship and professional responsibility while Maven works within the agreed back-office scope.
+    note: >-
+      Your firm maintains the client relationship and professional responsibility while Maven works
+      within the agreed back-office scope.
   tools:
     intro: >-
       Where practical, Maven works within the systems already used by the client. Our team can work
@@ -569,26 +607,28 @@ internationalAccounting:
       - Google Sheets
       - Cloud-based document systems
       - Client task-management and communication platforms
-    note: Software access and responsibilities are agreed before work begins. We do not require clients to migrate accounting systems simply to work with Maven.
+    note: >-
+      Software access and responsibilities are agreed before work begins. We do not require clients
+      to migrate accounting systems simply to work with Maven.
   securityNote: >-
     Financial information requires careful handling. Client information is handled on a confidential
-    basis, with access limited to the people involved in the engagement. Where practical, Maven works
-    within the client's existing accounting and cloud systems rather than unnecessarily exporting
-    financial information into separate platforms. Access rights should be limited to the permissions
-    required for the agreed work, and credentials should not be shared through unsecured channels. We
-    are also open to appropriate confidentiality or non-disclosure arrangements before onboarding
-    where required. For clients with specific information-security, data-location, regulatory or
-    contractual requirements, those requirements should be discussed before the engagement begins so
-    the working process can be agreed appropriately.
+    basis, with access limited to the people involved in the engagement. Where practical, Maven
+    works within the client's existing accounting and cloud systems rather than unnecessarily
+    exporting financial information into separate platforms. Access rights should be limited to the
+    permissions required for the agreed work, and credentials should not be shared through unsecured
+    channels. We are also open to appropriate confidentiality or non-disclosure arrangements before
+    onboarding where required. For clients with specific information-security, data-location,
+    regulatory or contractual requirements, those requirements should be discussed before the
+    engagement begins so the working process can be agreed appropriately.
   scopeBoundary: >-
     Maven provides outsourced accounting, bookkeeping, reconciliation, management reporting and
     finance-support services. For international engagements, Maven does not represent itself as a
     locally licensed CPA, tax agent, statutory auditor, attorney, investment adviser or regulated
     professional in the client's jurisdiction. We do not independently provide jurisdiction-specific
-    statutory tax filing, legal opinions, statutory audit opinions, certifications or other regulated
-    professional services unless the engagement is legally permitted and appropriately qualified
-    professionals are involved. Your local accountant, tax adviser, auditor, attorney or other
-    licensed professional remains responsible for services that require authorization in your
+    statutory tax filing, legal opinions, statutory audit opinions, certifications or other
+    regulated professional services unless the engagement is legally permitted and appropriately
+    qualified professionals are involved. Your local accountant, tax adviser, auditor, attorney or
+    other licensed professional remains responsible for services that require authorization in your
     jurisdiction. Maven can organize accounting information and supporting schedules to help those
     professionals perform their work efficiently.
   startSmall:
@@ -617,16 +657,22 @@ internationalAccounting:
         QuickBooks, Xero, Excel and Google Sheets, depending on the engagement. If you use another
         system, we can discuss the workflow during the discovery call.
     - q: Do we need to change our accounting software?
-      a: Normally, no. Where practical, we work within your existing system and process rather than requiring unnecessary migration.
+      a: >-
+        Normally, no. Where practical, we work within your existing system and process rather than
+        requiring unnecessary migration.
     - q: What time zone is Maven based in?
       a: >-
         Our team is based in Kathmandu, Nepal. International engagements can use a combination of
         agreed response times, asynchronous communication and scheduled meetings appropriate to the
         client relationship.
     - q: Can we start with a small project?
-      a: Yes. A defined initial engagement is often the best way for both teams to test communication, work quality and workflow before committing to a larger recurring scope.
+      a: >-
+        Yes. A defined initial engagement is often the best way for both teams to test
+        communication, work quality and workflow before committing to a larger recurring scope.
     - q: Do you work with accounting firms?
-      a: Yes. We can discuss defined back-office bookkeeping, reconciliation, reporting and overflow-support assignments for accounting and bookkeeping firms.
+      a: >-
+        Yes. We can discuss defined back-office bookkeeping, reconciliation, reporting and
+        overflow-support assignments for accounting and bookkeeping firms.
   cta: Book a Free Discovery Call
 virtualCfo:
   intro: >-
@@ -638,7 +684,7 @@ virtualCfo:
     discussions.
   supportAreas:
     - title: Monthly Management Reporting
-      intro: "Structured monthly reporting may include:"
+      intro: 'Structured monthly reporting may include:'
       items:
         - Profit and loss summary
         - Balance sheet summary
@@ -650,7 +696,9 @@ virtualCfo:
         - Selected business KPIs
         - Significant movements and exceptions
         - Management commentary
-      note: Reports are customized around the information that is useful for the business rather than creating unnecessary dashboards.
+      note: >-
+        Reports are customized around the information that is useful for the business rather than
+        creating unnecessary dashboards.
     - title: Cash-Flow Forecasting
       intro: >-
         Understanding future cash requirements is often more important to a growing business than
@@ -695,7 +743,9 @@ virtualCfo:
         - Budget variance
         - Other management-selected indicators
     - title: Receivable, Payable & Working-Capital Visibility
-      intro: "Businesses can appear profitable while still experiencing significant cash pressure. We can help management monitor:"
+      intro: >-
+        Businesses can appear profitable while still experiencing significant cash pressure. We can
+        help management monitor:
       items:
         - Outstanding customer balances
         - Aging receivables
@@ -705,7 +755,9 @@ virtualCfo:
         - Working-capital movements
         - Cash conversion issues
     - title: Scenario & Decision Support
-      intro: "Where appropriate, financial models can be used to understand the possible impact of management decisions. Examples may include:"
+      intro: >-
+        Where appropriate, financial models can be used to understand the possible impact of
+        management decisions. Examples may include:
       items:
         - Hiring plans
         - Revenue growth assumptions
@@ -719,20 +771,24 @@ virtualCfo:
         Scenario modeling is intended to support management's own decision-making and is not
         investment, lending or regulated financial advice.
   levels:
-    - title: "Level 1 — Bookkeeping Support"
+    - title: Level 1 — Bookkeeping Support
       text: Transactions, reconciliations and accounting records.
-    - title: "Level 2 — Monthly Accounting"
+    - title: Level 2 — Monthly Accounting
       text: Month-end accounting, supporting schedules and monthly financial reports.
-    - title: "Level 3 — Management Reporting"
+    - title: Level 3 — Management Reporting
       text: Management pack, KPIs, receivables, payables and cash-flow visibility.
-    - title: "Level 4 — Virtual CFO Support"
-      text: Budgets, forecasts, scenario modeling, management discussions and ongoing financial planning support.
-  levelsNote: You can begin at the level your business currently needs and expand only when additional support creates value.
+    - title: Level 4 — Virtual CFO Support
+      text: >-
+        Budgets, forecasts, scenario modeling, management discussions and ongoing financial planning
+        support.
+  levelsNote: >-
+    You can begin at the level your business currently needs and expand only when additional support
+    creates value.
   faqs:
     - q: Is Virtual CFO support the same as bookkeeping?
       a: >-
-        No. Bookkeeping focuses primarily on maintaining accurate accounting records. Virtual CFO and
-        management reporting support uses those records to help management understand cash flow,
+        No. Bookkeeping focuses primarily on maintaining accurate accounting records. Virtual CFO
+        and management reporting support uses those records to help management understand cash flow,
         budgets, forecasts, business performance and financial trends. Reliable bookkeeping is
         therefore an important foundation for higher-level financial reporting.
     - q: Does Maven make business or investment decisions for us?
@@ -747,17 +803,23 @@ resourcesHub:
     — in one place.
   tiles:
     - title: Documents Checklist
-      text: General document checklists for company registration, PAN/VAT registration, monthly accounting, and tax clearance.
+      text: >-
+        General document checklists for company registration, PAN/VAT registration, monthly
+        accounting, and tax clearance.
       cta: View Documents Checklist
       href: documents-needed.html
       icon: upload
     - title: Financial Calculators
-      text: Free calculators for salary income tax, VAT, TDS, and loan EMI, with a full slab-by-slab breakdown.
+      text: >-
+        Free calculators for salary income tax, VAT, TDS, and loan EMI, with a full slab-by-slab
+        breakdown.
       cta: Use Financial Calculators
       href: calculators.html
       icon: percent
     - title: Useful Links
-      text: Official Nepal government portals for tax, company registration, social security, and banking.
+      text: >-
+        Official Nepal government portals for tax, company registration, social security, and
+        banking.
       cta: View Useful Links
       href: useful-links.html
       icon: globe
@@ -771,8 +833,8 @@ packages:
     tagline: Getting legally set up and compliant from day one.
     audience: For new entrepreneurs and newly registered businesses.
     situation: >-
-      You're registering a new business, or recently registered, and need the first-month
-      groundwork — registration, tax setup, and initial compliance — done correctly from the start.
+      You're registering a new business, or recently registered, and need the first-month groundwork
+      — registration, tax setup, and initial compliance — done correctly from the start.
     items:
       - Registration guidance
       - PAN/VAT guidance
@@ -808,10 +870,10 @@ packages:
       - Advisory discussion
       - Compliance tracking
 packagesFeeNote: >-
-  Fees depend on factors such as transaction volume, employee count, number of accounts or
-  entities, record quality, reporting complexity, urgency, and overall scope of work — only the
-  factors relevant to your situation apply. Government fees, penalties, official charges, and
-  third-party professional charges are billed separately.
+  Fees depend on factors such as transaction volume, employee count, number of accounts or entities,
+  record quality, reporting complexity, urgency, and overall scope of work — only the factors
+  relevant to your situation apply. Government fees, penalties, official charges, and third-party
+  professional charges are billed separately.
 documentsTopNote: >-
   Document requirements may vary depending on business type, ownership structure, location,
   government office requirements, and service scope. Please contact Maven before submitting
@@ -995,8 +1057,7 @@ industries:
       - Bank and loan document preparation support
   - name: Schools and training institutes
     icon: graduationCap
-    description: >-
-      Managing recurring fees, admissions, payroll, and scholarships across programs or branches.
+    description: Managing recurring fees, admissions, payroll, and scholarships across programs or branches.
     needs:
       - Student fee billing and collection summaries
       - Outstanding and advance-fee tracking
@@ -1010,8 +1071,8 @@ industries:
   - name: NGOs and social organizations
     icon: heart
     description: >-
-      Transparent, project-wise fund accounting with clear separation of restricted and
-      unrestricted spending.
+      Transparent, project-wise fund accounting with clear separation of restricted and unrestricted
+      spending.
     needs:
       - Project or donor-wise income and expenditure records
       - Budget-versus-actual reporting
@@ -1319,7 +1380,9 @@ pageHeaders:
   resources:
     eyebrow: Resources
     title: Guides, Calculators & Reference Links
-    subtitle: Practical tools and reference material to help you prepare, plan, and stay on top of compliance.
+    subtitle: >-
+      Practical tools and reference material to help you prepare, plan, and stay on top of
+      compliance.
   useful-links:
     eyebrow: Resources
     title: Useful Links
@@ -1366,22 +1429,21 @@ teamMembers:
     bio: >-
       CA Midash Adhikari is a qualified Chartered Accountant from the Institute of Chartered
       Accountants of India (ICAI), with extensive experience in banking, auditing, and financial
-      management. He brings over three years of post-qualification experience in the banking
-      sector, along with more than five years of pre-qualification experience in audit assignments
-      across banking, medical, and trading sectors. He is currently involved in internal audit
-      assignments for a development bank, providing practical insights into risk management,
-      internal controls, compliance, and financial processes. With strong problem-solving,
-      communication, and leadership skills, Midash focuses on delivering practical and effective
-      solutions while supporting organizations in strengthening their financial and operational
-      systems.
+      management. He brings over three years of post-qualification experience in the banking sector,
+      along with more than five years of pre-qualification experience in audit assignments across
+      banking, medical, and trading sectors. He is currently involved in internal audit assignments
+      for a development bank, providing practical insights into risk management, internal controls,
+      compliance, and financial processes. With strong problem-solving, communication, and
+      leadership skills, Midash focuses on delivering practical and effective solutions while
+      supporting organizations in strengthening their financial and operational systems.
     hidden: false
   - name: Sures Guragai
     role: Founder & Lead Consultant
     location: Kathmandu, Nepal
     photo: /images/sures-guragai.jpg
     bio: >-
-      Sures Guragai leads Maven's day-to-day client work, with hands-on experience in bookkeeping, tax
-      return preparation, financial reporting, and compliance support across engineering,
+      Sures Guragai leads Maven's day-to-day client work, with hands-on experience in bookkeeping,
+      tax return preparation, financial reporting, and compliance support across engineering,
       hospitality, nonprofit, and service-sector clients. He has also spent almost two years
       providing remote financial reporting support to US-based clients — experience Maven is now
       building on as it expands into outsourced accounting support for international clients.
@@ -1395,11 +1457,11 @@ teamMembers:
       professional experience in banking, audit, manufacturing, and trading sectors. He has
       completed his bachelor's degree and is currently pursuing both a Master of Business Studies
       (MBS) and a Bachelor of Laws (LL.B.). Throughout his career, Nirmal has gained practical
-      experience working with banks and audit firms, with particular exposure to banking
-      operations, manufacturing businesses, and financial processes. His diverse academic and
-      professional background enables him to understand both financial and operational aspects of
-      organizations. He is highly operations-focused and is known for his commitment to timely
-      completion of assignments, effective task management, and delivering reliable results.
+      experience working with banks and audit firms, with particular exposure to banking operations,
+      manufacturing businesses, and financial processes. His diverse academic and professional
+      background enables him to understand both financial and operational aspects of organizations.
+      He is highly operations-focused and is known for his commitment to timely completion of
+      assignments, effective task management, and delivering reliable results.
     hidden: false
   - name: Sushil Guragain
     role: Accountant
@@ -1421,34 +1483,60 @@ teamMembers:
     location: Kathmandu, Nepal
     photo: ''
     bio: >-
-      Purnima Budhathoki is a qualified member of the Association of Chartered Certified
-      Accountants (ACCA), with experience in accounting, finance, internal audit, and risk
-      management. She has worked across banking, audit, and healthcare sectors,
-      with expertise in financial reporting, regulatory compliance, internal controls, and
-      business analysis. She brings strong analytical, problem-solving, and communication skills
-      to support clients and organizations in making sound business and financial decisions.
+      Purnima Budhathoki is a qualified member of the Association of Chartered Certified Accountants
+      (ACCA), with experience in accounting, finance, internal audit, and risk management. She has
+      worked across banking, audit, and healthcare sectors, with expertise in financial reporting,
+      regulatory compliance, internal controls, and business analysis. She brings strong analytical,
+      problem-solving, and communication skills to support clients and organizations in making sound
+      business and financial decisions.
+    hidden: false
+  - name: Pratik Upreti
+    role: Business & Strategic Advisor
+    location: United Kingdom
+    photo: ''
+    bio: >-
+      Pratik Upreti is a business consultant and strategic advisor with over a decade of experience
+      in business, having been actively involved in commercial and professional activities since
+      2012. His experience spans Nepal, India, Dubai and the United Kingdom, giving him broad
+      exposure to different business environments, markets and working cultures.
+       
+      His professional background includes business development, accounting and financial
+      administration, operations, technology, recruitment, healthcare services and consultancy. He
+      has practical experience in commercial planning and operational management handling complex
+      operations.
+       
+      Earlier in his career, Pratik also well known business lecturer in Nepal, where he developed
+      experience in education, mentoring, communication and professional development.
+       
+      Over the years, he has been involved in developing, managing and advising businesses across
+      multiple sectors. His work focuses on business strategy, operational improvement, financial
+      planning, organisational development, commercial growth and building sustainable business
+      models.
+       
+      At Maven, Pratik contributes strategic, commercial and financial insight, supporting business
+      consultancy, business development, partnerships, operational planning and international growth
+      opportunities.
     hidden: false
 testimonials:
   - quote: >-
-      Maven Consultancy has been a reliable partner in supporting our accounting, tax, and
-      financial management requirements. As an online gifting business, we deal with regular sales
-      transactions, product deliveries, and day-to-day financial activities, so accurate and
-      timely financial management is very important to us. The Maven team has been professional,
-      responsive, and practical in their approach. Their support has helped us manage our
-      financial and compliance responsibilities more efficiently, allowing us to stay focused on
-      growing our gifting business and serving our customers better.
+      Maven Consultancy has been a reliable partner in supporting our accounting, tax, and financial
+      management requirements. As an online gifting business, we deal with regular sales
+      transactions, product deliveries, and day-to-day financial activities, so accurate and timely
+      financial management is very important to us. The Maven team has been professional,
+      responsive, and practical in their approach. Their support has helped us manage our financial
+      and compliance responsibilities more efficiently, allowing us to stay focused on growing our
+      gifting business and serving our customers better.
     name: Anil Nepal
     role: Director
     business: Uphaar Nepal Pvt. Ltd.
     hidden: false
   - quote: >-
       Maven Consultancy has provided us with reliable support in accounting, tax compliance, and
-      financial management. As an environmental engineering consultancy involved in EIA and
-      related technical projects, maintaining proper financial records and meeting compliance
-      requirements is essential to our operations. The Maven team has been professional,
-      responsive, and timely in handling our financial and compliance matters. Their practical
-      guidance allows us to focus more on delivering quality environmental consulting and
-      engineering services to our clients.
+      financial management. As an environmental engineering consultancy involved in EIA and related
+      technical projects, maintaining proper financial records and meeting compliance requirements
+      is essential to our operations. The Maven team has been professional, responsive, and timely
+      in handling our financial and compliance matters. Their practical guidance allows us to focus
+      more on delivering quality environmental consulting and engineering services to our clients.
     name: Laxman Khadka
     role: Director
     business: Adhika Consultancy Pvt. Ltd.
@@ -1530,8 +1618,8 @@ termsSections:
     text: >-
       Our services are provided based on our professional judgment and the information available to
       us at the time. Nepal's tax and regulatory requirements can change, and where a matter falls
-      outside our scope — such as statutory audit, legal proceedings, or licensed investment advice —
-      we will tell you and help you coordinate with an appropriately licensed professional rather
+      outside our scope — such as statutory audit, legal proceedings, or licensed investment advice
+      — we will tell you and help you coordinate with an appropriately licensed professional rather
       than advise on it ourselves.
   - title: Website use
     text: >-
@@ -1548,8 +1636,7 @@ termsSections:
       These terms are governed by the laws of Nepal. If a disagreement arises, we will first try to
       resolve it directly with you before any other course of action.
   - title: Contact about these terms
-    text: >-
-      For any questions about these terms, contact us using the details on our Contact page.
+    text: For any questions about these terms, contact us using the details on our Contact page.
 calculators:
   vatRate: 13
   vatNote: >-
@@ -1561,7 +1648,9 @@ calculators:
       note: Rent — land/building paid to a company/entity
     - label: Rent — paid to individual landlord (0%)
       rate: 0
-      note: Not subject to income-tax TDS — rent to an individual landlord is generally exempt (local rent tax may still apply separately)
+      note: >-
+        Not subject to income-tax TDS — rent to an individual landlord is generally exempt (local
+        rent tax may still apply separately)
     - label: Service/contract — VAT-registered (1.5%)
       rate: 1.5
       note: Service/contract — VAT-registered supplier
