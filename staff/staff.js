@@ -218,6 +218,11 @@
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
     menu: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
     close: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+    // Shell audit issue 6: "Website Content Admin" used the same gear as
+    // the "Admin" row directly above it. A globe is the right shorthand
+    // for *public site* content and is unmistakable next to a gear.
+    globe: '<circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"/>',
+    externalLink: '<path d="M14 4h6v6"/><line x1="20" y1="4" x2="11" y2="13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   };
   function icon(name, cls) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -686,7 +691,7 @@
     + '<button class="btn btn-block" id="otpVerifyBtn" type="button">Verify &amp; Set Password</button>'
     + '<button class="btn btn-outline btn-block" id="otpResendBtn" type="button" style="margin-top:10px">Resend code</button>'
     + '</div>'
-    + '<p class="f-hint" style="margin-top:14px;text-align:center"><a href="#" id="otpBackLink">Back to sign in</a></p>'
+    + '<div class="login-foot"><p class="f-hint"><a href="#" id="otpBackLink">Back to sign in</a></p></div>'
     + '</div></div>';
 
   function ensureOtpScreen() {
@@ -1446,10 +1451,14 @@
       var g = el('div', 'sidebar-group'); g.textContent = label; nav.appendChild(g);
     }
     function navButton(label, iconName, isActive, onClick) {
-      var b = el('button');
+      // Shell audit issue 1: .nav-item is a class base an <a> can share --
+      // see externalItem() below, which no longer needs its own !important
+      // ridden rule to look like the rest of the column.
+      var b = el('button', 'nav-item');
       b.type = 'button';
       b.appendChild(icon(iconName));
-      b.appendChild(document.createTextNode(label));
+      var bLabel = el('span', 'nav-item-label'); bLabel.textContent = label;
+      b.appendChild(bLabel);
       b.classList.toggle('is-active', isActive);
       if (isActive) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
       b.addEventListener('click', function () { closeNavDrawer(); onClick(); });
@@ -1467,8 +1476,18 @@
       navButton(g.label, g.icon, groupIsActive(groupKey), function () { goto(tabs[0].view); });
     }
     function externalItem(label, href, iconName) {
-      var a = el('a', 'admin-link-btn'); a.href = href; a.target = '_blank'; a.rel = 'noopener';
-      a.appendChild(icon(iconName)); a.appendChild(document.createTextNode(label)); nav.appendChild(a);
+      var a = el('a', 'nav-item'); a.href = href; a.target = '_blank'; a.rel = 'noopener';
+      a.appendChild(icon(iconName));
+      var aLabel = el('span', 'nav-item-label'); aLabel.textContent = label;
+      a.appendChild(aLabel);
+      // This is the only nav row that leaves the app, and it said so to
+      // nobody -- sighted or otherwise.
+      var ext = icon('externalLink', 'nav-item-external');
+      ext.setAttribute('aria-hidden', 'true');
+      a.appendChild(ext);
+      var sr = el('span', 'sr-only'); sr.textContent = ' (opens in a new tab)';
+      a.appendChild(sr);
+      nav.appendChild(a);
     }
 
     // Roughly the "Today, My Work, Client Work, Firm Work, Team, Reports,
@@ -1491,7 +1510,11 @@
     if (isAdmin()) {
       group('Administration');
       groupNavItem('admin');
-      externalItem('Website Content Admin', '/admin/', 'settings');
+      // Shell audit issue 7: at 220px wide the sidebar leaves ~148px of
+      // text room and "Website Content Admin" measured ~150px -- it wrapped
+      // by about two pixels, breaking the column's row height and leaving
+      // its icon centred across two lines.
+      externalItem('Content Admin', '/admin/', 'globe');
     }
   }
 
@@ -1647,17 +1670,37 @@
     var waiting = open.filter(function (w) { return w.status === 'waiting_for_client'; });
 
     var strip = el('div', 'today-strip');
-    function stat(n, label, colorCls) {
-      var s = el('div', 'today-stat');
+    // Shell audit issue 3: these were plain <div>s wearing .card chrome --
+    // the same treatment as .task-row, which is clickable. Every stat
+    // already has a destination (the two sections rendered directly below,
+    // and the real 'review' view), so no new filter state is invented here.
+    // `target` is a view name (string) or { anchor } for a same-page jump.
+    function stat(n, label, colorCls, target) {
+      var interactive = n > 0 && target;
+      var s = el(interactive ? 'button' : 'div', 'today-stat');
+      if (interactive) {
+        s.type = 'button';
+        s.classList.add('is-drilldown');
+        s.setAttribute('aria-label', n + ' ' + label + ' — view');
+        s.addEventListener('click', function () {
+          if (typeof target === 'string') { goto(target); return; }
+          var dest = qs('#' + target.anchor);
+          if (!dest) return;
+          var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          dest.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          dest.focus({ preventScroll: true });
+        });
+      }
       var num = el('div', 'n' + (colorCls ? ' ' + colorCls : '')); num.textContent = String(n);
       var l = el('div', 'l'); l.textContent = label;
       s.appendChild(num); s.appendChild(l);
+      if (interactive) s.appendChild(icon('chevronRight', 'today-stat-go'));
       strip.appendChild(s);
     }
-    stat(overdue.length, 'Overdue', 'n-red');
-    stat(dueToday.length, 'Due Today');
-    stat(waiting.length, 'Waiting', 'n-amber');
-    if (isReviewerOrAdmin()) stat(reviewCount, 'Review', 'n-purple');
+    stat(overdue.length, 'Overdue', 'n-red', { anchor: 'today-attention' });
+    stat(dueToday.length, 'Due Today', null, { anchor: 'today-upcoming' });
+    stat(waiting.length, 'Waiting', 'n-amber', { anchor: 'today-attention' });
+    if (isReviewerOrAdmin()) stat(reviewCount, 'Review', 'n-purple', 'review');
     main.appendChild(strip);
 
     // Needs Your Attention — overdue first, then anything I'm waiting on a
@@ -1671,7 +1714,7 @@
 
     if (attention.length) {
       var waitingSummaries = await loadWaitingSummaries(waiting.map(function (w) { return w.id; }));
-      var h2a = el('div', 'section-h'); h2a.textContent = 'Needs Your Attention';
+      var h2a = el('div', 'section-h'); h2a.id = 'today-attention'; h2a.tabIndex = -1; h2a.textContent = 'Needs Your Attention';
       main.appendChild(h2a);
       attention.forEach(function (a) { main.appendChild(attentionRow(a.w, a.reason, waitingSummaries[a.w.id])); });
     }
@@ -1687,7 +1730,7 @@
     }).sort(compareByDue);
 
     if (upcoming.length) {
-      var h2b = el('div', 'section-h'); h2b.style.marginTop = '22px'; h2b.textContent = 'Upcoming (Next 7 Days)';
+      var h2b = el('div', 'section-h'); h2b.id = 'today-upcoming'; h2b.tabIndex = -1; h2b.style.marginTop = '22px'; h2b.textContent = 'Upcoming (Next 7 Days)';
       main.appendChild(h2b);
       var wrap = el('div', 'task-group');
       upcoming.forEach(function (w) { wrap.appendChild(workRow(w)); });
