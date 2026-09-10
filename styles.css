@@ -1236,3 +1236,146 @@ strong { color: var(--navy-900); }
   .industry-detail-placeholder, .industry-detail-panel { padding: 24px 18px; }
   .cta-band-inner { padding: 50px 18px; }
 }
+
+/* ==========================================================================\n   September 2026 — Maven premium motion + typography refinement\n   Keeps the existing brand/font pairing and strengthens hierarchy through\n   proportion, measure, weight and restrained interaction rather than scale.\n   ========================================================================== */
+:root {
+  --motion-fast: 180ms;
+  --motion-ui: 220ms;
+  --motion-reveal: 600ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fs-xl: 1.25rem;
+  --fs-2xl: clamp(1.55rem, 2.25vw, 2.1rem);
+  --fs-3xl: clamp(2rem, 3.65vw, 3.05rem);
+}
+
+body { line-height: 1.66; }
+h1, h2, h3, h4 { letter-spacing: -0.012em; }
+h1 { font-weight: 600; line-height: 1.08; }
+h2 { font-weight: 600; line-height: 1.16; }
+h3, h4 { font-weight: 600; }
+p { text-wrap: pretty; }
+.section-head { max-width: 670px; margin-bottom: 40px; }
+.section-head h2 { max-width: 19ch; }
+.section-head--center h2 { margin-left: auto; margin-right: auto; }
+.section-sub { max-width: 62ch; line-height: 1.65; }
+.section-head--center .section-sub { margin-left: auto; margin-right: auto; }
+.eyebrow { font-weight: 600; }
+.brand-name { font-weight: 600; letter-spacing: -0.015em; }
+.nav-link { font-weight: 600; letter-spacing: -0.005em; }
+.stat-value { font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums lining-nums; }
+.stat-label { letter-spacing: 0.015em; }
+
+/* Squarer, quieter controls feel more established than universal pill UI. */
+.btn { border-radius: var(--radius-sm); transition-duration: var(--motion-fast); }
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+/* Sticky header: visual compression without changing the header's layout box. */
+.site-header { transition: background-color var(--motion-ui) ease, box-shadow var(--motion-ui) ease, border-color var(--motion-ui) ease; }
+.header-inner { min-height: 68px; transition: padding var(--motion-ui) var(--motion-ease); }
+.brand-mark { transition: transform var(--motion-ui) var(--motion-ease), box-shadow var(--motion-ui) ease; transform-origin: left center; }
+.site-header.is-scrolled .brand-mark { transform: scale(0.91); box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+.site-header.is-scrolled .header-inner { padding-top: 10px; padding-bottom: 10px; }
+.nav-link, .nav-dropdown-toggle, .dropdown a { transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease; }
+
+/* Hero: calm editorial hierarchy and slightly longer, controlled entrance. */
+.hero-inner { padding-top: 82px; padding-bottom: 68px; }
+.hero h1 { max-width: 13ch; text-wrap: balance; }
+.hero-sub { max-width: 58ch; line-height: 1.62; }
+.reveal-enabled .hero .reveal-stagger > * { transform: translateY(18px); }
+.reveal-enabled .hero .reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 85ms; }
+.reveal-enabled .hero .reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 170ms; }
+.reveal-enabled .hero .reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 255ms; }
+
+/* One motion language: small distance, 600ms reveal, consistent easing. */
+.reveal-enabled .reveal {
+  transform: translateY(18px);
+  transition: opacity var(--motion-reveal) var(--motion-ease), transform var(--motion-reveal) var(--motion-ease);
+}
+.reveal-enabled .reveal-stagger > * {
+  transform: translateY(16px);
+  transition: opacity var(--motion-reveal) var(--motion-ease), transform var(--motion-reveal) var(--motion-ease);
+}
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 85ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 170ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 255ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 340ms; }
+.reveal-enabled .reveal-stagger.is-visible > *:nth-child(n+6) { transition-delay: 425ms; }
+
+/* Services/capabilities: restrained image and link feedback, not card theatrics. */
+.service-card { transition: border-color var(--motion-ui) ease, background-color var(--motion-ui) ease, box-shadow var(--motion-ui) ease; }
+.service-card:hover { transform: none; border-color: rgba(199,154,62,0.48); background: #fffdf9; box-shadow: var(--shadow-sm); }
+.capability-chapter { transition: border-color var(--motion-ui) ease, box-shadow var(--motion-ui) ease; }
+.capability-chapter:hover { border-color: rgba(199,154,62,0.44); box-shadow: 0 12px 30px -20px rgba(16,42,76,0.32); }
+.capability-chapter-photo img { transition: transform 700ms var(--motion-ease); }
+@media (hover: hover) and (pointer: fine) {
+  .capability-chapter:hover .capability-chapter-photo img { transform: scale(1.025); }
+  .capability-chapter-links a .ic { transition: transform var(--motion-fast) var(--motion-ease); }
+  .capability-chapter-links a:hover .ic { transform: translateX(3px); }
+}
+
+/* Financial deliverables: a report-like rule draws in with the parent stagger. */
+.deliverable-card { position: relative; overflow: hidden; border-top-width: 1px; }
+.deliverable-card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--gold-500); transform-origin: left center; transform: scaleX(1);
+}
+.reveal-enabled .reveal-stagger:not(.is-visible) > .deliverable-card::before { transform: scaleX(0); }
+.reveal-enabled .reveal-stagger.is-visible > .deliverable-card::before { transition: transform 700ms var(--motion-ease) 180ms; transform: scaleX(1); }
+
+/* Homepage process: static line remains the no-JS fallback; JS adds a gold\n   progress rule and progressively emphasizes the four numbered stages. */
+@media (min-width: 860px) {
+  .process-list--connected.process-progress-enhanced::after {
+    content: ''; position: absolute; top: 20px; left: 11.5%; height: 2px;
+    width: calc(77% * var(--process-progress, 0));
+    background: var(--gold-500); z-index: 0; transform-origin: left center;
+  }
+  .process-list--connected.process-progress-enhanced .process-step-marker {
+    background: #fff; border: 1px solid var(--border); color: var(--navy-800);
+    transition: background-color var(--motion-ui) ease, color var(--motion-ui) ease, border-color var(--motion-ui) ease, box-shadow var(--motion-ui) ease;
+  }
+  .process-list--connected.process-progress-enhanced .process-step.is-process-reached .process-step-marker {
+    background: var(--navy-950); color: var(--gold-500); border-color: var(--navy-950); box-shadow: 0 0 0 5px #fff;
+  }
+}
+.process-step-body h3 { font-size: var(--fs-lg); margin-bottom: 7px; }
+.process-step-body p { line-height: 1.58; max-width: 30ch; }
+
+/* Forms: clear, calm focus/validation states with no layout jump. */
+.form-field input, .form-field select, .form-field textarea {
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background-color var(--motion-fast) ease;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+  outline: none; border-color: var(--gold-600); box-shadow: 0 0 0 3px rgba(199,154,62,0.14);
+}
+.form-field [aria-invalid="true"] { border-color: #B94A3D; background: #fffafa; box-shadow: 0 0 0 3px rgba(185,74,61,0.09); }
+.form-result { transition: border-color var(--motion-ui) ease, background-color var(--motion-ui) ease, box-shadow var(--motion-ui) ease; }
+.form-result.is-success { border-color: rgba(38,80,126,0.28); background: #f7fafc; box-shadow: var(--shadow-sm); }
+
+/* Accordion timing aligns with the rest of the interface. */
+.accordion-item { transition-duration: var(--motion-fast); }
+.accordion-trigger { transition-duration: var(--motion-fast); }
+.accordion-trigger .ic-chevron { transition-duration: var(--motion-ui); }
+.accordion-panel { transition: max-height 260ms var(--motion-ease), opacity var(--motion-fast) ease; }
+
+@media (max-width: 768px) {
+  :root { --fs-3xl: clamp(1.9rem, 9vw, 2.55rem); --fs-2xl: clamp(1.45rem, 6.7vw, 1.85rem); }
+  .container, .container-wide { padding-left: 20px; padding-right: 20px; }
+  .hero-inner { padding-top: 54px; padding-bottom: 46px; gap: 34px; }
+  .hero h1 { max-width: 15ch; }
+  .hero-sub { font-size: var(--fs-md); line-height: 1.62; }
+  .section-head { margin-bottom: 32px; }
+  .section-head h2 { max-width: 22ch; }
+  .process-step-body p { max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header, .header-inner, .brand-mark, .service-card, .capability-chapter,
+  .capability-chapter-photo img, .capability-chapter-links a .ic,
+  .form-field input, .form-field select, .form-field textarea, .form-result,
+  .accordion-item, .accordion-trigger, .accordion-trigger .ic-chevron, .accordion-panel {
+    transition: none !important;
+  }
+  .site-header.is-scrolled .brand-mark { transform: none; }
+  .process-list--connected.process-progress-enhanced::after { display: none; }
+}

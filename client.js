@@ -475,6 +475,38 @@
     }
   }
 
+  // ---- Homepage process progress ----
+  // The four-step "How Maven Works" sequence gets one restrained scroll-linked
+  // progress cue. It is deliberately disabled for reduced-motion users and
+  // uses requestAnimationFrame so scroll handlers never do repeated layout work.
+  var processProgress = document.querySelector('[data-process-progress]');
+  if (processProgress && !motionReduced()) {
+    var processSteps = Array.prototype.slice.call(processProgress.querySelectorAll('.process-step'));
+    var processFrame = null;
+    var updateProcessProgress = function () {
+      processFrame = null;
+      var rect = processProgress.getBoundingClientRect();
+      var viewportH = window.innerHeight || document.documentElement.clientHeight;
+      var start = viewportH * 0.72;
+      var end = viewportH * 0.28;
+      var travel = Math.max(1, rect.height + start - end);
+      var progress = Math.max(0, Math.min(1, (start - rect.top) / travel));
+      processProgress.style.setProperty('--process-progress', (progress * 100).toFixed(2) + '%');
+      processProgress.classList.add('process-progress-enhanced');
+      processSteps.forEach(function (step, index) {
+        var threshold = processSteps.length > 1 ? index / (processSteps.length - 1) : 0;
+        step.classList.toggle('is-process-reached', progress + 0.035 >= threshold);
+      });
+    };
+    var queueProcessProgress = function () {
+      if (processFrame != null) return;
+      processFrame = window.requestAnimationFrame(updateProcessProgress);
+    };
+    window.addEventListener('scroll', queueProcessProgress, { passive: true });
+    window.addEventListener('resize', queueProcessProgress);
+    updateProcessProgress();
+  }
+
   // ---- Contact / inquiry form ----
   var form = document.getElementById('inquiryForm');
   if (form) {
@@ -503,6 +535,7 @@
       if (summaryBox) summaryBox.textContent = summary;
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
+        resultBox.classList.remove('is-success');
         resultBox.hidden = false;
         scrollElementIntoView(resultBox, 'center');
       }
@@ -511,6 +544,7 @@
     var showSuccess = function () {
       var resultBox = document.getElementById('formResult');
       if (resultBox) {
+        resultBox.classList.add('is-success');
         resultBox.innerHTML = '<h3>✓ Inquiry sent — thank you!</h3><p class="tag-note">We\'ve received your message and will get back to you within one business day. If it\'s urgent, feel free to call or WhatsApp us directly.</p>';
         resultBox.hidden = false;
         scrollElementIntoView(resultBox, 'center');
