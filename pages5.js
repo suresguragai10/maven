@@ -1,6 +1,6 @@
 const data = require('./data');
 const { icon } = require('./icons');
-const { button, pageHero, ctaBand } = require('./ui');
+const { button, ctaBand } = require('./ui');
 const { esc, internalHref } = require('./escape');
 
 // Calculator-specific styles kept here so only this page carries them.
@@ -72,6 +72,124 @@ const calcStyles = `<style>
 @keyframes calc-pulse{0%{opacity:.5;transform:translateY(-2px);}100%{opacity:1;transform:translateY(0);}}
 .calc-pulse{animation:calc-pulse 300ms ease-out;}
 @media(prefers-reduced-motion:reduce){.calc-pulse{animation:none;}}
+
+/* Premium calculator hub */
+.calculators-premium-hero{position:relative;isolation:isolate;overflow:hidden;background:var(--navy-950);color:#fff;}
+.calculators-premium-hero-photo,.calculators-premium-hero-photo img,.calculators-premium-hero-shade{position:absolute;inset:0;width:100%;height:100%;}
+.calculators-premium-hero-photo img{object-fit:cover;object-position:62% center;}
+.calculators-premium-hero-shade{z-index:0;background:linear-gradient(90deg,rgba(5,19,36,.96) 0%,rgba(7,25,47,.92) 48%,rgba(7,25,47,.72) 100%);}
+.calculators-premium-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(360px,.82fr);gap:64px;align-items:center;min-height:650px;padding-top:82px;padding-bottom:82px;}
+.calculators-premium-hero-copy{max-width:790px;}
+.calculators-premium-hero-copy .eyebrow{margin-bottom:20px;}
+.calculators-premium-hero h1{max-width:12ch;color:#fff;font-size:clamp(3.2rem,5.4vw,5.45rem);line-height:.96;letter-spacing:-.045em;}
+.calculators-premium-hero-sub{max-width:720px;margin:24px 0 0;color:rgba(255,255,255,.76);font-size:clamp(1.05rem,1.5vw,1.22rem);line-height:1.72;}
+.calculators-premium-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px;}
+.calculators-premium-hero .btn-outline{border-color:rgba(255,255,255,.42);color:#fff;background:rgba(255,255,255,.04);}
+.calculators-premium-hero .btn-outline:hover{border-color:#fff;background:rgba(255,255,255,.1);}
+.calculators-premium-hero-assurances{display:flex;flex-wrap:wrap;gap:11px 22px;margin-top:32px;}
+.calculators-premium-hero-assurances span{display:inline-flex;align-items:center;gap:8px;color:rgba(255,255,255,.65);font-size:var(--fs-xs);}
+.calculators-premium-hero-assurances .stamp{width:18px;height:18px;color:var(--gold-500);flex:0 0 auto;}
+.calculators-hero-desk{border:1px solid rgba(255,255,255,.18);border-radius:22px;background:rgba(7,25,47,.78);box-shadow:0 28px 70px rgba(0,0,0,.24);backdrop-filter:blur(10px);overflow:hidden;}
+.calculators-hero-desk-head{padding:28px 28px 22px;border-bottom:1px solid rgba(255,255,255,.12);}
+.calculators-hero-desk-head .eyebrow{margin-bottom:12px;}
+.calculators-hero-desk-head h2{margin:0;color:#fff;font-size:1.45rem;line-height:1.25;}
+.calculators-hero-desk-head p:last-child{margin:12px 0 0;color:rgba(255,255,255,.64);font-size:.91rem;line-height:1.65;}
+.calculators-hero-tool-list{display:grid;}
+.calculators-hero-tool{display:grid;grid-template-columns:34px 34px minmax(0,1fr);gap:12px;align-items:start;padding:17px 28px;border-bottom:1px solid rgba(255,255,255,.09);}
+.calculators-hero-tool:last-child{border-bottom:0;}
+.calculators-hero-tool-no{padding-top:2px;color:rgba(255,255,255,.38);font-size:.7rem;font-weight:800;letter-spacing:.1em;}
+.calculators-hero-tool-icon{display:grid;place-items:center;width:30px;height:30px;border:1px solid rgba(199,154,62,.38);border-radius:8px;color:var(--gold-500);}
+.calculators-hero-tool-icon .ic{width:16px;height:16px;}
+.calculators-hero-tool strong{display:block;color:#fff;font-size:.9rem;}
+.calculators-hero-tool small{display:block;margin-top:3px;color:rgba(255,255,255,.57);font-size:.77rem;line-height:1.45;}
+
+.calculators-workbench-section{background:linear-gradient(180deg,#fff 0%,#f7f9fb 100%);scroll-margin-top:110px;}
+.calculators-workbench-container{max-width:1120px;}
+.calculators-workbench-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.72fr);gap:52px;align-items:end;margin-bottom:34px;}
+.calculators-workbench-head h2{max-width:720px;margin:0;font-size:clamp(2rem,3.3vw,3rem);}
+.calculators-workbench-note{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow-sm);}
+.calculators-workbench-note .ic{width:24px;height:24px;flex:0 0 auto;color:var(--gold-700);}
+.calculators-workbench-note p{margin:0;color:var(--ink-soft);font-size:.86rem;line-height:1.55;}
+.calculators-workbench-note strong{display:block;margin-bottom:3px;color:var(--navy-950);}
+.calc-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border:0;margin:0 0 18px;overflow:visible;}
+.calc-tab{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--ink-soft);font-weight:800;font-size:.9rem;box-shadow:0 4px 14px rgba(8,31,58,.035);margin:0;transition:border-color var(--motion-ui) var(--motion-ease),background var(--motion-ui) var(--motion-ease),color var(--motion-ui) var(--motion-ease),transform var(--motion-ui) var(--motion-ease);}
+.calc-tab span{color:var(--gold-700);font-size:.67rem;letter-spacing:.08em;}
+.calc-tab:hover{transform:translateY(-1px);border-color:rgba(199,154,62,.55);color:var(--navy-950);}
+.calc-tab.active{border-color:var(--navy-950);background:var(--navy-950);color:#fff;}
+.calc-tab.active span{color:var(--gold-500);}
+.calc-tab:focus-visible{outline:3px solid rgba(199,154,62,.35);outline-offset:3px;}
+.calc-split{border-radius:18px;border-color:rgba(16,42,76,.14);box-shadow:0 18px 50px rgba(8,31,58,.08);}
+.calc-inputs{padding:34px;background:#fff;}
+.calc-output{padding:34px;background:linear-gradient(155deg,var(--navy-950),#102f56);}
+.calc-simple{border-radius:18px;padding:34px;border-color:rgba(16,42,76,.14);box-shadow:0 18px 50px rgba(8,31,58,.08);}
+.calc-simple h2{font-size:1.55rem;}
+.calc-results{border-color:rgba(16,42,76,.1);background:linear-gradient(180deg,#f5f7fa,#eef3f6);}
+.calculators-workbench-disclaimer{margin-top:22px;padding:18px 20px;border-left:3px solid var(--gold-500);background:#fff;color:var(--ink-soft);font-size:.83rem;line-height:1.6;box-shadow:var(--shadow-sm);}
+
+.calculators-scope-section{background:#fff;}
+.calculators-section-intro{max-width:820px;margin-bottom:36px;}
+.calculators-section-intro h2{max-width:760px;}
+.calculators-scope-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+.calculators-scope-card{position:relative;padding:28px;border:1px solid var(--border);border-radius:16px;background:#fff;box-shadow:var(--shadow-sm);overflow:hidden;}
+.calculators-scope-card::after{content:"";position:absolute;right:-34px;bottom:-34px;width:105px;height:105px;border:1px solid rgba(199,154,62,.15);border-radius:50%;}
+.calculators-scope-no{display:block;margin-bottom:28px;color:var(--gold-700);font-size:.7rem;font-weight:800;letter-spacing:.1em;}
+.calculators-scope-card h3{margin:0 0 18px;font-size:1.28rem;}
+.calculators-scope-card p{margin:0;padding:12px 0;border-top:1px solid var(--border);color:var(--ink-soft);font-size:.88rem;line-height:1.6;}
+.calculators-scope-card p strong{display:block;margin-bottom:4px;color:var(--navy-950);font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;}
+
+.calculators-use-section{padding:88px 0;background:var(--navy-950);color:#fff;}
+.calculators-use-grid{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:74px;align-items:start;}
+.calculators-use-copy h2{max-width:570px;color:#fff;font-size:clamp(2.1rem,3.5vw,3.35rem);}
+.calculators-use-copy>p:last-of-type{max-width:590px;color:rgba(255,255,255,.66);line-height:1.7;}
+.calculators-use-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px;}
+.calculators-use-section .btn-outline{border-color:rgba(255,255,255,.4);color:#fff;}
+.calculators-use-steps{display:grid;}
+.calculators-use-step{display:grid;grid-template-columns:52px minmax(0,1fr);gap:18px;padding:21px 0;border-bottom:1px solid rgba(255,255,255,.12);}
+.calculators-use-step:first-child{padding-top:0;}
+.calculators-use-step>span{display:grid;place-items:center;width:42px;height:42px;border:1px solid rgba(199,154,62,.42);border-radius:50%;color:var(--gold-500);font-size:.72rem;font-weight:800;letter-spacing:.07em;}
+.calculators-use-step h3{margin:0;color:#fff;font-size:1.02rem;}
+.calculators-use-step p{margin:6px 0 0;color:rgba(255,255,255,.59);font-size:.87rem;line-height:1.58;}
+
+@media(max-width:960px){
+  .calculators-premium-hero-grid{grid-template-columns:1fr;gap:38px;min-height:0;padding-top:76px;padding-bottom:76px;}
+  .calculators-premium-hero-copy{max-width:820px;}
+  .calculators-hero-desk{max-width:760px;}
+  .calculators-workbench-head{grid-template-columns:1fr;gap:22px;align-items:start;}
+  .calculators-workbench-note{max-width:720px;}
+  .calculators-use-grid{grid-template-columns:1fr;gap:48px;}
+}
+@media(max-width:720px){
+  .calculators-premium-hero-photo img{object-position:70% center;}
+  .calculators-premium-hero-shade{background:linear-gradient(180deg,rgba(5,19,36,.97) 0%,rgba(7,25,47,.92) 58%,rgba(7,25,47,.79) 100%);}
+  .calculators-premium-hero-grid{padding-top:60px;padding-bottom:60px;}
+  .calculators-premium-hero h1{max-width:11ch;font-size:clamp(2.55rem,12vw,4rem);}
+  .calculators-premium-hero-sub{font-size:var(--fs-md);}
+  .calculators-premium-hero-actions{display:grid;grid-template-columns:1fr;}
+  .calculators-premium-hero-actions .btn{width:100%;justify-content:center;}
+  .calculators-premium-hero-assurances{flex-direction:column;gap:9px;}
+  .calculators-hero-desk{display:none;}
+  .calculators-hero-desk-head{padding:24px 20px 18px;}
+  .calculators-hero-tool{grid-template-columns:28px 30px minmax(0,1fr);gap:10px;padding:15px 20px;}
+  .calculators-hero-tool small{font-size:.74rem;}
+  .calc-tabs{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .calc-tab{padding:13px 10px;font-size:.82rem;}
+  .calc-inputs,.calc-output,.calc-simple{padding:24px 20px;}
+  .calculators-scope-grid{grid-template-columns:1fr;}
+  .calculators-use-section{padding:72px 0;}
+  .calculators-use-actions{display:grid;grid-template-columns:1fr;}
+  .calculators-use-actions .btn{width:100%;justify-content:center;}
+}
+@media(max-width:480px){
+  .calc-tabs{grid-template-columns:1fr 1fr;gap:7px;}
+  .calc-tab{justify-content:flex-start;}
+  .calc-big{font-size:2.05rem;}
+  .calc-out-row,.calc-result-row{align-items:flex-start;}
+  .calc-out-row strong,.calc-result-row strong{text-align:right;}
+}
+@media(prefers-reduced-motion:reduce){
+  .calc-tab{transition:none;}
+  .calc-tab:hover{transform:none;}
+}
 </style>`;
 
 function incomeTaxPanel() {
@@ -82,11 +200,13 @@ function incomeTaxPanel() {
   const capHealth = calc.deductionCapHealth != null ? calc.deductionCapHealth.toLocaleString('en-IN') : '20,000';
   const capRetirement = calc.deductionCapRetirement != null ? calc.deductionCapRetirement.toLocaleString('en-IN') : '5,00,000';
 
-  // Build FY toggle buttons from YAML — auto-sizes the grid to the number of FYs
-  const fyButtons = tables.map((t, i) =>
-    `<button type="button" data-fy="${esc(t.key)}"${i === 0 ? ' class="active"' : ''}>${esc(t.label)}</button>`
-  ).join('');
+  // Build FY toggle buttons from YAML — auto-sizes the grid to the number of FYs.
+  // The latest configured schedule is the default; older years remain selectable.
   const fyCount = tables.length;
+  const activeFyIndex = Math.max(0, fyCount - 1);
+  const fyButtons = tables.map((t, i) =>
+    `<button type="button" data-fy="${esc(t.key)}"${i === activeFyIndex ? ' class="active"' : ''}>${esc(t.label)}</button>`
+  ).join('');
 
   return `<div class="calc-panel active" id="calc-tab-tax" role="tabpanel" aria-labelledby="tab-calc-tab-tax" tabindex="0">
     <div class="calc-split">
@@ -286,28 +406,131 @@ function emiPanel() {
   </div>`;
 }
 
+function calculatorHero(h) {
+  const tools = [
+    { iconName: 'percent', title: 'Salary Income Tax', text: 'Estimate annual salary tax and inspect the slab-by-slab calculation.' },
+    { iconName: 'ledger', title: 'VAT', text: 'Add VAT to a base amount or extract VAT from an inclusive total.' },
+    { iconName: 'briefcase', title: 'TDS', text: 'Test common withholding scenarios before confirming the statutory treatment.' },
+    { iconName: 'trendUp', title: 'Loan EMI', text: 'Model monthly installments and review a full amortization schedule.' },
+  ];
+
+  return `<section class="calculators-premium-hero">
+    <picture class="calculators-premium-hero-photo" aria-hidden="true">
+      <source media="(max-width:640px)" srcset="/images/calculators-hero-bg-640w.jpg">
+      <source media="(max-width:960px)" srcset="/images/calculators-hero-bg-960w.jpg">
+      <img src="/images/calculators-hero-bg.jpg" alt="" loading="eager" fetchpriority="high">
+    </picture>
+    <div class="calculators-premium-hero-shade" aria-hidden="true"></div>
+    <div class="container calculators-premium-hero-grid">
+      <div class="calculators-premium-hero-copy reveal-stagger">
+        <p class="eyebrow">${esc(h.eyebrow)}</p>
+        <h1>${esc(h.title)}</h1>
+        <p class="calculators-premium-hero-sub">${esc(h.subtitle)}</p>
+        <div class="calculators-premium-hero-actions">
+          ${button('Start Calculating', '#calculator-workbench', 'primary')}
+          ${button('Official Reference Links', 'useful-links.html', 'outline')}
+        </div>
+        <div class="calculators-premium-hero-assurances" aria-label="Calculator approach">
+          <span>${icon('check', 'stamp')} 4 live tools</span>
+          <span>${icon('check', 'stamp')} Transparent breakdowns</span>
+          <span>${icon('check', 'stamp')} Planning estimates</span>
+        </div>
+      </div>
+      <aside class="calculators-hero-desk reveal" aria-label="Calculator desk">
+        <div class="calculators-hero-desk-head">
+          <p class="eyebrow">Calculation Desk</p>
+          <h2>Choose the question, then review the assumptions.</h2>
+          <p>These tools are designed to help you plan and understand the mechanics. A result is not the same as a filing position, tax opinion, or lending decision.</p>
+        </div>
+        <div class="calculators-hero-tool-list">
+          ${tools.map((tool, i) => `<div class="calculators-hero-tool">
+            <span class="calculators-hero-tool-no">0${i + 1}</span>
+            <span class="calculators-hero-tool-icon">${icon(tool.iconName)}</span>
+            <span><strong>${esc(tool.title)}</strong><small>${esc(tool.text)}</small></span>
+          </div>`).join('')}
+        </div>
+      </aside>
+    </div>
+  </section>`;
+}
+
+function calculatorScopeGuide() {
+  const items = [
+    { title: 'Income Tax', best: 'Salary planning and understanding slab mechanics.', limit: 'Does not capture every allowance, exemption, income type, residency issue, or filing fact.' },
+    { title: 'VAT', best: 'Quickly adding or extracting the configured standard VAT rate.', limit: 'Does not determine whether a transaction is taxable, exempt, zero-rated, or subject to special treatment.' },
+    { title: 'TDS', best: 'Testing common withholding-rate scenarios on a VAT-exclusive payment amount.', limit: 'The correct rate can depend on recipient status, payment nature, thresholds, exemptions, and current law.' },
+    { title: 'Loan EMI', best: 'Planning installment size and viewing an indicative repayment schedule.', limit: 'A bank may use different compounding, fees, reset terms, insurance, or approval criteria.' },
+  ];
+  return `<section class="section-pad calculators-scope-section">
+    <div class="container">
+      <div class="section-intro calculators-section-intro reveal">
+        <p class="eyebrow">Know the Boundary</p>
+        <h2>What each calculator can — and cannot — tell you.</h2>
+        <p>Use the tools to organize a question and understand direction. Confirm anything that affects a filing, deduction, statutory payment, payroll decision, financing application, or material business decision.</p>
+      </div>
+      <div class="calculators-scope-grid reveal-stagger">
+        ${items.map((item, i) => `<article class="calculators-scope-card">
+          <span class="calculators-scope-no">0${i + 1}</span>
+          <h3>${esc(item.title)}</h3>
+          <p><strong>Useful for</strong>${esc(item.best)}</p>
+          <p><strong>Does not determine</strong>${esc(item.limit)}</p>
+        </article>`).join('')}
+      </div>
+    </div>
+  </section>`;
+}
+
+function calculatorUseSection() {
+  const steps = [
+    ['01', 'Choose the right period', 'For tax calculations, select the fiscal-year table that matches the period you are reviewing.'],
+    ['02', 'Enter the actual facts', 'Use the real income, payment, contribution, loan, rate, or tenure information relevant to the scenario.'],
+    ['03', 'Read the breakdown', 'Do not rely only on the headline number. Review the assumptions, slabs, rates and notes shown with the result.'],
+    ['04', 'Confirm before acting', 'Where money will be filed, deducted, paid, reported or borrowed, verify the current treatment or obtain professional review.'],
+  ];
+  return `<section class="calculators-use-section">
+    <div class="container calculators-use-grid">
+      <div class="calculators-use-copy reveal">
+        <p class="eyebrow">Use the Tools Well</p>
+        <h2>Estimate first. Confirm before the number becomes an obligation.</h2>
+        <p>Good financial tools make assumptions visible. They should help you ask a better question — not hide the judgement that still needs to happen.</p>
+        <div class="calculators-use-actions">
+          ${button('Review Official Links', 'useful-links.html', 'outline')}
+          ${button('Discuss Your Calculation', 'contact.html', 'primary')}
+        </div>
+      </div>
+      <div class="calculators-use-steps reveal-stagger">
+        ${steps.map(([no, title, text]) => `<div class="calculators-use-step"><span>${no}</span><div><h3>${esc(title)}</h3><p>${esc(text)}</p></div></div>`).join('')}
+      </div>
+    </div>
+  </section>`;
+}
+
 function calculators() {
   const h = data.pageHeader('calculators');
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/calculators-hero-bg.jpg')}
+  ${calcStyles}
+  ${calculatorHero(h)}
 
-  <section class="section-pad">
-    <div class="container" style="max-width:960px">
-      ${calcStyles}
+  <section class="section-pad calculators-workbench-section" id="calculator-workbench">
+    <div class="container calculators-workbench-container">
+      <div class="calculators-workbench-head reveal">
+        <div>
+          <p class="eyebrow">Financial Tools</p>
+          <h2>Choose a calculator and work through the assumptions.</h2>
+        </div>
+        <div class="calculators-workbench-note">
+          ${icon('shield')}
+          <p><strong>Estimate, then verify.</strong> Tax, withholding and compliance rules can change. The configured rates support planning; confirm current treatment before filing or deducting.</p>
+        </div>
+      </div>
 
-      <!-- Handbook Task 26: a complete WAI-ARIA Tabs pattern (role=tab/
-      aria-selected/aria-controls on each button, role=tabpanel/
-      aria-labelledby on each panel, roving tabindex + arrow-key
-      navigation in client.js) -- role="tablist" existed before this task
-      with no matching tab/tabpanel roles or keyboard support, which is
-      arguably worse than plain buttons since assistive tech announcing
-      "tab list" sets an expectation (arrow-key navigation) nothing here
-      delivered. -->
+      <!-- Complete WAI-ARIA Tabs pattern: roving tabindex, arrow-key navigation,
+      aria-selected/aria-controls on each tab and matching tabpanel labelling. -->
       <div class="calc-tabs" role="tablist" aria-label="Calculator type">
-        <button type="button" role="tab" id="tab-calc-tab-tax" class="calc-tab active" data-target="calc-tab-tax" aria-selected="true" aria-controls="calc-tab-tax" tabindex="0">Income Tax</button>
-        <button type="button" role="tab" id="tab-calc-tab-vat" class="calc-tab" data-target="calc-tab-vat" aria-selected="false" aria-controls="calc-tab-vat" tabindex="-1">VAT</button>
-        <button type="button" role="tab" id="tab-calc-tab-tds" class="calc-tab" data-target="calc-tab-tds" aria-selected="false" aria-controls="calc-tab-tds" tabindex="-1">TDS</button>
-        <button type="button" role="tab" id="tab-calc-tab-emi" class="calc-tab" data-target="calc-tab-emi" aria-selected="false" aria-controls="calc-tab-emi" tabindex="-1">Loan EMI</button>
+        <button type="button" role="tab" id="tab-calc-tab-tax" class="calc-tab active" data-target="calc-tab-tax" aria-selected="true" aria-controls="calc-tab-tax" tabindex="0"><span>01</span> Income Tax</button>
+        <button type="button" role="tab" id="tab-calc-tab-vat" class="calc-tab" data-target="calc-tab-vat" aria-selected="false" aria-controls="calc-tab-vat" tabindex="-1"><span>02</span> VAT</button>
+        <button type="button" role="tab" id="tab-calc-tab-tds" class="calc-tab" data-target="calc-tab-tds" aria-selected="false" aria-controls="calc-tab-tds" tabindex="-1"><span>03</span> TDS</button>
+        <button type="button" role="tab" id="tab-calc-tab-emi" class="calc-tab" data-target="calc-tab-emi" aria-selected="false" aria-controls="calc-tab-emi" tabindex="-1"><span>04</span> Loan EMI</button>
       </div>
 
       ${incomeTaxPanel()}
@@ -315,15 +538,18 @@ function calculators() {
       ${tdsPanel()}
       ${emiPanel()}
 
-      <div class="info-note reveal" style="margin-top:34px">These tools give quick estimates for planning purposes only — they are not tax, legal, or financial advice. Rates and rules change with each fiscal year's Finance Act. Maven can prepare exact calculations for your business or salary situation.</div>
+      <div class="calculators-workbench-disclaimer reveal">These tools provide planning estimates only. They do not constitute tax, legal, audit, investment, lending, or other regulated financial advice. Confirm current law, rates, facts and professional requirements before acting on a result.</div>
     </div>
   </section>
 
+  ${calculatorScopeGuide()}
+  ${calculatorUseSection()}
+
   ${ctaBand({
-    eyebrow: 'Beyond Estimates',
-    title: 'Need exact figures for your taxes, payroll, or loan file?',
-    subtitle: 'We prepare precise computations, salary sheets, and bank-ready project reports.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I used your calculator and would like exact figures for my situation.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    eyebrow: 'Beyond the Estimate',
+    title: 'Need the number checked for your actual situation?',
+    subtitle: 'Maven can review the facts behind a tax, payroll, compliance, reporting or loan-planning question and help define the next practical step.',
+    buttons: [button('Book an Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I used your calculator and would like help reviewing the result for my situation.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

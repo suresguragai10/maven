@@ -104,7 +104,7 @@ function bulletList(items, cls = 'stamp-list') {
 
 // Task 05: individual service entry within a Services-page capability
 // chapter — typography + a restrained icon marker (the same .service-icon
-// badge already used for internationalTile()/pages2,4,7 service tiles), not
+// badge already used across service and international tiles), not
 // a forced photo per service. The chapter it belongs to already carries the
 // one shared editorial image (see capabilityChapter() below); this keeps
 // each of the 7 real services fully described (tagline + full item list)
@@ -223,8 +223,10 @@ function industryBadge(ind, i) {
 // never inside the list itself.
 function industryCard(ind, i) {
   const id = `industry-${i}`;
+  const number = String(i + 1).padStart(2, '0');
   return `<li class="industry-list-item">
     <button type="button" class="industry-card reveal" id="${id}" aria-expanded="false" aria-controls="detail-${id}" data-industry-index="${i}">
+      <span class="industry-card-index">${number}</span>
       <span class="industry-card-icon">${icon(ind.icon)}</span>
       <span class="industry-card-name">${esc(ind.name)}</span>
       ${icon('chevronRight', 'industry-card-chevron')}
@@ -234,25 +236,30 @@ function industryCard(ind, i) {
 
 function industryDetail(ind, i) {
   const id = `industry-${i}`;
+  const number = String(i + 1).padStart(2, '0');
   return `<section class="industry-detail-panel" id="detail-${id}" data-industry-detail="${i}" hidden aria-labelledby="detail-title-${id}">
+    <span class="industry-detail-watermark" aria-hidden="true">${number}</span>
     <div class="industry-detail-heading">
       <span class="industry-detail-icon">${icon(ind.icon)}</span>
-      <div>${panelLabel('Industry support')}<h2 id="detail-title-${id}">${esc(ind.name)}</h2></div>
+      <div><span class="industry-detail-profile-label">Industry profile ${number}</span><h2 id="detail-title-${id}">${esc(ind.name)}</h2></div>
     </div>
     ${ind.description ? `<p class="industry-detail-intro">${esc(ind.description)}</p>` : ''}
     <div class="industry-detail-grid">
       <div>
-        <h3>Common needs</h3>
+        <span class="industry-detail-kicker">Finance attention</span>
+        <h3>What typically needs attention</h3>
         ${bulletList(ind.needs || [], 'stamp-list stamp-list--pkg')}
       </div>
       <div>
-        <h3>How Maven helps</h3>
+        <span class="industry-detail-kicker">Maven support</span>
+        <h3>Where Maven can help</h3>
         ${bulletList(ind.howWeHelp || [], 'stamp-list stamp-list--pkg')}
       </div>
     </div>
+    <div class="industry-detail-scope-note">Exact scope depends on your records, transaction volume, systems, deadlines and applicable requirements.</div>
     <div class="industry-detail-actions">
-      <a class="btn btn-primary btn-sm" href="${data.whatsappHref(`Hello Maven, I would like to ask about accounting support for my business (${ind.name}).`)}" target="_blank" rel="noopener">${icon('whatsapp')} Ask About This Industry</a>
-      <a class="btn btn-outline btn-sm" href="${internalHref('contact.html')}">Book a Consultation</a>
+      <a class="btn btn-primary btn-sm" href="${internalHref('contact.html#inquiry')}">Discuss This Business Type</a>
+      <a class="industry-detail-quick" href="${data.whatsappHref(`Hello Maven, I would like to ask about accounting support for my business (${ind.name}).`)}" target="_blank" rel="noopener">${icon('whatsapp')} <span>Ask a quick question</span></a>
     </div>
   </section>`;
 }

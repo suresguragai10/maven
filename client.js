@@ -145,15 +145,13 @@
     }
   }
 
-  // ---- Floating-action / footer collision guard ----
-  // The controls are useful while reading the page, but fixed buttons should
-  // not sit on top of footer links/disclaimer text. As the footer enters the
-  // viewport, increase a CSS bottom-clearance variable by exactly the visible
-  // footer height. This makes both controls stop just above the footer while
-  // preserving iOS/Android safe-area insets from CSS.
+  // ---- Back-to-top / footer collision guard ----
+  // Tawk owns the primary bottom-right chat launcher now. The local back-to-top
+  // control stays above that reserved space and should never cover footer links.
+  // As the footer enters the viewport, increase the shared bottom clearance by
+  // exactly the visible footer height while preserving mobile safe-area insets.
   var siteFooter = document.querySelector('.site-footer');
-  var whatsappFloat = document.querySelector('.whatsapp-float');
-  if (siteFooter && (whatsappFloat || backToTop)) {
+  if (siteFooter && backToTop) {
     var floatingClearanceFrame = null;
     var updateFloatingClearance = function () {
       floatingClearanceFrame = null;
@@ -758,7 +756,8 @@
 
   var taxPanel = document.getElementById('calc-tab-tax');
   if (taxPanel) {
-    var taxState = { fy: '2082', status: 'single', gender: 'other' };
+    var latestTaxTable = (_calc.taxTables && _calc.taxTables.length) ? _calc.taxTables[_calc.taxTables.length - 1] : null;
+    var taxState = { fy: latestTaxTable ? latestTaxTable.key : '2082', status: 'single', gender: 'other' };
 
     var refreshStatusSeg = function () {
       var table = TAX_TABLES[taxState.fy];
@@ -1025,4 +1024,30 @@
     liveInputs(['emi-amount', 'emi-rate', 'emi-years'], recalcEmi);
     recalcEmi();
   }
+
+  // ---- Tawk.to live chat ----
+  // Kept inside this external bundle rather than an inline <script> so the site's
+  // strict public CSP can continue to omit `unsafe-inline` from script-src.
+  // The dashboard widget remains the source of truth for branding, availability,
+  // consent-form configuration, and upload permissions.
+  var TAWK_WIDGET_URL = 'https://embed.tawk.to/6aaececb3c4ce434465d8a67/1k2tdfjf3';
+  var loadTawkWidget = function () {
+    if (document.getElementById('maven-tawk-widget')) return;
+
+    window.Tawk_API = window.Tawk_API || {};
+    // Keep Maven-owned navigation/cookie UI above the third-party launcher while
+    // leaving the widget comfortably above ordinary page content.
+    window.Tawk_API.customStyle = { zIndex: '118' };
+    window.Tawk_LoadStart = new Date();
+
+    var tawkScript = document.createElement('script');
+    tawkScript.id = 'maven-tawk-widget';
+    tawkScript.async = true;
+    tawkScript.src = TAWK_WIDGET_URL;
+    tawkScript.charset = 'UTF-8';
+    tawkScript.setAttribute('crossorigin', '*');
+    document.head.appendChild(tawkScript);
+  };
+
+  loadTawkWidget();
 })();

@@ -85,13 +85,12 @@ function faqJsonLd() {
 const pages = [
   {
     file: 'index.html', activeKey: 'home', bodyHtml: home(),
-    // Task 12: added "in Nepal" -- the homepage title previously carried no
-    // explicit local signal at all (the meta description did), despite
-    // Nepal/local being the site's #1 search intent (see docs/SEO_INTENT_MAP.md
-    // §1). Still one clear, human phrase, not a keyword list; description
-    // stays under Google's ~155-160 char truncation point.
-    title: `${data.brand.shortName} | Accounting, Tax & Financial Management in Nepal`,
-    description: `${data.brand.legalName} provides accounting, tax, compliance, payroll, and financial management support for startups and SMEs across Nepal.`,
+    // Homepage positioning now reflects both sides of the real offer:
+    // Nepal-based finance/tax/accounting support and remote outsourced
+    // accounting capacity for international teams. Keep this one human
+    // phrase rather than turning the title into a keyword list.
+    title: `Finance, Tax, Accounting & Outsourcing | ${data.brand.shortName} Nepal`,
+    description: `Kathmandu-based finance, tax and accounting support for businesses in Nepal, plus outsourced bookkeeping and reporting for international teams.`,
     // Task 18: measured (real Playwright + CDP run, throttled mobile) that
     // this hero photo is the actual LCP element on every page it appears
     // on -- see docs/PERFORMANCE_AUDIT.md. heroImage triggers a matching
@@ -101,82 +100,83 @@ const pages = [
   },
   {
     file: 'about.html', activeKey: 'about', bodyHtml: about(),
-    title: 'About Maven Consultancy | Business Consultancy in Kathmandu, Nepal',
-    description: 'Maven Consultancy Services Pvt. Ltd. is a Nepal-based consultancy providing business setup, accounting, tax, compliance, and advisory services.',
+    title: 'About Maven Consultancy | Finance & Accounting Team in Kathmandu',
+    description: 'Learn how Maven Consultancy works: Kathmandu-based accounting, tax, compliance, reporting and outsourced finance support for Nepal and international teams.',
     heroImage: '/images/about-hero-bg.jpg',
   },
   {
     file: 'services.html', activeKey: 'services', bodyHtml: services(),
-    title: 'Accounting, Tax, Registration & Compliance Services in Nepal | Maven Consultancy',
-    description: 'Business registration, PAN/VAT registration, bookkeeping, tax and compliance support, payroll, financial management and reporting, and business advisory services in Nepal.',
+    title: 'Finance, Tax, Accounting & Advisory Services | Maven Consultancy Nepal',
+    description: 'Connected finance services for growing businesses: registration, tax, payroll, outsourced accounting, reporting, advisory, NFRS/IFRS support, and remote international finance delivery.',
     heroImage: '/images/services-hero-bg.jpg',
   },
   {
     file: 'outsourced-accounting.html', activeKey: 'outsourced-accounting', bodyHtml: outsourcedAccounting(),
     title: 'Outsourced Accounting Services in Nepal | Maven Consultancy',
-    description: 'Outsourced bookkeeping, tax, payroll, and compliance support for growing businesses in Nepal — a practical alternative to hiring a full-time accountant.',
+    description: 'Monthly bookkeeping, reconciliations, VAT/TDS and payroll coordination, and management reporting for growing Nepal businesses that need an outsourced finance function.',
     breadcrumbs: [HOME_CRUMB, SERVICES_CRUMB, { label: 'Outsourced Accounting', href: 'outsourced-accounting.html' }],
     heroImage: '/images/outsourced-accounting-hero-bg.jpg',
   },
   {
     file: 'global-outsourcing.html', activeKey: 'global-outsourcing', bodyHtml: globalOutsourcing(),
-    title: 'International Accounting & Finance Support | Maven Consultancy',
-    description: 'Outsourced accounting, bookkeeping, and Virtual CFO / management reporting support for international businesses and accounting firms, from a Kathmandu-based team.',
+    title: 'Finance & Accounting Outsourcing from Nepal | Maven Consultancy',
+    description: 'Kathmandu-based remote accounting, reconciliation, month-end reporting and Virtual CFO support for international businesses and accounting firms.',
     heroImage: '/images/global-outsourcing-hero-bg.jpg',
   },
   {
     // Task 12 (following the Task 10 finding in docs/SEO_INTENT_MAP.md §3):
     // this page's title used to open with "International Outsourced
     // Accounting," which read as a near-duplicate of global-outsourcing.html's
-    // "International Accounting & Finance Support" -- the two are meant to be
-    // hub (broad) vs. spoke (this page's actual, narrower job: day-to-day
+    // The international hub now owns the broad "Finance & Accounting
+    // Outsourcing from Nepal" topic while this spoke keeps the narrower
+    // day-to-day bookkeeping/reconciliation job. The two are meant to be
     // bookkeeping/reconciliation). The description already led with
     // "bookkeeping, reconciliation" and needed no change; only the title did.
     file: 'international-accounting.html', activeKey: 'international-accounting', bodyHtml: internationalAccounting(),
     title: 'International Bookkeeping & Reconciliation Services | Maven Consultancy',
-    description: 'Remote bookkeeping, reconciliation, accounts payable/receivable, and monthly financial reporting support for international businesses and accounting firms.',
+    description: 'Kathmandu-based remote bookkeeping, reconciliation, month-end and monthly reporting support for international businesses and accounting firms.',
     breadcrumbs: [HOME_CRUMB, INTERNATIONAL_CRUMB, { label: 'International Accounting', href: 'international-accounting.html' }],
     heroImage: '/images/global-outsourcing-hero-bg.jpg', // shared with the hub page -- deliberate, see internationalAccounting()
   },
   {
     file: 'virtual-cfo.html', activeKey: 'virtual-cfo', bodyHtml: virtualCfo(),
     title: 'Virtual CFO & Management Reporting | Maven Consultancy',
-    description: 'Monthly management reporting, cash-flow forecasting, budgeting, KPI reporting, and scenario support for growing businesses — without a full-time senior finance hire.',
+    description: 'Virtual CFO and management reporting from Kathmandu: monthly reporting, cash-flow forecasting, budgets, KPIs and scenario support for growing businesses in Nepal and internationally.',
     breadcrumbs: [HOME_CRUMB, INTERNATIONAL_CRUMB, { label: 'Virtual CFO', href: 'virtual-cfo.html' }],
-    heroImage: '/images/card-advisory.jpg',
+    heroImage: '/images/card-reporting.jpg',
   },
   {
     file: 'nfrs-ifrs.html', activeKey: 'nfrs-ifrs', bodyHtml: nfrsIfrs(),
-    title: 'NFRS / IFRS Implementation & Financial Reporting Support | Maven Consultancy',
-    description: 'Structured NFRS / IFRS implementation, financial statement preparation, and technical accounting support for businesses transitioning to or reporting under NFRS / IFRS in Nepal.',
+    title: 'NFRS / IFRS Implementation & Financial Reporting | Maven Consultancy',
+    description: 'NFRS / IFRS implementation and financial reporting support in Nepal: readiness assessment, transition schedules, technical accounting, financial statement preparation and year-end coordination.',
     breadcrumbs: [HOME_CRUMB, SERVICES_CRUMB, { label: 'NFRS / IFRS Implementation', href: 'nfrs-ifrs.html' }],
     heroImage: '/images/card-reporting.jpg',
   },
   {
     file: 'packages.html', activeKey: 'packages', bodyHtml: packages(),
-    title: 'Accounting & Compliance Packages | Maven Consultancy Nepal',
-    description: 'Startup Setup, Monthly Compliance, and Business Growth packages for accounting, tax, and compliance support in Nepal. Custom quotes after a short review.',
+    title: 'Accounting Support Packages & Custom Quotes | Maven Consultancy Nepal',
+    description: 'Three flexible starting points for setup, recurring compliance, and growth-stage finance support in Nepal, with custom quotes based on scope, volume, records, reporting needs, and timing.',
     breadcrumbs: [HOME_CRUMB, SERVICES_CRUMB, { label: 'Packages', href: 'packages.html' }],
     heroImage: '/images/packages-hero-bg.jpg',
   },
   {
     file: 'documents-needed.html', activeKey: 'documents-needed', bodyHtml: documentsNeeded(),
-    title: 'Documents Checklist for Registration, PAN/VAT & Accounting | Maven Consultancy',
-    description: 'General document checklists for company registration, PAN/VAT registration, monthly accounting, tax clearance, and project reports in Nepal.',
+    title: 'Business & Accounting Document Checklists Nepal | Maven Consultancy',
+    description: 'Practical document checklists for company registration, PAN/VAT, monthly accounting, tax or return support, and project or loan reporting in Nepal, with secure-sharing guidance.',
     breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Documents Checklist', href: 'documents-needed.html' }],
     heroImage: '/images/documents-needed-hero-bg.jpg',
   },
   {
     file: 'industries.html', activeKey: 'industries', bodyHtml: industries(),
-    title: 'Industries We Serve Across Nepal | Maven Consultancy',
-    description: 'Maven supports startups, SMEs, traders, restaurants, service companies, construction, online businesses, freelancers, schools, NGOs, and more across Nepal.',
+    title: 'Industry-Specific Accounting & Finance Support | Maven Consultancy Nepal',
+    description: 'Industry-aware accounting, tax, payroll and reporting support for startups, SMEs, traders, restaurants, construction, NGOs, online businesses and more across Nepal.',
     heroImage: '/images/industries-hero-bg.jpg',
   },
   {
     file: 'resources.html', activeKey: 'resources', bodyHtml: resources(),
-    title: 'Resources — Guides, Calculators & Reference Links | Maven Consultancy',
-    description: 'Document checklists, financial calculators, useful government links, and FAQs for businesses in Nepal — curated by Maven Consultancy.',
-    // No heroImage: resources() uses a plain navy pageHero with no photo.
+    title: 'Finance, Tax & Accounting Resources Nepal | Maven Consultancy',
+    description: 'Practical finance, tax and accounting resources for Nepal businesses: document checklists, indicative calculators, official portals and Maven service FAQs.',
+    // No heroImage: resources() uses a custom typographic knowledge-hub hero with no photo.
   },
   {
     file: 'useful-links.html', activeKey: 'useful-links', bodyHtml: usefulLinks(),
@@ -187,8 +187,8 @@ const pages = [
   },
   {
     file: 'calculators.html', activeKey: 'calculators', bodyHtml: calculators(),
-    title: 'Free Financial Calculators — EMI, Salary Tax, VAT & TDS Nepal | Maven Consultancy',
-    description: 'Free online calculators for Nepal: loan EMI calculator, salary income tax calculator with FY 2082/83 and 2083/84 slabs, 13% VAT calculator, and TDS rate calculator.',
+    title: 'Financial Calculators Nepal | Income Tax, VAT, TDS & EMI | Maven Consultancy',
+    description: 'Planning calculators for Nepal covering salary income tax, VAT, TDS and loan EMI, with transparent assumptions, breakdowns and clear estimate-only guidance.',
     breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Financial Calculators', href: 'calculators.html' }],
     heroImage: '/images/calculators-hero-bg.jpg',
   },
@@ -208,13 +208,13 @@ const pages = [
     // read from the same source as the rest of the site.
     file: 'contact.html', activeKey: 'contact', bodyHtml: contact(),
     title: `Contact ${data.brand.shortName} | ${data.brand.addressLine}`,
-    description: `Contact ${data.brand.legalName} in ${data.brand.addressLine} for accounting, tax, registration, and compliance support across Nepal.`,
+    description: `Contact ${data.brand.legalName} in ${data.brand.addressLine} about accounting, tax, compliance, reporting, remote accounting, Virtual CFO, or NFRS / IFRS support for Nepal and international teams.`,
     heroImage: '/images/contact-hero-bg.jpg',
   },
   {
     file: 'team.html', activeKey: 'team', bodyHtml: team(),
-    title: 'Our Team | Maven Consultancy Services Nepal',
-    description: 'Meet the team behind Maven Consultancy Services Pvt. Ltd. — practical accounting, tax, and compliance support for businesses across Nepal.',
+    title: 'Our Team | Accounting, Tax & Finance Professionals | Maven Consultancy',
+    description: `Meet Maven Consultancy's Kathmandu-based team with experience across accounting, tax, audit, banking, risk, compliance, reporting and business advisory for Nepal and remote international support.`,
     breadcrumbs: [HOME_CRUMB, ABOUT_CRUMB, { label: 'Our Team', href: 'team.html' }],
     heroImage: '/images/team-hero-bg.jpg',
   },
@@ -348,19 +348,19 @@ if (siteUrl) {
 // attributes throughout, which is a separate, much larger cleanup.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' https://static.cloudflareinsights.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "script-src 'self' https://static.cloudflareinsights.com https://*.tawk.to https://cdn.jsdelivr.net",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.tawk.to https://cdn.jsdelivr.net",
+  "font-src 'self' https://fonts.gstatic.com https://*.tawk.to",
   "img-src 'self' data: https:",
-  "connect-src 'self' https://formspree.io https://cloudflareinsights.com",
+  "connect-src 'self' https://formspree.io https://cloudflareinsights.com https://*.tawk.to wss://*.tawk.to",
   // maps.google.com's embed URL redirects the iframe to a www.google.com
   // URL for the actual map — confirmed live: without www.google.com here,
   // the Contact page map renders as a blank/broken-image box (the redirect
   // target itself is blocked, not just an internal sub-frame).
-  "frame-src https://maps.google.com https://www.google.com",
+  "frame-src https://maps.google.com https://www.google.com https://*.tawk.to",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self' https://formspree.io",
+  "form-action 'self' https://formspree.io https://*.tawk.to",
   "frame-ancestors 'self'",
 ].join('; ');
 // The admin panel needs a different CSP from the rest of the site: it calls

@@ -60,7 +60,7 @@ test('Batch 2A removes known public h2-to-h4 skips in partner notes', () => {
   assert.doesNotMatch(pages2 + pages7, /<h4>/);
   assert.match(pages2, /<h2 class="partner-note-title">Support Through Partners<\/h2>/);
   assert.match(pages7, /<h3 class="partner-note-title">Defined Professional Boundaries<\/h3>/);
-  assert.match(pages7, /<h2 class="partner-note-title">Data Security &amp; Confidentiality<\/h2>/);
+  assert.match(pages7, /<h3>Confidential information handling<\/h3>/);
   assert.match(css, /\.partner-note-title \{/);
 });
 

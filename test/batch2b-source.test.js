@@ -8,9 +8,10 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const home = fs.readFileSync(path.join(root, 'pages1.js'), 'utf8');
 const contact = fs.readFileSync(path.join(root, 'pages3.js'), 'utf8');
 
-test('Batch 2B separates the homepage Industries section from the preceding mist section', () => {
-  assert.match(home, /section-pad home-industries-section/);
-  assert.match(styles, /\.home-industries-section\s*\{\s*background:\s*var\(--white\)/);
+test('Batch 2B keeps the redesigned homepage Industries section visually separate from mist sections', () => {
+  assert.match(home, /section-pad home-industries-premium/);
+  assert.doesNotMatch(home, /section-pad bg-mist home-industries-premium/);
+  assert.match(styles, /\.home-industry-grid\s*\{[\s\S]*border-top:\s*1px solid var\(--border\)/);
 });
 
 test('Batch 2B keeps the contact form visually stable instead of using clickable-card hover lift', () => {

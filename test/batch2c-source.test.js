@@ -30,7 +30,6 @@ test('Batch 2C dynamic responsive gate exercises the fragile interaction states'
     '#trigger-faq-0',
     '#inquiryForm button[type="submit"]',
     '#emi-toggle-sched',
-    '.whatsapp-float',
     '.back-to-top',
   ]) {
     assert.match(spec, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));

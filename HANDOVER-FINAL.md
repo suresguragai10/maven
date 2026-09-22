@@ -152,7 +152,7 @@ package.json, package-lock.json, deploy.yml
 - Services (all 6 categories — titles, taglines, items)
 - Outsourced Accounting (title, paragraph, benefits, CTA)
 - Packages (names, audience, what's included, fee note)
-- Documents Checklist (groups and items)
+- Documents Checklist (groups and items; the preparation/confidential-sharing framework around them is fixed page structure)
 - Industries (names)
 - Useful Links (name, URL, description — add/remove freely)
 - Why Choose Us
@@ -244,37 +244,25 @@ ever silently lost.
 
 ---
 
-## SECTION 8 — FINANCIAL CALCULATORS (TAX RATES NEED YEARLY UPDATE)
+## SECTION 8 — FINANCIAL CALCULATORS (REVIEW STATUTORY DATA EACH FISCAL YEAR)
 
-The calculators page has four tools:
-- **Income Tax** — FY 2082/83 and FY 2083/84 slabs, with deductions and
-  female rebate. Updates live as you type.
-- **VAT** — 13% add or extract
-- **TDS** — 10 common payment types with FY 2082/83 rates
-- **Loan EMI** — standard reducing-balance formula
+The Calculators page is a professional planning-tools desk with four live tools:
+- **Income Tax** — supports the configured fiscal-year schedules, deductions, female rebate and slab-by-slab breakdown. The **latest configured fiscal year opens by default** while older configured years remain selectable.
+- **VAT** — add VAT to a base amount or extract VAT from an inclusive total.
+- **TDS** — common configured payment categories with live withholding estimates.
+- **Loan EMI** — reducing-balance EMI estimate with a full amortization schedule.
 
-### ⚠️ IMPORTANT — Annual Update Required (every May/June)
+All statutory calculator configuration lives in `content/site.yaml` under `calculators:`. The browser logic reads that configuration at build/runtime; do **not** duplicate tax tables or rates elsewhere.
 
-Nepal's tax slabs and TDS rates change with each year's Finance Act, announced
-with the budget (usually Jestha/May–June).
+### Annual / statutory review
 
-**When the new budget is announced:**
-1. The tax slab table in `client.js` (search for `TAX_TABLES`) needs updating
-2. The TDS dropdown in `pages5.js` may need rate updates
-3. Ask a developer to make these changes — it takes about 10 minutes
+Before relying on a new fiscal-year schedule or changed statutory treatment:
+1. Verify the relevant tax slabs, TDS categories/rates, VAT rate, deduction caps and SSF treatment against current official sources.
+2. Update `content/site.yaml` (or the admin **Tax & Calculator Rates** editor) only after that verification.
+3. Record the source/date/reviewer in the governance documentation; `docs/OWNER_REVIEW.md` lists the figures that still require or may later require explicit professional sign-off.
+4. Run the calculator unit/regression tests and a production build before deployment.
 
-**Current rates in the calculator:**
-- FY 2082/83: Individual slabs 1%/10%/20%/30%/36%/39%, couple has higher
-  first slab of 6L. SSF contributor waiver on 1% slab.
-- FY 2083/84: Unified schedule (no single/couple distinction), slabs
-  1%/10%/20%/27%/29% — from the Budget of Jestha 2083, pending gazetted
-  Finance Act confirmation.
-- TDS rates: Rent to entity 10%, VAT-registered service 1.5%, PAN-only
-  service 15%, consultancy 15%, dividend 5% (final), bank interest to
-  individual 5% (final), lottery 25%.
-
-All calculators show "indicative only" disclaimers — they are lead-generation
-tools that encourage visitors to contact Maven for exact figures.
+The public page deliberately describes results as **planning estimates**, not filing positions, tax opinions, legal advice, investment/lending advice or guaranteed outcomes. The page also explains what each tool can and cannot determine and routes entity-specific questions to Maven for review.
 
 ---
 

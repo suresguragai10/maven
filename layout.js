@@ -200,10 +200,9 @@ function renderFooter() {
       <p>Designed for practical, compliant business support in Nepal.</p>
     </div>
   </footer>
-  <a class="whatsapp-float" href="${data.whatsappHref('Hello Maven, I would like to ask about your services.')}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">${icon('whatsapp')}</a>
   <button type="button" class="icon-btn back-to-top" aria-label="Back to top">${icon('arrowUp')}</button>
   <div class="cookie-notice" id="cookie-notice" role="region" aria-label="Cookie notice">
-    <p>This site uses a few essential third-party services (Google Fonts, our contact form, and the map on our Contact page). See our <a href="${internalHref('privacy.html')}">Privacy Policy</a> for details.</p>
+    <p>This site uses third-party services including Google Fonts, Formspree, Google Maps, and Tawk.to live chat. Tawk.to may use cookies or browser storage to operate the chat. See our <a href="${internalHref('privacy.html')}">Privacy Policy</a> for details.</p>
     <button type="button" class="btn btn-primary btn-sm" id="cookie-notice-accept">Got it</button>
   </div>`;
 }

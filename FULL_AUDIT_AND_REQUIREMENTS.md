@@ -330,13 +330,11 @@ Cloudflare Zero Trust / Access rule for /admin/*
 
 ### 6.2 Image support for Team page
 
-Current Team page uses initials avatars. Later, you can add:
+**Current state (2026-09-22):** Team profiles already support a `photo` field. Four published profiles currently use real approved images and the remaining profiles use the intentional initials fallback. Future photos should be owner-approved real team photography rather than stock portraits.
 
 ```yaml
-photo: /assets/team/name.jpg
+photo: /images/name.jpg
 ```
-
-This requires adding an image upload/management workflow.
 
 ### 6.3 Full blog editor
 

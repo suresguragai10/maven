@@ -1049,6 +1049,7 @@
       });
     }
     checkFaqList('sec-faqs', 'FAQ', c.faqs);
+    checkFaqList('sec-outsourced', 'Outsourced Accounting FAQ', c.outsourced && c.outsourced.faqs);
     checkFaqList('sec-nfrs-ifrs', 'NFRS/IFRS FAQ', c.nfrsIfrs && c.nfrsIfrs.faqs);
     checkFaqList('sec-international-accounting', 'International Accounting FAQ', c.internationalAccounting && c.internationalAccounting.faqs);
     checkFaqList('sec-virtual-cfo', 'Virtual CFO FAQ', c.virtualCfo && c.virtualCfo.faqs);
@@ -1232,6 +1233,9 @@
     area.appendChild(section('sec-services', 'Services', 'Editing "key" and "icon" isn\'t offered here on purpose — they\'re linked to the site\'s icons and internal links.', serviceCategoriesEditor(c.serviceCategories)));
 
     // Outsourced accounting
+    if (!c.outsourced || typeof c.outsourced !== 'object') c.outsourced = {};
+    if (!Array.isArray(c.outsourced.benefits)) c.outsourced.benefits = [];
+    if (!Array.isArray(c.outsourced.faqs)) c.outsourced.faqs = [];
     var outBody = el('div');
     outBody.appendChild(textField('Page Title', function () { return c.outsourced.title; }, function (v) { c.outsourced.title = v; }));
     outBody.appendChild(textField('Paragraph', function () { return c.outsourced.paragraph; }, function (v) { c.outsourced.paragraph = v; }, { multiline: true, rows: 3 }));
@@ -1239,7 +1243,10 @@
     var benWrap = el('div', 'f-field'); var benL = el('label'); benL.textContent = 'Benefits List'; benWrap.appendChild(benL);
     benWrap.appendChild(stringListEditor(c.outsourced.benefits, 'benefit'));
     outBody.appendChild(benWrap);
-    area.appendChild(section('sec-outsourced', 'Outsourced Accounting', '', outBody));
+    var outFaqWrap = el('div', 'f-field'); var outFaqL = el('label'); outFaqL.textContent = 'Page FAQs'; outFaqWrap.appendChild(outFaqL);
+    outFaqWrap.appendChild(faqListEditor(c.outsourced.faqs));
+    outBody.appendChild(outFaqWrap);
+    area.appendChild(section('sec-outsourced', 'Outsourced Accounting', 'Monthly Nepal outsourced-accounting page content, benefits, and FAQs.', outBody));
 
     // NFRS / IFRS
     if (!c.nfrsIfrs || typeof c.nfrsIfrs !== 'object') c.nfrsIfrs = {};
@@ -1361,7 +1368,7 @@
     // Packages
     var pkgBody = el('div');
     pkgBody.appendChild(packagesEditor(c.packages));
-    pkgBody.appendChild(textField('Fee Note (shown below the packages)', function () { return c.packagesFeeNote; }, function (v) { c.packagesFeeNote = v; }, { multiline: true, rows: 2 }));
+    pkgBody.appendChild(textField('Fee & scoping note (shown in the Scope & Fee section)', function () { return c.packagesFeeNote; }, function (v) { c.packagesFeeNote = v; }, { multiline: true, rows: 2 }));
     area.appendChild(section('sec-packages', 'Packages', '', pkgBody));
 
     // Documents
@@ -1395,7 +1402,7 @@
     var rhTilesWrap = el('div', 'f-field'); var rhTilesL = el('label'); rhTilesL.textContent = 'Resource Tiles'; rhTilesWrap.appendChild(rhTilesL);
     rhTilesWrap.appendChild(resourcesTilesEditor(rh.tiles));
     rhBody.appendChild(rhTilesWrap);
-    area.appendChild(section('sec-resources', 'Resources Hub', 'The Resources page — a short intro plus four cards linking to Documents Checklist, Financial Calculators, Useful Links, and FAQ. Icon/link fields aren\'t offered here since they map to fixed pages.', rhBody));
+    area.appendChild(section('sec-resources', 'Resources Hub', 'Edit the Resources hub intro and its four primary library cards: Documents Checklist, Financial Calculators, Useful Links, and FAQ. The surrounding knowledge-workflow and professional-boundary framing stays fixed; icon/link fields are locked because they map to fixed pages.', rhBody));
 
     // Blog posts — each post is its own file, saved independently of the main Save button.
     area.appendChild(section('sec-blog', 'Blog Posts', 'Write, edit, or delete blog posts here. Each post publishes with its own "Publish"/"Save" button below — it does not use the main "Save Changes" button at the top. Remember: the Blog section itself still needs to be ticked "Show in menu" under "Pages: Hide & Headings" before visitors can find it.', blogEditor()));
