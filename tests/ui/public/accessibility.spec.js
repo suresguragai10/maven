@@ -55,9 +55,10 @@ test.describe('Heading structure (Handbook Task 26)', () => {
     await expect(firstQuestionHeading.locator('button.accordion-trigger')).toHaveCount(1);
   });
 
-  test('Documents Needed groups are real h2 headings', async ({ page }) => {
+  test('Documents Needed checklist groups are real h3 headings beneath the checklist section h2', async ({ page }) => {
     await page.goto('/documents-needed');
-    await expect(page.locator('h2.accordion-heading').first()).toBeVisible();
+    await expect(page.locator('#document-checklists h2').first()).toBeVisible();
+    await expect(page.locator('h3.accordion-heading').first()).toBeVisible();
   });
 
   test('a support-area accordion nested under a sectionHead uses h3, not h2', async ({ page }) => {

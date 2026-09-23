@@ -82,3 +82,25 @@ Work Desk (`docs/WORK_DESK_UI_AUDIT_2026_08.md` — note: the audit agent's own 
 
 - [x] The 12 pre-existing audit docs listed at the top turned out to already be committed (from earlier this session) — confirmed via `git ls-files`, nothing to do.
 - [ ] Old OneDrive folder copy (`OneDrive - Nepa Wholesale Inc (1)\Desktop\Maven\maven`) — confirmed safe to delete, still sitting there until the user does so.
+
+---
+
+## 2026-09-22 premium public-site page pass
+
+Completed sequentially without redesigning unrelated pages in the same batch:
+
+- Home premium pass
+- Services premium pass
+- Global Outsourcing / International Services premium pass
+- International Accounting / Remote Accounting Support premium pass
+- Virtual CFO & Management Reporting premium pass
+- NFRS / IFRS premium pass
+- About premium pass
+- Contact premium pass
+- Industries premium pass
+- Outsourced Accounting for Nepal premium pass
+- Team premium pass
+- Resources / Knowledge Hub premium pass
+
+Continue the same page-by-page review approach rather than a repo-wide visual rewrite.
+

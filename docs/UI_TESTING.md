@@ -290,9 +290,10 @@ added zero new dependencies all session. New coverage lives in
   a screen-reader user browsing by heading finds each FAQ/Documents-
   Needed/support-area item directly. The level is caller-supplied
   (`headingLevel`, default `h3`) since the correct level depends on
-  what precedes the accordion on that page — `h2` for FAQ/Documents
-  Needed (no other h2 exists yet), `h3` everywhere a `sectionHead()`
-  already provided one (every NFRS/IFRS-style support accordion).
+  what precedes the accordion on that page. The premium FAQ and Documents
+  pages now place each accordion under an explicit category/section `h2`,
+  so their item triggers use `h3`, matching the NFRS/IFRS-style support
+  accordions and avoiding heading-level skips.
   `industryCard()`'s card name and `teamCard()`'s name both moved from
   h3 to h2 — both pages had no h2 between their h1 and that h3 grid, a
   genuine skip; `.contact-info-item`'s four h4s became h3 for the same

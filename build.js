@@ -180,8 +180,8 @@ const pages = [
   },
   {
     file: 'useful-links.html', activeKey: 'useful-links', bodyHtml: usefulLinks(),
-    title: 'Useful Links — Nepal Government Portals | Maven Consultancy',
-    description: 'Official Nepal government portals for tax (IRD), company registration (OCR), social security (SSF), and banking (NRB) — curated by Maven Consultancy.',
+    title: 'Official Nepal Finance & Compliance Links | Maven Consultancy',
+    description: 'Official and institutional Nepal reference links for tax, company registration, social security, banking, accounting, industry and government services.',
     breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'Useful Links', href: 'useful-links.html' }],
     heroImage: '/images/useful-links-hero-bg.jpg',
   },
@@ -194,8 +194,8 @@ const pages = [
   },
   {
     file: 'faq.html', activeKey: 'faq', bodyHtml: faq(), extraHead: faqJsonLd(),
-    title: 'Frequently Asked Questions | Maven Consultancy Services',
-    description: 'Answers about Maven Consultancy Services Pvt. Ltd. — accounting, tax, compliance, pricing, coverage across Nepal, and data confidentiality.',
+    title: 'Accounting, Tax & Finance FAQ | Maven Consultancy Nepal',
+    description: 'Answers about Maven accounting, tax, compliance, pricing, confidentiality, Nepal service coverage, reporting support, and professional boundaries before you engage.',
     breadcrumbs: [HOME_CRUMB, RESOURCES_CRUMB, { label: 'FAQ', href: 'faq.html' }],
     heroImage: '/images/faq-hero-bg.jpg',
   },
@@ -220,9 +220,9 @@ const pages = [
   },
   {
     file: 'testimonials.html', activeKey: 'testimonials', bodyHtml: testimonials(),
-    title: 'Client Testimonials | Maven Consultancy Services Nepal',
-    description: 'Feedback from businesses supported by Maven Consultancy Services Pvt. Ltd. across Nepal.',
-    // No heroImage: this page is hidden/noindexed, and pageHero() here is called with no bg photo anyway.
+    title: 'Client Testimonials | Accounting & Finance Support | Maven Consultancy',
+    description: 'Read published client feedback about Maven Consultancy accounting, tax compliance and financial management support for businesses in Nepal.',
+    // No heroImage: testimonials() uses a custom typographic hero rather than a photographic LCP image.
   },
   {
     file: 'privacy.html', activeKey: 'privacy', bodyHtml: privacy(),

@@ -180,17 +180,42 @@ partnerNote: >-
 outsourced:
   title: Outsourced Accounting for Growing Businesses
   paragraph: >-
-    Hiring a full-time accountant may not be practical for every small business. Maven provides
-    outsourced bookkeeping, tax, payroll, and compliance support so business owners can focus on
-    operations while their records, returns, and reports are handled in an organized way.
+    Hiring a full-time accountant or building a larger in-house finance team may not be the right
+    operating model for every growing business. Maven provides a defined outsourced accounting
+    scope that can connect bookkeeping, reconciliations, payroll and tax coordination, record
+    management, and monthly reporting into a more dependable finance routine.
   benefits:
-    - Lower cost than full-time accounting staff
-    - Regular bookkeeping and monthly reporting
-    - VAT/TDS and tax deadline tracking
-    - Document follow-up and record management
-    - Professional review process
-    - Scalable support as business grows
-  cta: Talk to us about monthly accounting support
+    - Defined monthly accounting scope
+    - Regular bookkeeping and reconciliation
+    - VAT/TDS and tax deadline coordination
+    - Payroll accounting and supporting records
+    - Monthly reporting and management visibility
+    - Review process that can scale as the business grows
+  cta: >-
+    Tell us how your bookkeeping, reconciliations, payroll, compliance, and reporting work today. We
+    can help define a practical starting scope around the work that needs more structure.
+  faqs:
+    - q: How is outsourced accounting different from hiring an in-house accountant?
+      a: >-
+        An outsourced engagement is a defined external service relationship rather than an employee
+        role. Maven and the client agree the recurring scope, information requirements, review points,
+        and outputs. Businesses that need continuous on-site control or high-volume daily approvals may
+        still need in-house finance staff, with Maven supporting selected areas where appropriate.
+    - q: Do we need to change our accounting software before working with Maven?
+      a: >-
+        Not necessarily. We first review the current accounting setup, records, workflow, and reporting
+        needs. Where practical, the engagement can work with the systems and working files already in
+        use, with process or setup changes recommended only when they are useful to the agreed scope.
+    - q: Can bookkeeping, payroll, VAT/TDS, and monthly reporting be handled together?
+      a: >-
+        They can be connected within one engagement where those areas are specifically included in the
+        agreed scope. The exact responsibilities depend on the business, the information available, and
+        the professional work Maven has been engaged to perform.
+    - q: What documents are normally needed each month?
+      a: >-
+        The exact list depends on the business and scope, but it may include sales and purchase records,
+        invoices and bills, bank records, payroll inputs, agreements, tax-related documents, and other
+        supporting schedules. Maven confirms the recurring information list during onboarding.
 nfrsIfrs:
   intro: >-
     Financial reporting requirements can become more complex as a business grows, changes its
@@ -495,12 +520,11 @@ internationalHub:
   cta: Book a Free Discovery Call
 internationalAccounting:
   intro: >-
-    Maven supports international businesses and accounting firms with day-to-day bookkeeping and
-    financial reporting work. If you are a small business, startup, growing company, or accounting
-    firm looking for reliable remote support for repetitive and time-consuming accounting work, we
-    can start with a clearly defined scope and expand the engagement as the working relationship
-    develops. We work within your existing accounting process wherever practical, helping your team
-    increase capacity without creating unnecessary system changes.
+    Maven provides day-to-day remote accounting capacity for international businesses and accounting
+    firms. Engagements can cover recurring bookkeeping, reconciliations, supporting schedules,
+    month-end work and reporting within a clearly defined scope. Where practical, we work inside your
+    existing accounting process and systems so your team can add capacity without unnecessary
+    migration or handoff complexity.
   services:
     - Bookkeeping and transaction categorization
     - Bank reconciliation
@@ -799,32 +823,32 @@ virtualCfo:
   cta: Talk to Maven about Virtual CFO and management reporting support
 resourcesHub:
   intro: >-
-    Practical tools and reference material to help you prepare, plan, and stay on top of compliance
-    — in one place.
+    Use this hub to prepare records, test indicative calculations, reach official sources, and
+    understand common questions before a task becomes entity-specific or judgement-heavy.
   tiles:
     - title: Documents Checklist
       text: >-
-        General document checklists for company registration, PAN/VAT registration, monthly
-        accounting, and tax clearance.
+        General preparation checklists for company registration, PAN/VAT registration, monthly
+        accounting, and tax-clearance support. Requirements can vary by entity and engagement.
       cta: View Documents Checklist
       href: documents-needed.html
       icon: upload
     - title: Financial Calculators
       text: >-
-        Free calculators for salary income tax, VAT, TDS, and loan EMI, with a full slab-by-slab
-        breakdown.
+        Indicative calculators for salary income tax, VAT, TDS, and loan EMI, with transparent
+        calculation breakdowns and supporting notes.
       cta: Use Financial Calculators
       href: calculators.html
       icon: percent
     - title: Useful Links
       text: >-
-        Official Nepal government portals for tax, company registration, social security, and
-        banking.
+        Direct links to official Nepal government and institutional portals for tax, company
+        registration, social security, banking, and related reference points.
       cta: View Useful Links
       href: useful-links.html
       icon: globe
     - title: FAQ
-      text: Straight answers about what Maven does — and does not — provide.
+      text: Plain-language answers about Maven's scope, process, pricing approach, coverage, and confidentiality.
       cta: Read FAQs
       href: faq.html
       icon: shield
@@ -872,8 +896,7 @@ packages:
 packagesFeeNote: >-
   Fees depend on factors such as transaction volume, employee count, number of accounts or entities,
   record quality, reporting complexity, urgency, and overall scope of work — only the factors
-  relevant to your situation apply. Government fees, penalties, official charges, and third-party
-  professional charges are billed separately.
+  relevant to your situation apply. Maven confirms the service fee after reviewing the agreed scope.
 documentsTopNote: >-
   Document requirements may vary depending on business type, ownership structure, location,
   government office requirements, and service scope. Please contact Maven before submitting
@@ -1329,60 +1352,69 @@ pages:
 pageHeaders:
   about:
     eyebrow: About Maven
-    title: About Maven Consultancy
-    subtitle: A focused, hands-on consultancy built for startups, SMEs, and growing businesses across Nepal.
-  services:
-    eyebrow: Our Services
-    title: Accounting, Tax, Registration & Compliance Services in Nepal
+    title: A focused finance and accounting partner from Kathmandu
     subtitle: >-
-      Straightforward support across seven core areas — from first registration to ongoing monthly
-      compliance.
+      Maven combines hands-on accounting, tax, compliance and reporting support in Nepal with
+      structured remote finance delivery for international teams.
+  services:
+    eyebrow: Finance · Tax · Accounting · Advisory
+    title: Connected finance support from setup to reporting
+    subtitle: >-
+      Maven connects business setup, tax compliance, payroll, outsourced accounting, management
+      reporting and advisory support for growing businesses in Nepal, with remote finance delivery
+      available for international teams.
   outsourced-accounting:
-    eyebrow: Outsourced Accounting
-    title: Outsourced Accounting Services in Nepal
-    subtitle: A dependable alternative to hiring a full-time in-house accountant.
+    eyebrow: Outsourced Accounting · Nepal
+    title: Outsourced Accounting for Growing Businesses in Nepal
+    subtitle: >-
+      Monthly bookkeeping, reconciliations, tax and payroll coordination, and management reporting
+      for businesses that need a dependable finance function without building a full in-house team.
   global-outsourcing:
     eyebrow: Global Finance Delivery
-    title: International Accounting & Finance Support
+    title: Finance & Accounting Outsourcing from Nepal
     subtitle: >-
-      A Kathmandu-based team providing remote bookkeeping, reconciliation, reporting, and Virtual
-      CFO support for businesses and accounting firms abroad.
+      A Kathmandu-based team providing remote bookkeeping, reconciliation, month-end reporting and
+      Virtual CFO support for international businesses and accounting firms.
   international-accounting:
     eyebrow: Remote Accounting Support
-    title: International Bookkeeping & Reconciliation Support
-    subtitle: A remote team for the parts of your books that take too much time.
+    title: Reliable remote accounting for international teams
+    subtitle: >-
+      Bookkeeping, reconciliations, month-end and reporting support from Kathmandu for international
+      businesses and accounting firms.
   virtual-cfo:
-    eyebrow: Virtual CFO
+    eyebrow: Virtual CFO & Management Reporting
     title: Virtual CFO & Management Reporting
-    subtitle: Financial visibility and management support beyond day-to-day bookkeeping.
+    subtitle: Management reporting, cash-flow forecasting and finance planning for growing businesses in Nepal and international teams.
   nfrs-ifrs:
-    eyebrow: NFRS / IFRS Support
-    title: NFRS / IFRS Implementation & Financial Reporting Support
+    eyebrow: NFRS / IFRS Implementation
+    title: NFRS / IFRS Implementation & Financial Reporting
     subtitle: >-
-      Practical support for businesses preparing, transitioning, and reporting under applicable
-      financial reporting standards.
+      Structured support for readiness, transition, technical accounting, financial statements,
+      disclosures, and year-end reporting coordination.
   packages:
-    eyebrow: Packages
-    title: Accounting & Compliance Packages
+    eyebrow: Packages & Engagements
+    title: Structured Finance Support, Scoped to Your Business
     subtitle: >-
-      Three starting points — get in touch with our team for a customized quote scoped to your
-      business.
+      Three practical starting points for setup, recurring compliance, and growing finance needs —
+      each tailored after a short review of your actual scope.
   documents-needed:
     eyebrow: Documents Checklist
-    title: Documents Needed
-    subtitle: A general guide — the exact list depends on your business type and the service you need.
+    title: Prepare the Right Documents for the Work Ahead
+    subtitle: >-
+      Practical starting checklists for registration, PAN/VAT, monthly accounting, tax or return support,
+      and project or loan reporting — confirm the exact requirements before sharing sensitive records.
   industries:
-    eyebrow: Industries We Serve
-    title: Businesses We Support Across Nepal
+    eyebrow: Industries & Business Models
+    title: Finance Support Built Around Your Business Model
     subtitle: >-
-      Maven works with a wide range of businesses, from first-time registrations to established,
-      growing companies.
+      Industry-aware accounting, tax, payroll, and reporting support for businesses across Nepal —
+      built around your transaction flow, cash cycle, cost structure, and management needs.
   resources:
-    eyebrow: Resources
-    title: Guides, Calculators & Reference Links
+    eyebrow: Knowledge & Resources
+    title: Practical Finance Resources for Nepal Businesses
     subtitle: >-
-      Practical tools and reference material to help you prepare, plan, and stay on top of
-      compliance.
+      Prepare documents, test indicative calculations, reach official portals, and understand
+      common finance, tax, accounting, and compliance questions from one structured hub.
   useful-links:
     eyebrow: Resources
     title: Useful Links
@@ -1390,25 +1422,28 @@ pageHeaders:
       Official Nepal government portals related to registration, tax, and compliance — handy to have
       in one place.
   calculators:
-    eyebrow: Free Tools
-    title: Nepal Financial Calculators
+    eyebrow: Finance Tools
+    title: Financial Calculators for Practical Planning
     subtitle: >-
-      Live calculators for salary income tax, VAT, TDS, and loan EMI — with a full slab-by-slab
-      breakdown.
+      Use live tools for salary income tax, VAT, TDS, and loan EMI. Review the assumptions and
+      breakdowns, then confirm anything that affects a filing, payment, payroll decision, or loan application.
   faq:
-    eyebrow: FAQ
-    title: Frequently Asked Questions
-    subtitle: Straight answers about what Maven does — and does not — provide.
+    eyebrow: Client Questions
+    title: Answers Before You Engage Maven
+    subtitle: Practical answers about services, scope, coverage, pricing, confidentiality, reporting support, and where case-specific professional review is still needed.
   contact:
-    eyebrow: Contact
-    title: Contact Maven Consultancy
-    subtitle: Send an inquiry, book a free consultation, or reach us directly by phone or WhatsApp.
+    eyebrow: Contact Maven
+    title: Start a Conversation With Maven
+    subtitle: >-
+      Tell us what you are working through. We will help clarify the right finance, tax, accounting,
+      reporting or outsourced support before asking you for documents.
   team:
     eyebrow: Our Team
-    title: The People Behind Maven
+    title: Finance Experience, Close to the Work
     subtitle: >-
-      A grounded, Kathmandu-based team supporting businesses with accounting, tax, and compliance
-      across Nepal, plus remote outsourced support for international clients.
+      A Kathmandu-based team combining hands-on accounting and compliance delivery with experience
+      across audit, banking, risk, reporting, and business advisory — with remote support available
+      for international clients.
   testimonials:
     eyebrow: Client Feedback
     title: What Our Clients Say
@@ -1568,27 +1603,41 @@ testimonials:
     role: Director
     business: Adhika Consultancy Pvt. Ltd.
     hidden: false
-privacyLastReviewed: August 2026
+privacyLastReviewed: September 2026
 privacyIntro: >-
   This Privacy Policy explains how Maven Consultancy Services Pvt. Ltd. ("Maven", "we", "us")
-  collects, uses, and protects the information you share with us through this website. By using this
-  website or submitting the contact form, you agree to the practices described below.
+  collects, uses, and protects the information you share with us through this website, including
+  when you submit the contact form or use live chat. It also explains the main third-party services
+  involved in those website communications.
 privacySections:
   - title: Information we collect
     text: >-
-      When you submit the inquiry form, we collect the details you provide — such as your name,
-      business name, phone number, email address, the service you are interested in, your business
-      type, and your message. We do not collect sensitive financial records through this website.
+      When you use the inquiry form or live chat, we collect the details you choose to provide —
+      such as your name, business name, phone number, email address, the service you are interested
+      in, your business type, your message, and chat content. The live-chat service may also process
+      technical and session information needed to operate the chat. Please do not send financial
+      records, identification documents, banking information, payroll files, or other confidential
+      documents through the general website form or live chat. We will confirm an appropriate method
+      for document exchange after understanding your requirements.
   - title: How we use your information
     text: >-
       We use your information only to respond to your inquiry, understand your requirement, prepare
-      a quotation, and provide the services you ask for. We do not sell or rent your information to
-      anyone.
+      a quotation, provide the services you ask for, and operate the website's communication tools.
+      We do not sell or rent your information to anyone.
   - title: How your information is shared
     text: >-
-      Contact form submissions are delivered to us through Formspree, a third-party form service. We
-      share your details only with our own team members who need them to respond to you. We do not
-      share your information with unrelated third parties for marketing.
+      Contact form submissions are delivered to us through Formspree, and website live chat is
+      provided through Tawk.to. These third-party service providers process information as needed to
+      operate those services. Within Maven, inquiry and chat details are shared only with team members
+      who need them to respond to you. We do not share your information with unrelated third parties
+      for marketing.
+  - title: Cookies and live-chat storage
+    text: >-
+      Tawk.to may use cookies, local storage, and session storage to operate the live-chat service,
+      maintain chat sessions, and remember relevant widget settings. Where Tawk.to's consent form is
+      enabled, related chat cookies and local storage are not set until the visitor accepts that
+      consent form. You can also choose to contact Maven by phone, WhatsApp, or email instead of
+      using live chat.
   - title: Data retention
     text: >-
       We keep inquiry details only as long as needed to respond to you and, where you become a
@@ -1706,13 +1755,13 @@ calculators:
       rate: 25
       note: Windfall gain / lottery (final)
   tdsNote: >-
-    Common rates under the Income Tax Act 2058 / Finance Act 2082. Notes: rent paid to an individual
-    landlord is generally not subject to income-tax TDS (local rent tax may apply); contract TDS
-    applies once cumulative payments to one supplier exceed NPR 50,000 in a year; rates change with
-    each Finance Act. Confirm the right treatment with Maven before deducting.
+    Common configured withholding rates for typical payment categories. The correct treatment can
+    depend on recipient status, VAT/PAN status, payment nature, thresholds, exemptions, and current
+    law. Confirm the applicable rate and treatment before deducting or depositing TDS.
   incomeTaxFYHint: >-
-    FY 2082/83 runs to mid-July 2026. FY 2083/84 slabs are per the Budget of Jestha 2083 — verify
-    against the gazetted Finance Act.
+    The latest configured fiscal-year schedule is selected by default. IRD publishes current-year
+    rate sheets; confirm the current statutory treatment before filing, especially for deductions,
+    exemptions, or income outside regular salary.
   deductionCapRetirement: 500000
   deductionCapLife: 40000
   deductionCapHealth: 20000
@@ -1755,8 +1804,8 @@ calculators:
       label: FY 2083/84 · 2026/27
       hasCouple: false
       disclaimer: >-
-        Estimate only, based on the FY 2083/84 slabs announced in the Budget of Jestha 2083 — verify
-        against the gazetted Finance Act. For accurate filing, get in touch.
+        Estimate only, using the configured FY 2083/84 resident salary schedule. Confirm current
+        statutory treatment, deductions, exemptions, and filing facts before relying on the result.
       single:
         - width: 1000000
           rate: 1

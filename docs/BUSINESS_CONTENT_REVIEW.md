@@ -17,7 +17,7 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 3. **Contact-page phone/email were not clickable.** Fixed this task — pure `tel:`/`mailto:` markup, no visible text changed. See "Fixes implemented."
 4. **Services page said "six core areas" but renders seven service categories.** A stale count left over from before the 7th category (NFRS/IFRS) was added. Fixed this task — the Home page's own stat row already independently confirms "7 · Service categories," so "seven" is the objectively correct number, not a new claim.
 5. **Specific, memorable numbers appear in a few places that are Finance/legal-adjacent and were deliberately NOT touched, per this task's own rules**: FAQ's "typically around 7 working days" for company registration, the Team page's "almost two years providing remote financial reporting support to US-based clients," and Privacy Policy's "stored securely" (no stated security measure). These are flagged per-page below with **owner input required**, not edited.
-6. **Team page's "team" (plural) framing vs. one configured member.** The hero subtitle says "A grounded, Kathmandu-based **team** supporting businesses..." while exactly one team member is currently configured. This may be intentional (more members planned), so — per this task's explicit instruction not to touch Team content planned for later admin updates — this is flagged only, not changed.
+6. **[RESOLVED 2026-09-22] Team depth and plural framing.** The Team page now has seven published profiles, so the earlier mismatch between plural "team" language and a single configured profile no longer exists. The page now separates founders from wider advisory/client-delivery roles while keeping Maven's Kathmandu operating base explicit.
 
 ---
 
@@ -41,18 +41,19 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 ## 2. About (`about.html`)
 
-**Current purpose**: build trust in the "who" behind the services — humanize a small consultancy, differentiate from "a large impersonal firm."
+**Current purpose**: establish trust in Maven as a focused professional finance and accounting firm before a prospect moves into Services, Team or Contact.
 
-1. **Intended visitor**: someone who's already interested (from Home/Services) and wants to know if Maven is credible/trustworthy before reaching out.
-2. **Problem/question**: "Is this a real, established, trustworthy business, or a one-person side hustle?"
-3. **What Maven offers**: this page under-lists services compared to Services page — `aboutText` describes them in prose ("business setup, accounting, tax, compliance, financial management and reporting, payroll, project report, and advisory services") rather than the 7 named categories. That's fine for an About page (it's not meant to be the service catalog) but worth noting for internal consistency purposes only.
-4. **Evidence/trust present**: same `aboutFacts` stamp list as Home (founding year, clients served, coverage) plus a 5-item Values list (Accuracy, Confidentiality, Timely service, Professional communication, Ethical practice) with specific, non-generic supporting text for each (e.g. Confidentiality: "shared only with the people directly working on your file"). This is good — values claims are backed by a concrete behavioral description, not just adjectives.
-5. **Next action**: "Book a Free Initial Consultation" / "Contact Maven Today" — clear.
+1. **Intended visitor**: someone already interested in Maven who wants to understand the firm, its working standards, people and delivery model before making contact.
+2. **Problem/question**: "Who is Maven, how does the team work, and can I trust them with recurring finance information?"
+3. **What Maven offers**: the page now summarizes three connected capability layers — setup/tax/compliance, accounting operations, and reporting/outsourced finance — while leaving the detailed catalogue to Services.
+4. **Evidence/trust present**: established year and client count from existing brand data; New Baneshwor/Kathmandu base; existing five values (Accuracy, Confidentiality, Timely service, Professional communication, Ethical practice); explicit internal-review/confidentiality process; and a preview of real Team profiles with a full Team-page path.
+5. **Delivery model**: Nepal-wide support and remote international finance delivery are shown as separate, explicit paths. The page does not imply foreign offices or regulated services outside Maven's stated scope.
+6. **Next action**: Services, Team, Global Outsourcing, Contact, or WhatsApp depending on the visitor's intent.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| No structural issues found. Page is honest about scale ("We are a focused, growing consultancy — not a large firm, and we don't try to be") — this reads as a strength (sets accurate expectations) rather than a weakness. | — | — | — |
+| No structural content issue identified in the 2026-09-22 premium pass. Future improvement would be authentic Maven office/team photography if the owner supplies higher-quality approved images. | P3 | Optional photography upgrade only; current layout is already designed to accept real imagery without a structural rewrite. | Owner-approved photos. |
 
 ---
 
@@ -76,53 +77,55 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 ## 4. Packages (`packages.html`)
 
-**Current purpose**: give a shape to "how much" without publishing fixed prices — 3 tiers to anchor expectations.
+**Current purpose**: explain three common engagement starting points and how Maven scopes a quotation without presenting a rigid good/better/best price ladder.
 
-1. **Intended visitor**: someone past "does Maven do this" and now asking "roughly what tier am I."
-2. **Problem/question**: "What would I actually get, and how do the options differ?"
-3. **What Maven offers**: 3 clearly differentiated tiers (Startup Setup / Monthly Compliance / Business Growth) with 5-8 bullets each, escalating in scope logically.
-4. **Evidence/trust present**: a fee-transparency note ("Government fees, penalties, official charges, and third-party professional charges are billed separately") — this is good, prevents a bill-shock complaint later. No pricing numbers are shown anywhere, consistently.
-5. **Next action**: "Enquire About This Package" per card, "Get a Customized Quote" at the bottom — clear.
+1. **Intended visitor**: someone who understands Maven's services and now wants to know what a practical starting engagement could look like and what affects the fee.
+2. **Problem/question**: "Which starting point is closest to my situation, what would normally be included, and how will Maven price it?"
+3. **What Maven offers**: 3 clearly differentiated starting points (Startup Setup / Monthly Compliance / Business Growth), each preserving its CMS-managed audience, situation and inclusion list. The page explicitly says the options are not rigid tiers and shows custom combinations.
+4. **Evidence/trust present**: quotation drivers are visible before the packages (volume, payroll, accounts/entities, record quality, reporting and timing); the fee section separates Maven's service fee from government fees, penalties, official charges and third-party professional charges; the four-step quotation process clarifies inclusions and what remains with the client.
+5. **Next action**: discuss the closest starting point, request a custom scope, or return to the full Services architecture.
 
-**Issues**:
+**Issues / owner-governed wording**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| Package bullet wording drifts from the Services page's fuller category names for the same underlying work (e.g. "PAN/VAT guidance" here vs. "PAN registration support" + "VAT registration support" as two separate Services-page bullets; "VAT/TDS support" here vs. "VAT return preparation support"/"TDS/e-TDS support" on Services). | P2 | Align package bullet wording with Services-page terminology where they describe the same deliverable, OR keep package bullets deliberately shorter by design (packages are meant to summarize, not itemize). Not obviously wrong either way. | **Owner input required** — this is a scope/wording judgment call, not a proofreading fix: "guidance" reads lighter-touch than "registration support," and changing it could imply a scope change to a paid package. Flagged, not touched. |
+| Package bullet wording is intentionally shorter than the Services page's fuller category wording (for example, "PAN/VAT guidance" here vs. separate registration-support lines on Services). | P2 / scope-sensitive | Keep the current wording unless Maven wants the commercial package to promise the fuller service wording. Changing "guidance" to "registration support" could change the apparent scope of a paid engagement. | **Owner input required** — not changed in the premium pass. |
+| No fixed price is published. | — | Keep "Quote after review" until Maven has a defensible, maintained public-pricing policy. Do not invent starting prices for design purposes. | Owner decision required before any price is published. |
 
 ---
 
 ## 5. Industries (`industries.html`)
 
-**Current purpose**: let a visitor self-identify ("that's my kind of business") and see industry-specific proof Maven understands their situation.
+**Current purpose**: show that Maven shapes accounting, tax, payroll and reporting support around how a business actually operates rather than applying one generic finance template.
 
-1. **Intended visitor**: someone who wants to see their own business type reflected back, not generic accounting-firm language.
-2. **Problem/question**: "Does Maven actually understand businesses like mine, or is this generic?"
-3. **What Maven offers**: 13 industries, each with a tailored description + expandable "common needs" and "how Maven helps" lists using industry-specific vocabulary (e.g. Construction: "retention tracking"; Restaurants: "daily sales and payment-channel reconciliation"). This is genuinely well done — it does NOT read as generic boilerplate reworded 13 times.
-4. **Evidence/trust present**: implicit only, via specificity of the industry knowledge shown — no stat row or trust bar on this page, which is fine (Home/About already carry those).
-5. **Next action**: "Book a Free Initial Consultation" / "View Services," plus a per-card WhatsApp CTA once expanded — good, industry-specific enough to feel personal.
+1. **Intended visitor**: someone who wants to see their own business model reflected back and understand which finance issues tend to matter in that context.
+2. **Problem/question**: "Does Maven understand how money, costs, working capital and reporting needs differ in a business like mine?"
+3. **What Maven offers**: a business-model lens (revenue, cost/margin structure, cash/working capital, reporting audience) followed by 13 real industry profiles. Each profile keeps its tailored description, finance-attention list and Maven-support list, including specific concepts such as construction retentions, restaurant payment-channel reconciliation, donor/project reporting and marketplace settlement reconciliation.
+4. **Evidence/trust present**: specificity of the profile content, a consistent-finance-discipline section (records, reconciliation, responsibility, management visibility), and an explicit professional-boundary statement rather than unsupported credentials.
+5. **Next action**: discuss the selected business type, ask a quick WhatsApp question, view the broader finance services, or start a consultation through Contact.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| None found. This is one of the stronger pages on the site — specific without inventing unverifiable claims. | — | — | — |
+| None found after the premium pass. The page remains specific without turning the 13 industries into thin standalone doorway pages or inventing sector credentials. | — | — | — |
 
 ---
 
 ## 6. Outsourced Accounting (`outsourced-accounting.html`)
 
-**Current purpose**: the **Nepal-domestic** "hire us instead of a full-time in-house accountant" pitch — distinct from the international-facing outsourcing pages.
+**Current purpose**: the **Nepal-domestic** monthly finance-function page — distinct from the international-facing accounting and outsourcing pages.
 
-1. **Intended visitor**: a Nepal-based business owner weighing outsourced monthly bookkeeping vs. hiring staff.
-2. **Problem/question**: "Is outsourcing actually cheaper/easier than hiring, and what does the month-to-month process look like?"
-3. **What Maven offers**: a clear 4-step monthly rhythm (Share documents → We record & reconcile → Monthly report delivered → Ongoing tracking) — concrete and easy to picture.
-4. **Evidence/trust present**: a 6-item benefit list ("Lower cost than full-time accounting staff," "VAT/TDS and tax deadline tracking," etc.) — reasonable, not oversold.
-5. **Next action**: "Talk to us about monthly accounting support" / "Start Monthly Accounting Support" — clear, though slightly different button wording for essentially the same action (see below).
+1. **Intended visitor**: a Nepal-based growing business deciding how to create a more dependable monthly accounting routine without building a larger in-house finance team too early.
+2. **Problem/question**: "How can we make bookkeeping, reconciliations, compliance follow-through and monthly reporting more structured, and what should stay in-house?"
+3. **What Maven offers**: a defined monthly scope covering bookkeeping, reconciliations, selected payables/receivables support, payroll accounting support, VAT/TDS and tax coordination, and monthly reporting, with a five-step recurring operating cycle.
+4. **Evidence/trust present**: explicit scope language, review and exception handling, confidentiality guidance, management-responsibility wording, professional boundaries, and a visible statement that outsourcing is not the right answer for every finance role.
+5. **Next action**: "Discuss Monthly Accounting" with a secondary path into Virtual CFO support or accounting packages as the business grows.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| This page (Nepal-domestic) and `international-accounting.html` ("International Outsourced Accounting & Bookkeeping") are two genuinely different pages doing two genuinely different jobs (local staffing alternative vs. remote support for foreign accounting firms/businesses) — confirmed NOT a duplication despite similar-sounding names. Worth stating explicitly since the names alone could suggest overlap. | — | No content change needed. The nav-label fix (item 2 in cross-cutting findings) reduces the naming confusion between them. | — |
-| No FAQ section on this page (every comparable service page — International Accounting, Virtual CFO, NFRS/IFRS — has one). | P2 | Consider adding 2-3 FAQs (e.g. "How is this different from hiring an accountant?", "What if I already use an accounting software?"). | **Owner input required** — new FAQ content is new copy, not a correction; proposing, not writing/implementing. |
+| This page and `international-accounting.html` continue to do two different jobs: Nepal domestic finance operations vs. remote support for foreign businesses/accounting firms. The premium pass strengthened that distinction rather than merging the pages. | — | Keep both audience framings explicit in future edits. | — |
+| **[RESOLVED — 2026-09-22]** The page previously had no FAQ section. | — | Four FAQs are now included and editable in the admin CMS, covering outsourced vs. in-house accounting, existing software, connected bookkeeping/payroll/VAT-TDS scope, and recurring document needs. | — |
+| **[RESOLVED — 2026-09-22]** The old benefits list included the blanket claim "Lower cost than full-time accounting staff." | — | Replaced with more defensible scope/flexibility language; the page now explains when outsourced support may or may not be the right operating model. | — |
 
 ---
 
@@ -133,8 +136,8 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 1. **Intended visitor**: a foreign business or accounting firm landing here (likely via search or a referral) trying to figure out if Maven is relevant to them at all.
 2. **Problem/question**: "Does a Kathmandu-based firm actually make sense for my international business, and what's the difference between the two options I'm being shown?"
 3. **What Maven offers**: exactly two clearly differentiated paths — day-to-day bookkeeping (→ International Accounting) vs. higher-level financial visibility (→ Virtual CFO) — a genuinely useful triage, not a false choice.
-4. **Evidence/trust present**: minimal by design (it's a router page, not a pitch) — just the "Kathmandu-based team" framing, which is honest and not oversold.
-5. **Next action**: "Book a Free Discovery Call" — appropriate for an international/higher-consideration audience (vs. the more transactional "Book Free Consultation" used domestically).
+4. **Evidence/trust present**: the hub now explains the delivery model directly — Kathmandu base, existing-system workflow, defined scope, direct communication, controlled access, professional boundaries, and accounting-firm support — while still routing visitors into the two specialist pages for full detail.
+5. **Next action**: "Book a Free Discovery Call" remains the primary action, with clear continuation paths to Remote Accounting Support and Virtual CFO / Management Reporting.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
@@ -164,16 +167,16 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 **Current purpose**: the higher-tier "financial visibility beyond bookkeeping" offer — explicitly positioned as a step up from International Accounting, not a replacement.
 
-1. **Intended visitor**: a business owner (domestic or international — this page doesn't specify jurisdiction) who already has bookkeeping handled but wants management reporting/forecasting/cash-flow visibility.
+1. **Intended visitor**: a business owner or management team in Nepal or an international team that already has bookkeeping handled but wants management reporting, forecasting, cash-flow visibility, and a more structured finance-management rhythm.
 2. **Problem/question**: "I have my books done — now what? Do I need a full-time CFO, or is there a lighter option?"
 3. **What Maven offers**: a clean 4-level ladder (Bookkeeping Support → Monthly Accounting → Management Reporting → Virtual CFO Support) that lets a visitor self-place without needing a sales call first.
 4. **Evidence/trust present**: two direct disclaimers — "Does Maven make business or investment decisions for us? No... We do not provide investment advice or make decisions on behalf of the business" and the Scenario & Decision Support note ("not investment, lending or regulated financial advice"). Same honest-scoping strength as International Accounting.
-5. **Next action**: "Book a Free Discovery Call" (appears twice — intro and closing) — clear.
+5. **Next action**: the hero invites visitors to “Discuss Your Reporting Needs,” with a closing “Book a Free Initial Consultation” CTA — clear and consistent with the page’s advisory positioning.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| Unlike International Accounting, this page has zero Nepal-vs-international framing in its own copy — a visitor arriving directly here (not via Global Outsourcing) has no cue whether this is a Nepal-only or international service. | P2 | Consider one sentence early on this page (e.g. in the intro) clarifying availability to both domestic and international clients, matching the framing already established on the sibling page. | **Owner input required** — this is new copy, not a correction, and touches how the service is positioned; proposing only. |
+| ~~Unlike International Accounting, this page has zero Nepal-vs-international framing in its own copy.~~ | **Resolved 2026-09-22** | The page header and fit section now state that Virtual CFO / Management Reporting can support growing businesses in Nepal and international teams, while keeping Kathmandu-based delivery and professional-scope guardrails consistent with the international hub. | Implemented in the Virtual CFO premium page pass. |
 
 ---
 
@@ -196,13 +199,13 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 ## 11. Documents Needed / Documents Checklist (`documents-needed.html`)
 
-**Current purpose**: a practical reference tool — reduce "what do I need to bring" friction before a visitor commits to reaching out.
+**Current purpose**: a practical preparation and secure-sharing guide — reduce "what do I need to bring" friction without encouraging visitors to send confidential records through the public website.
 
-1. **Intended visitor**: someone close to engaging, gathering paperwork.
-2. **Problem/question**: "What exactly do I need to prepare?"
-3. **What Maven offers**: 5 document groups (Company Registration / PAN-VAT / Monthly Accounting / Tax Clearance / Project-Loan Report) with 7-11 items each — genuinely useful, not a marketing page pretending to be a checklist.
-4. **Evidence/trust present**: appropriately hedged ("Document requirements may vary depending on business type... contact Maven before submitting documents") — honest about the checklist being general, not exhaustive.
-5. **Next action**: "Get a Customized Document Checklist" — smart, converts a self-service tool into a lead without being pushy.
+1. **Intended visitor**: someone close to engaging, gathering paperwork for registration, tax, monthly accounting, return support, or finance/reporting work.
+2. **Problem/question**: "Which records should I prepare, and what should I confirm before I send anything?"
+3. **What Maven offers**: 5 CMS-managed document groups (Company Registration / PAN-VAT / Monthly Accounting / Tax Clearance / Project-Loan Report), now presented inside a preparation flow rather than as a standalone accordion.
+4. **Evidence/trust present**: the page keeps the variable-requirements disclaimer, explains that the exact list should be confirmed first, and visibly warns against sending banking, payroll, tax or identity documents through general chat/forms.
+5. **Next action**: request a customized checklist after describing the business/entity type, service need, current stage/deadline, and whether records already exist.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
@@ -213,18 +216,18 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 ## 12. Resources (`resources.html`)
 
-**Current purpose**: a hub page linking to Documents Checklist, Calculators, Useful Links, FAQ.
+**Current purpose**: a knowledge hub that helps visitors prepare records, test indicative calculations, verify official sources and understand common service questions before a matter becomes entity-specific or judgement-heavy.
 
-1. **Intended visitor**: someone browsing rather than searching for one specific thing.
-2. **Problem/question**: "What self-service tools does Maven have?"
-3. **What Maven offers**: correctly summarized 4-tile menu (Blog tile correctly suppressed while hidden/empty, per the CMS visibility flag — good, this confirms "unfinished Finance content clearly left alone" for the Blog specifically).
-4. **Evidence/trust present**: none needed — pure navigation hub.
-5. **Next action**: "Contact Maven" at the bottom, plus each tile's own CTA — fine.
+1. **Intended visitor**: someone who needs a practical starting point before opening a finance, tax, accounting or compliance conversation.
+2. **Problem/question**: "Which resource should I use, and when do I need professional context instead?"
+3. **What Maven offers**: four CMS-managed primary destinations — Documents Checklist, Financial Calculators, Useful Links and FAQ — framed as Prepare / Calculate / Verify / Understand. The Blog remains correctly suppressed while hidden.
+4. **Evidence/trust present**: the page distinguishes indicative tools from official sources and makes the general-information / professional-judgement boundary explicit.
+5. **Next action**: use the relevant resource first, then contact Maven when a current rule, entity-specific treatment, reporting judgement or cross-border issue needs context.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| This is the only one of the 18 pages with no hero background photo (renders as plain navy). Minor visual inconsistency, not a content issue. | P3 | Add a hero background image matching the other pages' convention, once a suitable photo/asset exists. | **Owner input required** — needs an actual image asset; not something to implement without one. |
+| None found in the 2026-09-22 premium pass. The non-photographic hero is now an intentional typographic knowledge-hub treatment rather than an incomplete hero state. | — | Preserve the structured hub and keep Blog hidden until real publish-ready content exists. | — |
 
 ---
 
@@ -247,30 +250,30 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 ## 14. Calculators (`calculators.html`)
 
-**Current purpose**: interactive tools (Income Tax, VAT, TDS, Loan EMI) that demonstrate expertise while generating leads.
+**Current purpose**: a professional planning-tools desk for salary income tax, VAT, TDS and loan EMI, with transparent assumptions, live breakdowns and clear boundaries around when an estimate needs current statutory or professional confirmation.
 
-1. **Intended visitor**: someone who wants a quick number before deciding whether to engage Maven for the real calculation.
-2. **Problem/question**: "Roughly what will I owe / what's my EMI?"
-3. **What Maven offers**: 4 genuinely functional live calculators with slab-by-slab breakdowns — a real utility, not a gimmick.
-4. **Evidence/trust present**: disclaimers are present and correctly worded ("estimate only... not tax, legal, or financial advice," "rates change with each fiscal year's Finance Act") — but see the issue below.
-5. **Next action**: "Need help with tax filing?" / "Book a Free Initial Consultation" / WhatsApp — clear.
+1. **Intended visitor**: someone who wants a practical estimate or scenario check before filing, paying, running payroll, or making a borrowing decision.
+2. **Problem/question**: "What does the configured calculation indicate, what assumptions are being used, and when do I need to verify the result?"
+3. **What Maven offers**: 4 functional live calculators with visible assumptions and breakdowns. The Income Tax tool defaults to the latest configured fiscal-year schedule rather than an older hard-coded year.
+4. **Evidence/trust present**: the premium pass now places estimate-only guidance beside the workbench, adds tool-specific "Useful for / Does not determine" boundaries, and finishes with a four-step verify-before-acting workflow. Statutory rates and thresholds remain owner/professional-governed data rather than being treated as permanently correct.
+5. **Next action**: use the relevant tool for planning, consult official reference links where appropriate, and contact Maven when the result affects a filing, payment, payroll decision, or entity-specific tax/accounting treatment.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| The disclaimer ("estimate only... not tax, legal, or financial advice") is a single small-print line below a visually prominent, large computed number (`.calc-big`, 2.4rem font). A visitor could reasonably treat the headline figure as filing-ready rather than an estimate. | **P1** | Consider making the "estimate only" disclaimer more visually proximate to the result itself (e.g. directly under the big number, not just at the page bottom) — a design change, not a copy rewrite (the wording itself is already correct and doesn't need to change). | **Owner input required** — this is a visual-hierarchy/design change, not a text correction; proposing only, not implemented (would need a CSS/layout decision, arguably belongs with a future design-polish task rather than a "small unquestionably safe" fix here). |
+| No visual-hierarchy issue remains from the earlier review: estimate-only guidance is now prominent and proximate to the tools. The remaining risk is data governance rather than presentation — configured tax/VAT/TDS values still need documented reconciliation to current official sources whenever they change. | P1 governance | Maintain a durable verified-by / verified-date / source record for statutory figures instead of relying on copy alone. | **Owner/professional input required** for the figures listed in `docs/OWNER_REVIEW.md`. |
 
 ---
 
 ## 15. FAQ (`faq.html`)
 
-**Current purpose**: pre-empt objections/questions before they become a reason not to contact Maven.
+**Current purpose**: a grouped pre-engagement help center that lets visitors understand service scope, coverage, fees/confidentiality and reporting/advisory support before they send documents or request a quote.
 
 1. **Intended visitor**: someone with a specific doubt (scope, pricing, coverage, data safety) blocking them from reaching out.
 2. **Problem/question**: varies per question — the 9 questions cover audit scope, monthly accounting, geographic coverage, registration, pricing, data safety, and financial reporting/cash-flow support.
 3. **What Maven offers**: answered honestly, including explicit "no, we don't do X" answers (statutory audit) rather than dodging.
 4. **Evidence/trust present**: same honest-scoping pattern as the international pages — this page explicitly states what Maven does NOT do (statutory audit) as clearly as what it does.
-5. **Next action**: "Contact Maven Today" / WhatsApp — clear.
+5. **Next action**: browse a deeper Services / Global Outsourcing / Documents page, or start a detailed Contact / WhatsApp inquiry when the answer depends on the visitor’s actual facts.
 
 **Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
@@ -301,19 +304,20 @@ A page-by-page review of all 18 indexable public pages, read as a prospective cu
 
 ## 17. Team (`team.html`)
 
-**Current purpose**: put a face (or faces) to the business — the second-most direct trust-building page after About.
+**Current purpose**: establish who is behind Maven, how the team fits together, and what professional working standards clients can expect.
 
-1. **Intended visitor**: someone deciding whether to trust a person, not just a company name.
-2. **Problem/question**: "Who am I actually going to be working with?"
-3. **What Maven offers**: currently one profile — Sures Guragai, Founder & Lead Consultant, with a substantive bio (bookkeeping/tax/reporting/compliance experience across engineering, hospitality, nonprofit, service-sector clients, plus international remote-reporting experience).
-4. **Evidence/trust present**: the bio is specific rather than generic ("almost two years providing remote financial reporting support to US-based clients") but unverifiable as written (no client names, no certification cited) — noted as **DO NOT CHANGE per this task's own rules** (Team content), flagged for the owner's awareness only.
-5. **Next action**: "Book a Free Initial Consultation" — clear.
+1. **Intended visitor**: a prospective client or partner who wants to understand the people, experience mix, review model and operating base behind the firm.
+2. **Problem/question**: "Who will support the work, what experience does the team bring, and how is the engagement controlled?"
+3. **What Maven offers**: seven published profiles across founder, advisor, accounting, consulting and strategic roles. The page keeps the full supplied biographies available while using shorter lead summaries for scanning.
+4. **Evidence/trust present**: real names, roles, locations and supplied experience/qualification narratives; four real team photos; Kathmandu operating-base language; explicit working standards around scope, review, communication and access discipline.
+5. **International framing**: one advisor is listed in the United Kingdom, but the page explicitly states that Maven's operating office remains in Kathmandu and does not present advisor locations as overseas offices.
+6. **Next action**: Contact, Services, About, or Global Outsourcing depending on the visitor's need.
 
-**Issues** (all flagged only — Team content is explicitly out of scope for direct edits this task):
+**Issues**:
 | Issue | Severity | Recommended change | Proof/owner input needed |
 |---|---|---|---|
-| Hero subtitle says "team" (plural) while exactly 1 member is configured. | P2 | If more team members are planned soon, this is fine as forward-looking copy. If not, consider softening to singular framing until more profiles are added. | **Owner input required**: are more team members being added soon? Not changed either way. |
-| No photo for the one configured member (falls back to initials avatar). | P3 | Add a photo when available. | **Owner input required**: photo asset needed, not something to fabricate. |
+| Several team biographies contain specific professional qualifications, certifications, tenure statements and sector-experience claims. | P1 governance | Keep the current wording only while the owner has supporting records and has confirmed each profile is current. Re-verify whenever a bio changes. | **Owner verification required** for credential/experience accuracy; no new credential was invented in the premium pass. |
+| Three published profiles currently have no photo and use the intentional initials fallback. | P3 | Replace only with owner-approved real photography when available; do not use stock portraits. | Owner-approved photo assets. |
 
 ---
 

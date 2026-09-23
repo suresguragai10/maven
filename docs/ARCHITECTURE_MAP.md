@@ -26,10 +26,7 @@ An inventory of every named public and Work Desk surface, classified as **Preser
 **Classify: Preserve, mostly — one real minor timing note remains.** The reveal system (`opacity`/`translateY(12px)`, 420ms, `cubic-bezier(0.22,1,0.36,1)`) exactly matches the Motion Governance standard's easing curve and reveal-timing band, with a correctly fail-open reduced-motion path. **[STALE — corrected 2026-08-21]** ~~No child-stagger logic exists anywhere.~~ `.reveal-stagger` is fully implemented (`styles.css:676-687`, `client.js:392-421`, `nth-child` delays 70/140/210/280/350ms) and live on the Home hero. The remaining real item: two micro-interactions (accordion panel `max-height` 300ms, doc-card tab 300ms) run noticeably slower than the site's other hover/toggle transitions (~150-220ms). Note this "160-240ms band" isn't an owner-approved written rule in `DESIGN_SYSTEM.md` — it's an inferred convention, worth a look but not a governance violation.
 
 ### Home (`pages1.js home()`)
-**Classify: Improve (image architecture) + Duplicate/Confusing (content overlap with About).**
-- Still one photo per service category (6 images), not yet consolidated into the 3 capability-chapter compositions the new standard calls for — this is exactly what Task 02+ should do.
-- Home and About render near-identical `aboutText`/`aboutFacts` "proof panel" content and an identical first-8-industries badge grid. Not broken, but repetitive — a visitor clicking from Home to About sees the same facts twice in almost the same layout. Worth tightening later, not urgent.
-- No inbound hash-fragment anchors target Home — nothing to preserve there.
+**Classify: Preserve.** The 2026 premium pass now uses the three capability pillars, a distinct How-We-Work section, international positioning, reporting outputs and a knowledge/resources layer. The old Home/About proof-panel duplication has been removed. No inbound hash-fragment anchors target Home — nothing to preserve there.
 
 ### Services (`pages2.js services()`)
 **Classify: Improve (image architecture), otherwise Preserve.** Same one-photo-per-category pattern as Home (not yet consolidated). **Real anchors that MUST be preserved in any restructure**: `services.html#registration`, `#tax`, `#payroll`, `#reporting`, `#advisory` (from nav dropdown children and footer links) — all currently satisfied by `id="${cat.key}"` on each service `<article>`. `#bookkeeping` and `#nfrs-ifrs` category ids exist but have no inbound links today (fine, not broken, just currently unused).
@@ -44,19 +41,19 @@ An inventory of every named public and Work Desk surface, classified as **Preser
 **Classify: Preserve.** Confirmed (again, consistent with the earlier Task 28 finding) that these remain a genuinely distinct story from the Nepal-market service pages, not blended in — matches the standing rule. Minor, low-priority note: all three end with near-identical "Book a Free Discovery Call" CTA phrasing — reads as intentional cross-page consistency (each has its own distinct subtitle text from a separate YAML field), not accidental duplication; no action needed.
 
 ### About (`pages1.js about()`)
-**Classify: Duplicate/Confusing (see Home), otherwise Preserve.** Structure itself is sound; the overlap is with Home, not an internal problem.
+**Classify: Preserve.** The 2026 premium pass gives About its own trust/profile role: firm identity, connected scope, working standards, engagement controls, confidentiality, team preview, and separate Nepal/international delivery paths. It no longer duplicates Home's former proof-panel/industry composition.
 
 ### Team (`pages6.js team()`)
 **Classify: Preserve.** Matches the existing Task 28 findings (real photo alt-text or correctly `aria-hidden` initials fallback, one real member, correct "profiles being prepared" fallback state for zero members).
 
 ### Resources (`pages7.js resources()`)
-**Classify: Improve (real CMS gap).** Page itself works correctly and is YAML-driven (not hardcoded), but `content.resourcesHub` has **zero corresponding admin.js editor** — no `sec-resources` section exists anywhere in the 1,684-line admin panel. This is the one page whose content can only be changed by a developer hand-editing `content/site.yaml`, unlike every other page. Matches the standing "CMS editability must survive" concern directly — this predates any task, not introduced by one, but is worth a small future fix (add a `resourcesHub` editor section following the existing pattern).
+**Classify: Preserve.** The Resources page now uses a structured knowledge-hub treatment (Prepare / Calculate / Verify / Understand), while the CMS continues to own the intro plus the four primary resource-card title/text/CTA fields through `sec-resources`. The Blog remains visibility-gated and does not appear in the hub while hidden. The page also makes the boundary between general resources and engagement-specific professional judgement explicit.
 
 ### Useful Links, Contact
 **Classify: Preserve.** Both fully admin-editable, both already hardened in earlier tasks (Contact's form validation/focus/`aria-invalid`/Formspree-interception all previously fixed and tested; Useful Links has its own third-party-disclaimer note and admin editor).
 
 ### Website Admin (`admin/admin.js` + `admin/index.html`) dependency map
-**Classify: Preserve, with the one Resources gap noted above (Improve).** Cross-checked all 27 top-level `content/site.yaml` keys against admin.js's `sec-*` editors — 26 of 27 have a working editor; `resourcesHub` is the sole gap (see above). Validation/conflict-handling/messaging hardening from Task 30 is untouched and confirmed intact.
+**Classify: Preserve.** The former Resources CMS gap is closed: `resourcesHub` has its own `sec-resources` editor for the hub intro and all four fixed-destination cards. Validation/conflict-handling/messaging hardening from Task 30 remains untouched.
 
 ---
 

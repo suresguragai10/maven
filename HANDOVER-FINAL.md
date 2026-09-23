@@ -157,7 +157,7 @@ package.json, package-lock.json, deploy.yml
 - Useful Links (name, URL, description — add/remove freely)
 - Why Choose Us
 - Process Steps (titles and descriptions)
-- FAQs (questions and answers — add/remove freely)
+- FAQs (questions and answers — add/remove freely; the public FAQ automatically groups them by topic)
 - Footer disclaimer + partner note
 - Contact form dropdown options
 - Formspree ID (for contact form email delivery)

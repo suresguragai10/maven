@@ -1,6 +1,6 @@
 # Owner Review List (Task 38)
 
-A short, actionable list of technical finance/legal/regulatory statements on the public site and in Work Desk that need an owner or licensed professional's confirmation — produced as part of Task 38's full proofreading pass. **Nothing on this list was changed or rewritten while producing it** — per this task's own instruction, tax, statutory, NFRS/IFRS, qualification, and legal meaning is left untouched here; this is a request for sign-off, not a correction.
+A short, actionable list of technical finance/legal/regulatory statements on the public site and in Work Desk that need an owner or licensed professional's confirmation. The list began as Task 38's proofreading sign-off register and is now maintained as a live governance checklist. Presentation wording may be clarified during later premium passes, but statutory figures remain unverified until the owner or an appropriately qualified professional records the source, date and confirmation.
 
 Most of these items were already identified in `docs/FINANCE_CONTENT_REVIEW.md` (Task 29) and remain open and unchanged — re-checked against the current `content/site.yaml` while producing this list, confirmed still accurate as descriptions of what's currently published. Two new items (10–11) come from this task's own pass over Work Desk.
 
@@ -10,12 +10,12 @@ For each item: either (a) confirm the figure/claim is still correct and tell you
 
 ---
 
-1. **FY 2083/84 income tax slabs** (`content/site.yaml` `calculators.taxTables`, key `2083`) — **highest priority**. The site's own text already flags this: sourced from the *Budget* of Jestha 2083, not yet confirmed against the *gazetted* Finance Act. Needs checking before this becomes the active filing year.
+1. **FY 2083/84 income tax slabs** (`content/site.yaml` `calculators.taxTables`, key `2083`) — **highest priority**. IRD now publishes current FY 2083/84 natural-person tax-rate material, so the old "Budget only / not yet published" status is stale. The configured figures still need a documented line-by-line reconciliation against the current IRD / enacted-law source, with `verified_by`, `verified_date` and source recorded before Maven treats them as professionally verified.
 2. **FY 2082/83 income tax slabs** (single and couple bands, same block, key `2082`) — no formal record of who verified these against the enacted Finance Act 2082, or when.
 3. **Deduction caps** — Retirement NPR 500,000, Life Insurance NPR 40,000, Health Insurance NPR 20,000 (`calculators.deductionCapRetirement/Life/Health`) — confirm against the current Finance Act.
 4. **VAT rate — 13%** (`calculators.vatRate`) — confirm this is still the standard rate.
 5. **The 11 TDS rates and categories** (`calculators.tdsTypes`) — rent (10%/0%), VAT-registered service (1.5%), PAN-only service (15%), consultancy (15%), commission (15%), royalty (15%), dividend (5%), bank interest (5%), entity interest (15%), windfall/lottery (25%). Each should be individually confirmed against current law, not just as a group.
-6. **The NPR 50,000 cumulative-payment contract-TDS threshold** mentioned in `calculators.tdsNote` — a specific rule, not a rate; confirm it's still the correct trigger amount.
+6. **Contract-TDS threshold treatment** — the public calculator note no longer publishes the previously unverified NPR 50,000 cumulative-payment threshold. If Maven wants to reintroduce a specific threshold in public guidance, verify the current trigger, exceptions and source first and record that verification alongside the configured TDS data.
 7. **The SSF contribution waiver rule** — "contributing to SSF waives only the 1% Social Security Tax on the first income slab" (calculator logic + `pages5.js`) — confirm the rule and whether partial-year contribution still qualifies.
 8. **Company registration turnaround estimate** — "Typically around 7 working days once all required documents are provided" (`content/site.yaml` FAQ) — an operational estimate of government processing time, not a legal claim, but worth reconfirming it still matches current OCR practice.
 9. **Founder bio tenure claim** — "almost two years providing remote financial reporting support to US-based clients" (`content/site.yaml` `teamMembers`) — confirm the figure is still accurate as time passes.

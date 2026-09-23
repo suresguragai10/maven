@@ -8,9 +8,10 @@ const INDEXABLE_PAGES = [
 ];
 
 test.describe('Professional public-site quality pass', () => {
-  test('Home keeps Nepal-first sections ahead of the secondary International showcase', async ({ page }) => {
+  test('Home leads with core finance capability, then establishes standards before international delivery', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('.hero')).toContainText('Kathmandu, Nepal');
+    await expect(page.locator('.hero')).toContainText('Kathmandu-based');
+    await expect(page.locator('.hero')).toContainText('Remote international support');
 
     const order = await page.evaluate(() => {
       const sections = Array.from(document.querySelectorAll('main section'));
@@ -19,17 +20,19 @@ test.describe('Professional public-site quality pass', () => {
         return eyebrow && eyebrow.textContent.trim() === text;
       });
       return {
-        services: indexForEyebrow('What We Do'),
-        packages: indexForEyebrow('Packages'),
-        industries: indexForEyebrow('Industries We Serve'),
-        international: indexForEyebrow('Global Finance Delivery from Nepal'),
+        capabilities: indexForEyebrow('Core Capabilities'),
+        standards: indexForEyebrow('How We Work'),
+        international: indexForEyebrow('Global Outsourced Finance'),
+        reporting: indexForEyebrow('Management Information'),
+        knowledge: indexForEyebrow('Knowledge & Tools'),
       };
     });
 
-    expect(order.services).toBeGreaterThan(-1);
-    expect(order.packages).toBeGreaterThan(order.services);
-    expect(order.industries).toBeGreaterThan(order.packages);
-    expect(order.international).toBeGreaterThan(order.industries);
+    expect(order.capabilities).toBeGreaterThan(-1);
+    expect(order.standards).toBeGreaterThan(order.capabilities);
+    expect(order.international).toBeGreaterThan(order.standards);
+    expect(order.reporting).toBeGreaterThan(order.international);
+    expect(order.knowledge).toBeGreaterThan(order.reporting);
   });
 
   test('Services groups the 7 real services into 3 chapters, each with one local editorial image', async ({ page }) => {
@@ -56,12 +59,10 @@ test.describe('Professional public-site quality pass', () => {
     }
   });
 
-  test('hero accents do not run permanent floating animations', async ({ page }) => {
-    // Task 04 removed the .hero-float-badge element entirely (it duplicated
-    // the "100+ clients served" stat already in the credibility row below
-    // the hero), so there's nothing left there to assert an animation state on.
+  test('hero finance panel uses restrained interaction instead of permanent floating animation', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('.doc-card-stamp')).toHaveCSS('animation-name', 'none');
+    await expect(page.locator('.home-finance-panel')).toBeVisible();
+    await expect(page.locator('.home-finance-panel')).toHaveCSS('animation-name', 'none');
   });
 
 
@@ -85,14 +86,12 @@ test.describe('Professional public-site quality pass', () => {
 
     const geometry = await page.evaluate(() => {
       const footer = document.querySelector('.site-footer').getBoundingClientRect();
-      const whatsapp = document.querySelector('.whatsapp-float').getBoundingClientRect();
       const back = document.querySelector('.back-to-top').getBoundingClientRect();
       const clearance = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--floating-footer-clearance')) || 0;
-      return { footerTop: footer.top, whatsappBottom: whatsapp.bottom, backBottom: back.bottom, clearance };
+      return { footerTop: footer.top, backBottom: back.bottom, clearance };
     });
 
     expect(geometry.clearance).toBeGreaterThan(0);
-    expect(geometry.whatsappBottom).toBeLessThanOrEqual(geometry.footerTop + 1);
     expect(geometry.backBottom).toBeLessThanOrEqual(geometry.footerTop + 1);
   });
 
@@ -110,7 +109,7 @@ test.describe('Professional public-site quality pass', () => {
     const page = await context.newPage();
     await page.goto('/');
     await expect(page.locator('.hero .reveal-stagger').first()).toBeVisible();
-    await expect(page.locator('.home-about-section .reveal').first()).toBeVisible();
+    await expect(page.locator('.home-standard-section .reveal').first()).toBeVisible();
     await context.close();
   });
 
@@ -148,18 +147,12 @@ test.describe('Professional public-site quality pass', () => {
     await context.close();
   });
 
-  // Real duplication found during a full public-site audit: Home and
-  // About both rendered data.aboutText verbatim in an identical
-  // proof-panel layout -- a visitor clicking Home -> About saw the same
-  // paragraph and fact list twice, back to back. Fixed by giving About
-  // its own already-existing, already-approved copy (data.aboutClosing)
-  // instead of reusing Home's.
-  test('Home and About proof-panel intro copy is genuinely distinct, not duplicated', async ({ page }) => {
+  test('Home no longer repeats the About-page proof-panel composition', async ({ page }) => {
     await page.goto('/');
-    const homeCopy = await page.locator('.about-snapshot-copy p').first().textContent();
+    await expect(page.locator('.about-snapshot-copy')).toHaveCount(0);
+    await expect(page.locator('.home-standard-section')).toBeVisible();
     await page.goto('/about');
-    const aboutCopy = await page.locator('.about-snapshot-copy p').first().textContent();
-    expect(homeCopy.trim()).not.toBe(aboutCopy.trim());
+    await expect(page.locator('.about-snapshot-copy')).toHaveCount(1);
   });
 
   for (const path of ['/international-accounting', '/virtual-cfo', '/nfrs-ifrs']) {

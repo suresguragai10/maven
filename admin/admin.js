@@ -1414,7 +1414,7 @@
     area.appendChild(section('sec-process', 'Process Steps', 'The order (1–9) is fixed since it\'s a real sequence — only titles and descriptions are editable.', processEditor(c.process)));
 
     // FAQs
-    area.appendChild(section('sec-faqs', 'FAQs', '', faqListEditor(c.faqs)));
+    area.appendChild(section('sec-faqs', 'FAQs', 'Edit the approved FAQ questions and answers. The public FAQ page automatically groups these same entries into fixed topic sections; keep answers factual, current, and within Maven’s documented professional scope.', faqListEditor(c.faqs)));
 
     // Privacy Policy
     if (!Array.isArray(c.privacySections)) c.privacySections = [];

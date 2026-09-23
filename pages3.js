@@ -1,5 +1,5 @@
 const data = require('./data');
-const { esc, safeUrl } = require('./escape');
+const { esc, safeUrl, internalHref } = require('./escape');
 const { icon, stampMark } = require('./icons');
 const {
   button, sectionHead, pageHero, accordionItem, industryCard, industryDetail, ctaBand, bulletList, panelLabel, eyebrow, eyebrowOnDark,
@@ -303,30 +303,173 @@ function industries() {
 
 function faq() {
   const h = data.pageHeader('faq');
-  const items = data.faqs.map((f, i) => accordionItem({
-    id: `faq-${i}`,
-    headingHtml: esc(f.q),
-    bodyHtml: `<p>${esc(f.a)}</p>`,
-    open: false,
-    // Handbook Task 26: same reasoning as documentsNeeded() above -- no
-    // preceding h2 on this page.
-    headingLevel: 'h2',
-  })).join('');
+  const categoryDefs = [
+    {
+      id: 'services-scope', number: '01', iconName: 'ledger', label: 'Services & Scope',
+      intro: 'What Maven handles directly, where professional boundaries apply, and how recurring accounting support can be structured.',
+    },
+    {
+      id: 'coverage-setup', number: '02', iconName: 'mapPin', label: 'Coverage & Setup',
+      intro: 'Questions about service coverage across Nepal, registration support, and practical setup timing.',
+    },
+    {
+      id: 'fees-confidentiality', number: '03', iconName: 'shield', label: 'Fees & Confidentiality',
+      intro: 'How Maven scopes quotations and how engagement information is handled.',
+    },
+    {
+      id: 'reporting-advisory', number: '04', iconName: 'barChart', label: 'Reporting & Advisory',
+      intro: 'How monthly performance, cash-flow planning, budgeting and management-support work can fit into an engagement.',
+    },
+  ];
+
+  function faqCategoryId(item) {
+    const text = `${item.q || ''} ${item.a || ''}`.toLowerCase();
+    if (/financial performance|cash-flow|cash flow|budget|management indicator/.test(text)) return 'reporting-advisory';
+    if (/fixed price|pricing|business data safe|confidential|information with anyone/.test(text)) return 'fees-confidentiality';
+    if (/outside kathmandu|register my company|company registration|pan\/vat|government office processing time/.test(text)) return 'coverage-setup';
+    return 'services-scope';
+  }
+
+  const allFaqEntries = data.faqs.map((item, faqIndex) => ({ item, faqIndex, categoryId: faqCategoryId(item) }));
+  const categories = categoryDefs.map((cat) => ({
+    ...cat,
+    entries: allFaqEntries.filter((entry) => entry.categoryId === cat.id),
+  }));
+
+  const questionCount = data.faqs.length;
+  const categoryLinks = categories.map((cat) => `<a class="faq-topic-link" href="#faq-${cat.id}">
+    <span class="faq-topic-link-number">${cat.number}</span>
+    <span class="faq-topic-link-icon">${icon(cat.iconName)}</span>
+    <span class="faq-topic-link-copy"><strong>${esc(cat.label)}</strong><small>${cat.entries.length} question${cat.entries.length === 1 ? '' : 's'}</small></span>
+    ${icon('arrowRight')}
+  </a>`).join('');
+
+  const sections = categories.map((cat) => {
+    const items = cat.entries.map(({ item, faqIndex }) => accordionItem({
+      id: `faq-${faqIndex}`,
+      headingHtml: esc(item.q),
+      bodyHtml: `<p>${esc(item.a)}</p>`,
+      open: false,
+      headingLevel: 'h3',
+    })).join('');
+
+    return `<section class="faq-category-section" id="faq-${cat.id}">
+      <div class="faq-category-head">
+        <div class="faq-category-title">
+          <span class="faq-category-number">${cat.number}</span>
+          <span class="faq-category-icon">${icon(cat.iconName)}</span>
+          <div><span class="panel-label">${esc(cat.label)}</span><h2>${esc(cat.label)}</h2></div>
+        </div>
+        <p>${esc(cat.intro)}</p>
+      </div>
+      <div class="faq-category-accordion accordion">${items}</div>
+    </section>`;
+  }).join('');
+
+  const relatedPaths = [
+    ['ledger', 'Need service detail?', 'Review the complete finance, tax, accounting and reporting scope before choosing an engagement.', 'View Services', 'services.html'],
+    ['globe', 'Working across borders?', 'See how Maven structures Nepal-based remote accounting and outsourced-finance delivery for international teams.', 'Global Outsourcing', 'global-outsourcing.html'],
+    ['upload', 'Preparing documents?', 'Use the practical checklist to understand what may be relevant before sending confidential records.', 'Documents Checklist', 'documents-needed.html'],
+  ];
 
   return `
-  ${pageHero(h.eyebrow, h.title, h.subtitle, '/images/faq-hero-bg.jpg')}
+  <section class="faq-premium-hero">
+    <picture class="faq-premium-hero-photo" aria-hidden="true">
+      <source media="(max-width: 767px)" srcset="/images/faq-hero-bg-640w.jpg">
+      <source media="(max-width: 1279px)" srcset="/images/faq-hero-bg-960w.jpg">
+      <img src="/images/faq-hero-bg.jpg" alt="" decoding="async">
+    </picture>
+    <div class="faq-premium-hero-shade" aria-hidden="true"></div>
+    <div class="container faq-premium-hero-grid">
+      <div class="faq-premium-hero-copy reveal-stagger">
+        ${eyebrowOnDark(h.eyebrow)}
+        <h1>${esc(h.title)}</h1>
+        <p class="faq-premium-hero-sub">${esc(h.subtitle)}</p>
+        <div class="faq-premium-hero-actions">
+          ${button('Browse Questions by Topic', '#faq-topics', 'primary')}
+          ${button('Ask Maven Directly', 'contact.html#inquiry', 'ghost-light')}
+        </div>
+        <div class="faq-premium-hero-assurances" aria-label="FAQ coverage">
+          <span>${stampMark('stamp-sm')} ${questionCount} approved questions</span>
+          <span>${stampMark('stamp-sm')} ${categories.length} practical topics</span>
+          <span>${stampMark('stamp-sm')} Service boundaries explained clearly</span>
+        </div>
+      </div>
 
-  <section class="section-pad">
-    <div class="container" style="max-width:760px">
-      <div class="accordion">${items}</div>
+      <aside class="faq-topic-panel reveal" aria-label="FAQ topics">
+        <div class="faq-topic-panel-head">
+          ${panelLabel('Question Desk')}
+          <h2>Start with the topic closest to your question.</h2>
+          <p>These answers explain Maven's published scope and engagement approach. Entity-specific tax, legal, filing or reporting questions still need case-specific review.</p>
+        </div>
+        <nav class="faq-topic-panel-list" aria-label="Jump to FAQ topic">
+          ${categoryLinks}
+        </nav>
+        <div class="faq-topic-panel-foot">
+          ${icon('shield')}
+          <span>General website answers are informative starting points, not substitutes for engagement-specific professional judgement.</span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section-pad faq-orientation-section" id="faq-topics">
+    <div class="container faq-orientation-grid">
+      <div class="faq-orientation-copy reveal">
+        ${eyebrow('Find the Right Starting Point')}
+        <h2>Use the FAQ to understand scope before you send documents or request a quote.</h2>
+        <p>The questions below cover the most common points clients ask before engaging Maven. They explain what we support, what remains outside Maven's role, how quotations are scoped, and when a more detailed conversation is appropriate.</p>
+      </div>
+      <div class="faq-orientation-steps reveal-stagger" aria-label="How to use the FAQ">
+        <article><span>01</span><h3>Understand the service</h3><p>Confirm whether the question relates to accounting, compliance, setup, reporting or advisory support.</p></article>
+        <article><span>02</span><h3>Check the boundary</h3><p>Notice where audit, legal, certification, investment or other regulated work remains with licensed professionals.</p></article>
+        <article><span>03</span><h3>Move to your facts</h3><p>When the answer depends on your entity, records, jurisdiction, timing or transaction, continue through a direct enquiry.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad faq-library-section">
+    <div class="container faq-library-layout">
+      <aside class="faq-library-aside reveal" aria-label="FAQ topic navigation">
+        ${eyebrow('FAQ Library')}
+        <h2>Questions grouped around the decisions clients usually make first.</h2>
+        <p>The published Q&A remains CMS-managed. This structure simply makes the same answers easier to find.</p>
+        <nav class="faq-library-nav">
+          ${categories.map((cat) => `<a href="#faq-${cat.id}"><span>${cat.number}</span><strong>${esc(cat.label)}</strong>${icon('arrowRight')}</a>`).join('')}
+        </nav>
+      </aside>
+      <div class="faq-library-categories">
+        ${sections}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad faq-related-section">
+    <div class="container">
+      <div class="faq-related-head reveal">
+        <div>${eyebrow('Go Deeper')}<h2>Use the detailed page when the question needs more context.</h2></div>
+        <p>The FAQ is intentionally concise. Service pages, the document guide and the international-delivery pages provide the deeper operating detail.</p>
+      </div>
+      <div class="faq-related-grid reveal-stagger">
+        ${relatedPaths.map(([iconName, title, text, cta, href]) => `<article class="faq-related-card">
+          <span class="faq-related-icon">${icon(iconName)}</span>
+          <h3>${esc(title)}</h3>
+          <p>${esc(text)}</p>
+          <a href="${internalHref(href)}"><span>${esc(cta)}</span>${icon('arrowRight')}</a>
+        </article>`).join('')}
+      </div>
+      <div class="faq-boundary-note reveal">
+        <span>${icon('shield')}</span>
+        <p><strong>Need an answer tied to your actual business?</strong> Rates, deadlines, filing obligations, reporting treatment, legal requirements and professional opinions can depend on current rules and specific facts. Use the FAQ as orientation, then confirm the position that applies to your case.</p>
+      </div>
     </div>
   </section>
 
   ${ctaBand({
-    eyebrow: 'Still Have Questions?',
-    title: "We're happy to talk it through",
-    subtitle: 'Book a free consultation or send us a message on WhatsApp.',
-    buttons: [button('Book a Free Initial Consultation', 'contact.html', 'primary'), button(`${icon('whatsapp')} WhatsApp Us`, data.whatsappHref('Hello Maven, I have a question about your services.'), 'whatsapp', 'target="_blank" rel="noopener"')],
+    eyebrow: 'Still Have a Question?',
+    title: 'Bring the question and the context — we will help clarify the right next step.',
+    subtitle: 'Start with a short enquiry. Maven can confirm whether the issue belongs within our accounting, tax, compliance, reporting or outsourced-finance scope before asking you for detailed documents.',
+    buttons: [button('Start a Detailed Inquiry', 'contact.html#inquiry', 'primary'), button(`${icon('whatsapp')} WhatsApp Maven`, data.whatsappHref('Hello Maven, I have a question about your accounting, tax, finance or outsourced support.'), 'whatsapp', 'target="_blank" rel="noopener"')],
   })}
   `;
 }

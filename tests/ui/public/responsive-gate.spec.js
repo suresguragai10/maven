@@ -28,19 +28,11 @@ async function expectFloatingControlsInsideViewport(page, label) {
   const geometry = await page.evaluate(() => {
     const viewportWidth = document.documentElement.clientWidth;
     const footer = document.querySelector('.site-footer').getBoundingClientRect();
-    const whatsapp = document.querySelector('.whatsapp-float').getBoundingClientRect();
     const back = document.querySelector('.back-to-top').getBoundingClientRect();
 
     return {
       viewportWidth,
       footerTop: footer.top,
-      whatsapp: {
-        left: whatsapp.left,
-        right: whatsapp.right,
-        bottom: whatsapp.bottom,
-        width: whatsapp.width,
-        height: whatsapp.height,
-      },
       back: {
         left: back.left,
         right: back.right,
@@ -52,7 +44,6 @@ async function expectFloatingControlsInsideViewport(page, label) {
   });
 
   for (const [name, rect] of Object.entries({
-    WhatsApp: geometry.whatsapp,
     BackToTop: geometry.back,
   })) {
     expect(

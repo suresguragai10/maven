@@ -14,19 +14,19 @@ The full indexable inventory below was read directly from `build.js`'s `pages` a
 | `/about` | About Maven Consultancy \| Business Consultancy in Kathmandu, Nepal | Trust/E-E-A-T — who Maven is, Kathmandu-based | Strong (explicit in title) | None | Medium | Soft |
 | `/services` | Accounting, Tax, Registration & Compliance Services in Nepal \| Maven Consultancy | The services **hub** — broad "accounting services Nepal" umbrella, not any one narrow service | Strong | None | Low | Primary |
 | `/outsourced-accounting` | Outsourced Accounting Services in Nepal \| Maven Consultancy | "Outsourced accounting Nepal" — for **Nepal-based businesses** who want to outsource their own books | Strong | None (deliberately Nepal-audience only) | Low | Primary |
-| `/global-outsourcing` | International Accounting & Finance Support \| Maven Consultancy | The international **hub** — "finance/accounting outsourcing from Nepal," for foreign businesses/accounting firms | Weak (positions Maven as the Nepal-based provider) | Strong, primary | Low | Primary |
+| `/global-outsourcing` | Finance & Accounting Outsourcing from Nepal \| Maven Consultancy | The international **hub** — "finance/accounting outsourcing from Nepal," for foreign businesses/accounting firms | Weak (positions Maven as the Nepal-based provider) | Strong, primary | Medium (premium hub now explains operating model, controls and tier structure) | Primary |
 | `/international-accounting` | International Outsourced Accounting & Bookkeeping \| Maven Consultancy | Narrower bookkeeping-specific sub-page under the international story | Weak | Strong | Low | Primary |
 | `/virtual-cfo` | Virtual CFO & Management Reporting \| Maven Consultancy | "Virtual CFO" — management reporting/forecasting, distinct from day-to-day bookkeeping | Weak | Strong | Low | Primary |
 | `/nfrs-ifrs` | NFRS / IFRS Implementation & Financial Reporting Support \| Maven Consultancy | "NFRS" — the one page that owns this term exclusively | Strong | None | Medium (Task 07 restructure added real informational depth) | Primary |
-| `/packages` | Accounting & Compliance Packages \| Maven Consultancy Nepal | Pricing/commercial intent — "how much does this cost" | Strong | None | Low | Primary |
-| `/documents-needed` | Documents Checklist for Registration, PAN/VAT & Accounting \| Maven Consultancy | Practical tool/informational — "what documents do I need" | Strong | None | High | Secondary |
-| `/industries` | Industries We Serve Across Nepal \| Maven Consultancy | Trust/relevance signal across 13 real industries (one page, not 13 doorway pages) | Strong | None | Medium | Soft |
+| `/packages` | Accounting Support Packages & Custom Quotes \| Maven Consultancy Nepal | Pricing/commercial intent — engagement shape, scope drivers, and custom quote process | Strong | None | Low | Primary |
+| `/documents-needed` | Business & Accounting Document Checklists Nepal \| Maven Consultancy | Practical preparation tool — "what documents do I need" plus secure-sharing guidance | Strong | None | High | Secondary |
+| `/industries` | Industry-Specific Accounting & Finance Support \| Maven Consultancy Nepal | Sector-aware finance relevance across 13 real industry profiles (one page, not 13 doorway pages) | Strong | None | Medium | Soft |
 | `/resources` | Resources — Guides, Calculators & Reference Links \| Maven Consultancy | Pure internal-linking hub — no keyword of its own, links to the 4 pages below | Weak | None | Low (hub only) | None |
 | `/useful-links` | Useful Links — Nepal Government Portals \| Maven Consultancy | Authority/trust signal (real .gov.np links) + genuinely useful reference, not a ranking target itself | Strong | None | High | None |
-| `/calculators` | Free Financial Calculators — EMI, Salary Tax & VAT Nepal \| Maven Consultancy | Tool intent — "EMI calculator Nepal," "income tax calculator Nepal," "VAT calculator" | Strong | None | High | Secondary |
-| `/faq` | Frequently Asked Questions \| Maven Consultancy Services | Long-tail question intent, already has `FAQPage` structured data | Medium | Weak | High | Soft |
+| `/calculators` | Financial Calculators Nepal \| Income Tax, VAT, TDS & EMI \| Maven Consultancy | Tool intent — "EMI calculator Nepal," "income tax calculator Nepal," "VAT calculator," "TDS calculator Nepal" | Strong | None | High | Secondary |
+| `/faq` | Accounting, Tax & Finance FAQ \| Maven Consultancy Nepal | Long-tail pre-engagement question intent across service scope, coverage, fees/confidentiality and reporting/advisory, with `FAQPage` structured data | Strong | Secondary | High | Soft |
 | `/contact` | Contact Maven Consultancy \| New Baneshwor, Kathmandu, Nepal | Navigational/conversion — bottom of funnel | Strong | None | None | Primary |
-| `/team` | Our Team \| Maven Consultancy Services Nepal | Trust/E-E-A-T — a real named person behind the business | Strong | None | Low | None |
+| `/team` | Our Team \| Accounting, Tax & Finance Professionals \| Maven Consultancy | Trust/E-E-A-T — real named professionals, multidisciplinary experience and working standards behind the firm | Strong | Secondary (remote collaboration is clarified without implying foreign offices) | Medium | Soft |
 | `/privacy` | Privacy Policy \| Maven Consultancy Services Nepal | Legal/compliance page, near-zero commercial intent by design | — | — | — | None |
 
 ## 2. Topic-target map
@@ -51,14 +51,14 @@ One primary owner per topic from the task's list. Where a topic legitimately app
 ## 3. Cannibalization / overlap findings
 
 **Primary finding — `/global-outsourcing` vs. `/international-accounting` — RESOLVED in Task 12.** Their titles used to be near-duplicates:
-- `/global-outsourcing`: "International Accounting & Finance Support" (unchanged — this is the intended broad hub title)
+- `/global-outsourcing`: **"Finance & Accounting Outsourcing from Nepal"** (updated in the premium hub pass to state the broad hub topic explicitly)
 - `/international-accounting`: was "International Outsourced Accounting & Bookkeeping" → now **"International Bookkeeping & Reconciliation Services"** (title, H1, cross-link anchor text, and the page's own CTA-band eyebrow all updated for consistency)
 
 Their actual on-page content was never identical — the hub (`/global-outsourcing`) covers the full international story and links out to both `/international-accounting` (bookkeeping-specific) and `/virtual-cfo` (management-reporting-specific), a legitimate hub → spoke structure. The problem was narrower than the content itself: the titles didn't signal that difference to a search engine. Task 12 fixed this by retitling only `/international-accounting` to lead with its actual narrower job (bookkeeping/reconciliation) — no content restructuring, description barely changed (it already led with "bookkeeping, reconciliation").
 
 **Everything else checked and found *not* to be a problem:**
 - `/services` vs. `/outsourced-accounting`: standard hub → deep-dive relationship (services.html links out to the dedicated page for its highest-prominence chapter, per Task 05's design) — fine as long as `/services` never tries to independently rank for "outsourced accounting Nepal" specifically.
-- `/resources` vs. its four linked pages (`/documents-needed`, `/calculators`, `/useful-links`, `/faq`): `/resources`' title is generic/hub-shaped and doesn't compete with any of their specific terms.
+- `/resources` vs. its four linked pages (`/documents-needed`, `/calculators`, `/useful-links`, `/faq`): the hub now targets the broad `Finance, Tax & Accounting Resources Nepal` intent and routes visitors by task (prepare / calculate / verify / understand), while each child page keeps its narrower checklist/calculator/official-link/FAQ intent. This remains a clean hub -> spoke relationship rather than duplication.
 - The 3-way "financial reporting" split (`/services`, `/nfrs-ifrs`, `/virtual-cfo`): distinct enough by framing (general/statutory/management) to not be true cannibalization today, but flagged in the topic-target table above as the one to watch if any of the three ever drifts toward the others' framing.
 
 ## 4. KPO terminology guidance
